@@ -17,6 +17,8 @@ target_sources(usvfs-fuse
             usvfsmanager.cpp
             utils.cpp
             virtualfiletreeitem.cpp
+            loghelpers.h
+            loghelpers.cpp
             ${PROJECT_SOURCE_DIR}/include/usvfs-fuse/fdmap.h
             ${PROJECT_SOURCE_DIR}/include/usvfs-fuse/logger.h
             ${PROJECT_SOURCE_DIR}/include/usvfs-fuse/mountstate.h
@@ -29,8 +31,9 @@ target_sources(usvfs-fuse
         FILES
             ${PROJECT_SOURCE_DIR}/include/usvfs-fuse/usvfs_version.h
             ${PROJECT_SOURCE_DIR}/include/usvfs-fuse/usvfsmanager.h
+            ${PROJECT_SOURCE_DIR}/include/usvfs-fuse/logging.h
 )
 
 target_compile_options(usvfs-fuse PRIVATE -Wall -Wextra -Wpedantic)
 
-target_link_libraries(usvfs-fuse PUBLIC PkgConfig::FUSE3 spdlog::spdlog ICU::data ICU::uc Qt::Core)
+target_link_libraries(usvfs-fuse PRIVATE PkgConfig::FUSE3 spdlog::spdlog ICU::data ICU::uc Qt::Core)

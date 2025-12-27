@@ -1,5 +1,6 @@
 #pragma once
 
+#include "logging.h"
 #include <shared_mutex>
 
 // forward declarations
@@ -207,8 +208,7 @@ public:
   // void usvfsInitLogging(bool toLocal = false);
   // #endif
 
-  static std::shared_ptr<spdlog::logger>
-  setupLogger(std::vector<std::shared_ptr<spdlog::sinks::sink>> sinks) noexcept;
+  void setLogLevel(LogLevel logLevel) noexcept;
 
   /**
    * used internally to initialize a process at startup-time as a "slave". Don't call

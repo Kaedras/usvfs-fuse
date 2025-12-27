@@ -2,11 +2,9 @@
 #include <fcntl.h>
 #include <filesystem>
 #include <fstream>
-#include <spdlog/sinks/stdout_sinks.h>
-#include <spdlog/spdlog.h>
 #include <thread>
 
-#include "usvfs_fuse/usvfsmanager.h"
+#include "usvfs-fuse/usvfsmanager.h"
 
 using namespace std;
 namespace fs = std::filesystem;
@@ -20,7 +18,6 @@ static const fs::path file = src / "0" / "0.txt";
 
 static void DoSetup_usvfs(const benchmark::State& state)
 {
-  spdlog::set_level(spdlog::level::warn);
   fs::create_directories(mnt);
   fs::create_directories(src / "0");
 
@@ -28,7 +25,7 @@ static void DoSetup_usvfs(const benchmark::State& state)
   ofs << "test";
 
   auto usvfs = UsvfsManager::instance();
-  spdlog::get("usvfs")->set_level(spdlog::level::warn);
+  usvfs->setLogLevel(LogLevel::Warning);
   usvfs->usvfsVirtualLinkDirectoryStatic((src / "0").c_str(), mnt.c_str(),
                                          linkFlag::RECURSIVE);
   usvfs->mount();

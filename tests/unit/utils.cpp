@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include "usvfs_fuse/utils.h"
+#include "usvfs-fuse/utils.h"
 
 using namespace std::string_literals;
 

@@ -2,19 +2,17 @@
 #include <filesystem>
 #include <fstream>
 #include <gtest/gtest.h>
-#include <spdlog/sinks/stdout_sinks.h>
-#include <spdlog/spdlog.h>
 #include <sys/statvfs.h>
 
-#include "usvfs_fuse/usvfsmanager.h"
+#include "usvfs-fuse/usvfsmanager.h"
 
 using namespace std;
 namespace fs = std::filesystem;
 
-static constexpr auto delayAfterMount     = 10ms;
-static constexpr mode_t mode              = 0755;
-static spdlog::level::level_enum logLevel = spdlog::level::trace;
-static constexpr bool enableDebugMode     = false;
+static constexpr auto delayAfterMount = 10ms;
+static constexpr mode_t mode          = 0755;
+static LogLevel logLevel              = LogLevel::Warning;
+static constexpr bool enableDebugMode = false;
 
 static const fs::path base  = fs::temp_directory_path() / "usvfs";
 static const fs::path src   = base / "src";
@@ -98,17 +96,9 @@ bool runCmd(const string& cmd)
 
 void initLogging()
 {
-  std::vector<spdlog::sink_ptr> sinks;
-  // sinks.push_back(std::make_shared<spdlog::sinks::stdout_sink_st>());
 
-  const auto logger = UsvfsManager::setupLogger(sinks);
-  try {
-    spdlog::register_logger(logger);
-  } catch (...) {
-    // spdlog::warn("logger registration failed");
-  }
-
-  spdlog::set_level(logLevel);
+  auto usvfs = UsvfsManager::instance();
+  usvfs->setLogLevel(logLevel);
 }
 
 string readFile(const fs::path& path)

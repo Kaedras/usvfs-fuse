@@ -1,5 +1,6 @@
 #include "usvfs-fuse/usvfsmanager.h"
 
+#include "loghelpers.h"
 #include "usvfs-fuse/fdmap.h"
 #include "usvfs-fuse/logger.h"
 #include "usvfs-fuse/mountstate.h"
@@ -507,33 +508,9 @@ void UsvfsManager::setProcessDelay(std::chrono::milliseconds processDelay) noexc
   m_processDelay = processDelay;
 }
 
-std::shared_ptr<spdlog::logger> UsvfsManager::setupLogger(
-    std::vector<std::shared_ptr<spdlog::sinks::sink>> sinks) noexcept
+void UsvfsManager::setLogLevel(LogLevel logLevel) noexcept
 {
-  static constexpr std::string loggerName = "usvfs";
-
-  // a temporary logger was created in ctor
-  spdlog::drop(loggerName);
-
-  auto logger = spdlog::get(loggerName);
-  if (logger == nullptr) {
-    if (!sinks.empty()) {
-      logger = std::make_shared<spdlog::logger>(loggerName, std::begin(sinks),
-                                                std::end(sinks));
-      spdlog::register_logger(logger);
-    } else {
-      logger = spdlog::create<spdlog::sinks::stdout_sink_mt>(loggerName);
-    }
-    logger->set_pattern("%H:%M:%S.%e [%L] %v");
-    logger->set_level(spdlog::level::debug);
-  } else {
-    logger::warn("logger already existed");
-  }
-
-  logger::info("usvfs library {} initialized in process {}", USVFS_VERSION_STRING,
-               getpid());
-
-  return logger;
+  spdlog::get("usvfs")->set_level(ConvertLogLevel(logLevel));
 }
 
 const char* UsvfsManager::usvfsVersionString()

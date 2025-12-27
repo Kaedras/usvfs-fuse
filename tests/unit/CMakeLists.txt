@@ -13,7 +13,7 @@ target_link_libraries(
         usvfs-tests
         PRIVATE
         GTest::gtest_main
-        usvfs_fuse
+        usvfs-fuse
 )
 target_compile_options(usvfs-tests PRIVATE -Wall -Wextra -Wpedantic)
 

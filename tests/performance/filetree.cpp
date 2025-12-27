@@ -1,4 +1,4 @@
-#include "usvfs_fuse/virtualfiletreeitem.h"
+#include "usvfs-fuse/virtualfiletreeitem.h"
 #include <benchmark/benchmark.h>
 #include <filesystem>
 #include <iostream>

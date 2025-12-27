@@ -1,15 +1,15 @@
 #include <filesystem>
 #include <gtest/gtest.h>
 #include <ostream>
-#include <spdlog/sinks/stdout_sinks.h>
-#include <spdlog/spdlog.h>
 
-#include "usvfs_fuse/virtualfiletreeitem.h"
+#include "usvfs-fuse/logging.h"
+#include "usvfs-fuse/usvfsmanager.h"
+#include "usvfs-fuse/virtualfiletreeitem.h"
 
 using namespace std;
 using filesystem::file_type;
 
-static spdlog::level::level_enum logLevel = spdlog::level::warn;
+static LogLevel logLevel = LogLevel::Warning;
 
 class FileTreeTest : public testing::Test
 {
@@ -18,11 +18,10 @@ protected:
   void SetUp() override { initLogging(); }
   void TearDown() override {}
 
-  void initLogging()
+  static void initLogging()
   {
-    static constexpr auto loggerName = "usvfs";
-    logger = spdlog::create<spdlog::sinks::stdout_sink_mt>(loggerName);
-    logger->set_level(logLevel);
+    auto usvfs = UsvfsManager::instance();
+    usvfs->setLogLevel(logLevel);
   }
   static void addItems(VirtualFileTreeItem& root)
   {
@@ -43,8 +42,6 @@ protected:
     root.add("Ä", "/tmp/Ö", dir);
     root.add("こんいちわ", "/tmp/テスト", dir);
   }
-
-  std::shared_ptr<spdlog::logger> logger;
 };
 
 TEST_F(FileTreeTest, CanInsert)

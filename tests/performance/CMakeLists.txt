@@ -14,6 +14,6 @@ target_link_libraries(
         PRIVATE
         benchmark::benchmark
         benchmark::benchmark_main
-        usvfs_fuse
+        usvfs-fuse
 )
 target_compile_options(usvfs-performance-tests PRIVATE -Wall -Wextra -Wpedantic)
