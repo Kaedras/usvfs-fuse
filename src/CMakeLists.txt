@@ -31,6 +31,6 @@ target_sources(usvfs_fuse
             ${PROJECT_SOURCE_DIR}/include/usvfs_fuse/usvfsmanager.h
 )
 
-target_compile_options(usvfs_fuse PRIVATE -Wall -Wextra -Wpedantic#[[ -fvisibility=hidden]])
+target_compile_options(usvfs_fuse PRIVATE -Wall -Wextra -Wpedantic)
 
 target_link_libraries(usvfs_fuse PUBLIC PkgConfig::FUSE3 spdlog::spdlog ICU::data ICU::uc Qt::Core)
