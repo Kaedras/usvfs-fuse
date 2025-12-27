@@ -9,6 +9,8 @@ using [libfuse](https://github.com/libfuse/libfuse) for use on Linux.
 - GCC 15.2
 - libfuse 3.17
 - icu
+- spdlog
+- Qt6 Core
 - gtest (when building unit tests)
 - google benchmark (when building performance tests)
 
