@@ -14,7 +14,7 @@
     {
       "binaryDir": "${sourceDir}/build",
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS": "-Wall -Wextra -Wpedantic -fvisibility=hidden -Wl,--no-undefined",
+        "CMAKE_CXX_FLAGS": "-Wall -Wextra -Wpedantic",
         "VCPKG_TARGET_TRIPLET": {
           "type": "STRING",
           "value": "x64-linux-dynamic"
