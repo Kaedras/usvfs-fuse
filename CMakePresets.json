@@ -17,7 +17,7 @@
         "CMAKE_CXX_FLAGS": "-Wall -Wextra -Wpedantic",
         "VCPKG_TARGET_TRIPLET": {
           "type": "STRING",
-          "value": "x64-linux-dynamic"
+          "value": "x64-linux"
         }
       },
       "generator": "Ninja Multi-Config",

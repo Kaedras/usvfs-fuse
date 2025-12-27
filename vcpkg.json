@@ -3,8 +3,7 @@
   "version-string": "0.1",
   "dependencies": [
     "spdlog",
-    "icu",
-    "libfuse"
+    "icu"
   ],
   "features": {
     "testing": {
