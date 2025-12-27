@@ -1,9 +1,9 @@
-#include "usvfs_fuse/usvfs.h"
+#include "usvfs-fuse/usvfs.h"
 
-#include "usvfs_fuse/logger.h"
-#include "usvfs_fuse/mountstate.h"
-#include "usvfs_fuse/utils.h"
-#include "usvfs_fuse/virtualfiletreeitem.h"
+#include "usvfs-fuse/logger.h"
+#include "usvfs-fuse/mountstate.h"
+#include "usvfs-fuse/utils.h"
+#include "usvfs-fuse/virtualfiletreeitem.h"
 
 using namespace std;
 namespace fs = std::filesystem;

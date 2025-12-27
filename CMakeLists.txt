@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 4.0)
 
 include(CMakePackageConfigHelpers)
 
-project(usvfs_fuse)
+project(usvfs-fuse)
 
 set(CMAKE_CXX_STANDARD 23)
 
@@ -18,19 +18,19 @@ if (BUILD_UNIT_TESTS OR BUILD_PERF_TESTS OR BUILD_TESTS)
 endif()
 
 configure_package_config_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake/config.cmake.in
-        "${CMAKE_CURRENT_BINARY_DIR}/usvfs_fuse-config.cmake"
-        INSTALL_DESTINATION "lib/cmake/usvfs_fuse"
+        "${CMAKE_CURRENT_BINARY_DIR}/usvfs-fuseConfig.cmake"
+        INSTALL_DESTINATION "lib/cmake/usvfs-fuse"
         NO_SET_AND_CHECK_MACRO
         NO_CHECK_REQUIRED_COMPONENTS_MACRO
 )
 
-install(TARGETS usvfs_fuse EXPORT usvfs_fuse-targets FILE_SET HEADERS)
-install(EXPORT usvfs_fuse-targets
-        FILE usvfs_fuse-targets.cmake
-        DESTINATION lib/cmake/usvfs_fuse
+install(TARGETS usvfs-fuse EXPORT usvfs-fuseTargets FILE_SET HEADERS)
+install(EXPORT usvfs-fuseTargets
+        FILE usvfs-fuseTargets.cmake
+        DESTINATION lib/cmake/usvfs-fuse
 )
 
 install(FILES
-        ${CMAKE_CURRENT_BINARY_DIR}/usvfs_fuse-config.cmake
-        DESTINATION lib/cmake/usvfs_fuse
+        ${CMAKE_CURRENT_BINARY_DIR}/usvfs-fuseConfig.cmake
+        DESTINATION lib/cmake/usvfs-fuse
 )

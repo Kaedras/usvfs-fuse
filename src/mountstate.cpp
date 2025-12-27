@@ -1,6 +1,6 @@
-#include "usvfs_fuse/mountstate.h"
+#include "usvfs-fuse/mountstate.h"
 
-#include "usvfs_fuse/logger.h"
+#include "usvfs-fuse/logger.h"
 
 MountState::~MountState()
 {
