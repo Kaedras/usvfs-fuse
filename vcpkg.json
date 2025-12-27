@@ -1,11 +1,18 @@
 {
+  "name": "usvfs-fuse",
+  "version-string": "0.1",
   "dependencies": [
-    "spdlog", "icu", "libfuse"
+    "spdlog",
+    "icu",
+    "libfuse"
   ],
   "features": {
     "testing": {
       "description": "Build USVFS tests.",
-      "dependencies": ["gtest", "benchmark"]
+      "dependencies": [
+        "gtest",
+        "benchmark"
+      ]
     }
   }
 }
