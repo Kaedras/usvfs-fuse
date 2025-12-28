@@ -12,13 +12,14 @@ bool iequals(const std::string_view lhs, const std::string_view rhs)
   // try a fast ASCII comparison first
   bool is_ascii = true;
   for (size_t i = 0; i < lhs.length(); ++i) {
-    if (static_cast<unsigned char>(lhs[i]) > 127 ||
-        static_cast<unsigned char>(rhs[i]) > 127) {
+    const auto a = static_cast<unsigned char>(lhs[i]);
+    const auto b = static_cast<unsigned char>(rhs[i]);
+
+    if (a > 127 || b > 127) {
       is_ascii = false;
       break;
     }
-    if (std::tolower(static_cast<unsigned char>(lhs[i])) !=
-        std::tolower(static_cast<unsigned char>(rhs[i]))) {
+    if (std::tolower(a) != std::tolower(b)) {
       return false;
     }
   }
