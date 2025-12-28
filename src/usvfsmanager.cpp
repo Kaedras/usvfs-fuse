@@ -339,10 +339,7 @@ pid_t UsvfsManager::usvfsCreateProcessHooked(const QString& file, const QString&
   bool blacklisted = m_executableBlacklist.contains(fileStr);
 
   if (!blacklisted) {
-    try {
-      mount();
-    } catch (const std::exception& e) {
-      logger::error("mount failed: {}", e.what());
+    if (!mount()) {
       return -1;
     }
   }
