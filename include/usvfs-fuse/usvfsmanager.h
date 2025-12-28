@@ -1,7 +1,9 @@
 #pragma once
 
 #include "logging.h"
+#include <QString>
 #include <shared_mutex>
+#include <string>
 
 // forward declarations
 struct MountState;
@@ -127,10 +129,17 @@ public:
    */
   bool usvfsCreateProcessHooked(const std::string& file, const std::string& arg,
                                 const std::string& workDir, char** envp) noexcept;
+  bool usvfsCreateProcessHooked(const QString& file, const QString& arg,
+                                const QString& workDir, char** envp) noexcept;
+
   bool usvfsCreateProcessHooked(const std::string& file, const std::string& arg,
                                 const std::string& workDir) noexcept;
+  bool usvfsCreateProcessHooked(const QString& file, const QString& arg,
+                                const QString& workDir) noexcept;
+
   bool usvfsCreateProcessHooked(const std::string& file,
                                 const std::string& arg) noexcept;
+  bool usvfsCreateProcessHooked(const QString& file, const QString& arg) noexcept;
 
   /**
    * retrieve a single log message.

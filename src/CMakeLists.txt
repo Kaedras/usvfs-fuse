@@ -36,4 +36,4 @@ target_sources(usvfs-fuse
 
 target_compile_options(usvfs-fuse PRIVATE -Wall -Wextra -Wpedantic)
 
-target_link_libraries(usvfs-fuse PRIVATE PkgConfig::FUSE3 spdlog::spdlog ICU::data ICU::uc Qt::Core)
+target_link_libraries(usvfs-fuse PRIVATE PkgConfig::FUSE3 spdlog::spdlog ICU::data ICU::uc PUBLIC Qt::Core)

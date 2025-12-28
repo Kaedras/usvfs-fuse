@@ -307,10 +307,22 @@ bool UsvfsManager::usvfsCreateProcessHooked(const std::string& file,
                                             const std::string& workDir,
                                             char** envp) noexcept
 {
-  scoped_lock lock(m_mtx);
-  logger::trace("{}: {}, {}, {}", __FUNCTION__, file, arg, workDir);
+  return usvfsCreateProcessHooked(QString::fromStdString(file),
+                                  QString::fromStdString(arg),
+                                  QString::fromStdString(workDir), envp);
+}
 
-  bool blacklisted = m_executableBlacklist.contains(file);
+bool UsvfsManager::usvfsCreateProcessHooked(const QString& file, const QString& arg,
+                                            const QString& workDir,
+                                            char** envp) noexcept
+{
+  scoped_lock lock(m_mtx);
+
+  string fileStr = file.toStdString();
+  logger::trace("{}: {}, {}, {}", __FUNCTION__, fileStr, arg.toStdString(),
+                workDir.toStdString());
+
+  bool blacklisted = m_executableBlacklist.contains(fileStr);
 
   if (!blacklisted) {
     try {
@@ -323,18 +335,16 @@ bool UsvfsManager::usvfsCreateProcessHooked(const std::string& file,
 
   auto p = make_unique<QProcess>();
 
-  const QString program  = QString::fromStdString(file);
-  const QStringList args = QProcess::splitCommand(QString::fromStdString(arg));
+  const QStringList args = QProcess::splitCommand(arg);
 
   QStringList env;
   for (int i = 0; envp[i] != nullptr; ++i) {
     env << envp[i];
   }
 
-  const bool wine =
-      program.endsWith("wine"_L1) || program.endsWith("wine-staging"_L1) ||
-      program.endsWith("wine64"_L1) || program.endsWith("wine64-staging"_L1);
-  const bool proton = program.endsWith("proton"_L1);
+  const bool wine = file.endsWith("wine"_L1) || file.endsWith("wine-staging"_L1) ||
+                    file.endsWith("wine64"_L1) || file.endsWith("wine64-staging"_L1);
+  const bool proton = file.endsWith("proton"_L1);
 
   if (wine || proton) {
     if (!m_forceLoadLibraries.empty()) {
@@ -354,13 +364,13 @@ bool UsvfsManager::usvfsCreateProcessHooked(const std::string& file,
   }
 
   p->setEnvironment(env);
-  p->setWorkingDirectory(QString::fromStdString(workDir));
-  p->setProgram(program);
+  p->setWorkingDirectory(workDir);
+  p->setProgram(file);
   p->setArguments(args);
 
   // automatically unmount if no processes are left
   QObject::connect(p.get(), &QProcess::finished, [&](int exitCode) {
-    logger::info("process '{}' has exited with code {}", file, exitCode);
+    logger::info("process '{}' has exited with code {}", fileStr, exitCode);
     if (!anyProcessRunning()) {
       logger::info("last process has exited, unmounting");
       unmount();
@@ -380,14 +390,29 @@ bool UsvfsManager::usvfsCreateProcessHooked(const std::string& file,
                                             const std::string& arg,
                                             const std::string& workDir) noexcept
 {
+  return usvfsCreateProcessHooked(QString::fromStdString(file),
+                                  QString::fromStdString(arg),
+                                  QString::fromStdString(workDir));
+}
+
+bool UsvfsManager::usvfsCreateProcessHooked(const QString& file, const QString& arg,
+                                            const QString& workDir) noexcept
+{
   return usvfsCreateProcessHooked(file, arg, workDir, environ);
 }
 
 bool UsvfsManager::usvfsCreateProcessHooked(const std::string& file,
                                             const std::string& arg) noexcept
 {
-  char* cwd            = get_current_dir_name();
-  const string workDir = cwd;
+  return usvfsCreateProcessHooked(QString::fromStdString(file),
+                                  QString::fromStdString(arg));
+}
+
+bool UsvfsManager::usvfsCreateProcessHooked(const QString& file,
+                                            const QString& arg) noexcept
+{
+  char* cwd             = get_current_dir_name();
+  const QString workDir = QString::fromLocal8Bit(cwd);
   free(cwd);
   return usvfsCreateProcessHooked(file, arg, workDir, environ);
 }

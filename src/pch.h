@@ -34,6 +34,7 @@
 
 // Qt
 #include <QProcess>
+#include <QString>
 
 extern "C"
 {
