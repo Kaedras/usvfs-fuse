@@ -201,7 +201,8 @@ public:
    */
   void usvfsPrintDebugInfo() noexcept;
 
-  void enableDebugMode() noexcept;
+  void setDebugMode(bool value) noexcept;
+
   void setProcessDelay(std::chrono::milliseconds processDelay) noexcept;
 
   // #if defined(UNITTEST) || defined(_WINDLL)

@@ -498,9 +498,9 @@ void UsvfsManager::usvfsPrintDebugInfo() noexcept
   //                            shmName);
 }
 
-void UsvfsManager::enableDebugMode() noexcept
+void UsvfsManager::setDebugMode(bool value) noexcept
 {
-  m_debugMode = true;
+  m_debugMode = value;
 }
 
 void UsvfsManager::setProcessDelay(std::chrono::milliseconds processDelay) noexcept
