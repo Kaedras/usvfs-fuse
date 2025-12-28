@@ -130,7 +130,7 @@ public:
   bool usvfsCreateProcessHooked(const std::string& file, const std::string& arg,
                                 const std::string& workDir, char** envp) noexcept;
   bool usvfsCreateProcessHooked(const QString& file, const QString& arg,
-                                const QString& workDir, char** envp) noexcept;
+                                const QString& workDir, QStringList env) noexcept;
 
   bool usvfsCreateProcessHooked(const std::string& file, const std::string& arg,
                                 const std::string& workDir) noexcept;

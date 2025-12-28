@@ -107,6 +107,15 @@ fuse_operations createOperations()
   return ops;
 }
 
+QStringList getEnv()
+{
+  QStringList env;
+  for (int i = 0; environ[i] != nullptr; ++i) {
+    env << QString::fromLocal8Bit(environ[i]);
+  }
+  return env;
+}
+
 }  // namespace
 
 UsvfsManager::~UsvfsManager() noexcept
@@ -307,14 +316,19 @@ bool UsvfsManager::usvfsCreateProcessHooked(const std::string& file,
                                             const std::string& workDir,
                                             char** envp) noexcept
 {
+  QStringList env;
+  for (int i = 0; envp[i] != nullptr; ++i) {
+    env << envp[i];
+  }
+
   return usvfsCreateProcessHooked(QString::fromStdString(file),
                                   QString::fromStdString(arg),
-                                  QString::fromStdString(workDir), envp);
+                                  QString::fromStdString(workDir), std::move(env));
 }
 
 bool UsvfsManager::usvfsCreateProcessHooked(const QString& file, const QString& arg,
                                             const QString& workDir,
-                                            char** envp) noexcept
+                                            QStringList env) noexcept
 {
   scoped_lock lock(m_mtx);
 
@@ -336,11 +350,6 @@ bool UsvfsManager::usvfsCreateProcessHooked(const QString& file, const QString& 
   auto p = make_unique<QProcess>();
 
   const QStringList args = QProcess::splitCommand(arg);
-
-  QStringList env;
-  for (int i = 0; envp[i] != nullptr; ++i) {
-    env << envp[i];
-  }
 
   const bool wine = file.endsWith("wine"_L1) || file.endsWith("wine-staging"_L1) ||
                     file.endsWith("wine64"_L1) || file.endsWith("wine64-staging"_L1);
@@ -398,7 +407,7 @@ bool UsvfsManager::usvfsCreateProcessHooked(const std::string& file,
 bool UsvfsManager::usvfsCreateProcessHooked(const QString& file, const QString& arg,
                                             const QString& workDir) noexcept
 {
-  return usvfsCreateProcessHooked(file, arg, workDir, environ);
+  return usvfsCreateProcessHooked(file, arg, workDir, getEnv());
 }
 
 bool UsvfsManager::usvfsCreateProcessHooked(const std::string& file,
@@ -414,7 +423,7 @@ bool UsvfsManager::usvfsCreateProcessHooked(const QString& file,
   char* cwd             = get_current_dir_name();
   const QString workDir = QString::fromLocal8Bit(cwd);
   free(cwd);
-  return usvfsCreateProcessHooked(file, arg, workDir, environ);
+  return usvfsCreateProcessHooked(file, arg, workDir, getEnv());
 }
 
 std::string UsvfsManager::usvfsCreateVFSDump() const noexcept
