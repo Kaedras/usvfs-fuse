@@ -140,9 +140,8 @@ protected:
     ASSERT_TRUE(createTmpDirs());
     // runCmd("tree "s + base.string());
     const auto usvfs = UsvfsManager::instance();
-    if constexpr (enableDebugMode) {
-      usvfs->enableDebugMode();
-    }
+    usvfs->setDebugMode(enableDebugMode);
+
     usvfs->setUpperDir(upper);
     ASSERT_TRUE(usvfs->usvfsVirtualLinkDirectoryStatic((src / "0").c_str(), mnt.c_str(),
                                                        linkFlag::RECURSIVE));
