@@ -127,19 +127,19 @@ public:
   /**
    * spawn a new process that can see the virtual file system.
    */
-  bool usvfsCreateProcessHooked(const std::string& file, const std::string& arg,
-                                const std::string& workDir, char** envp) noexcept;
-  bool usvfsCreateProcessHooked(const QString& file, const QString& arg,
-                                const QString& workDir, QStringList env) noexcept;
+  pid_t usvfsCreateProcessHooked(const std::string& file, const std::string& arg,
+                                 const std::string& workDir, char** envp) noexcept;
+  pid_t usvfsCreateProcessHooked(const QString& file, const QString& arg,
+                                 const QString& workDir, QStringList env) noexcept;
 
-  bool usvfsCreateProcessHooked(const std::string& file, const std::string& arg,
-                                const std::string& workDir) noexcept;
-  bool usvfsCreateProcessHooked(const QString& file, const QString& arg,
-                                const QString& workDir) noexcept;
+  pid_t usvfsCreateProcessHooked(const std::string& file, const std::string& arg,
+                                 const std::string& workDir) noexcept;
+  pid_t usvfsCreateProcessHooked(const QString& file, const QString& arg,
+                                 const QString& workDir) noexcept;
 
-  bool usvfsCreateProcessHooked(const std::string& file,
-                                const std::string& arg) noexcept;
-  bool usvfsCreateProcessHooked(const QString& file, const QString& arg) noexcept;
+  pid_t usvfsCreateProcessHooked(const std::string& file,
+                                 const std::string& arg) noexcept;
+  pid_t usvfsCreateProcessHooked(const QString& file, const QString& arg) noexcept;
 
   /**
    * retrieve a single log message.

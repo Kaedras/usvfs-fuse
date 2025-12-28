@@ -311,10 +311,10 @@ std::vector<std::unique_ptr<QProcess>>& UsvfsManager::usvfsGetVFSProcessList() n
   return m_spawnedProcesses;
 }
 
-bool UsvfsManager::usvfsCreateProcessHooked(const std::string& file,
-                                            const std::string& arg,
-                                            const std::string& workDir,
-                                            char** envp) noexcept
+pid_t UsvfsManager::usvfsCreateProcessHooked(const std::string& file,
+                                             const std::string& arg,
+                                             const std::string& workDir,
+                                             char** envp) noexcept
 {
   QStringList env;
   for (int i = 0; envp[i] != nullptr; ++i) {
@@ -326,9 +326,9 @@ bool UsvfsManager::usvfsCreateProcessHooked(const std::string& file,
                                   QString::fromStdString(workDir), std::move(env));
 }
 
-bool UsvfsManager::usvfsCreateProcessHooked(const QString& file, const QString& arg,
-                                            const QString& workDir,
-                                            QStringList env) noexcept
+pid_t UsvfsManager::usvfsCreateProcessHooked(const QString& file, const QString& arg,
+                                             const QString& workDir,
+                                             QStringList env) noexcept
 {
   scoped_lock lock(m_mtx);
 
@@ -343,7 +343,7 @@ bool UsvfsManager::usvfsCreateProcessHooked(const QString& file, const QString& 
       mount();
     } catch (const std::exception& e) {
       logger::error("mount failed: {}", e.what());
-      return false;
+      return -1;
     }
   }
 
@@ -389,36 +389,41 @@ bool UsvfsManager::usvfsCreateProcessHooked(const QString& file, const QString& 
   this_thread::sleep_for(m_processDelay);
 
   p->start();
+  if (!p->waitForStarted()) {
+    logger::error("failed to start process '{}': {}", fileStr,
+                  p->errorString().toStdString());
+    return -1;
+  }
 
+  pid_t pid = p->processId();
   m_spawnedProcesses.emplace_back(std::move(p));
-
-  return true;
+  return pid;
 }
 
-bool UsvfsManager::usvfsCreateProcessHooked(const std::string& file,
-                                            const std::string& arg,
-                                            const std::string& workDir) noexcept
+pid_t UsvfsManager::usvfsCreateProcessHooked(const std::string& file,
+                                             const std::string& arg,
+                                             const std::string& workDir) noexcept
 {
   return usvfsCreateProcessHooked(QString::fromStdString(file),
                                   QString::fromStdString(arg),
                                   QString::fromStdString(workDir));
 }
 
-bool UsvfsManager::usvfsCreateProcessHooked(const QString& file, const QString& arg,
-                                            const QString& workDir) noexcept
+pid_t UsvfsManager::usvfsCreateProcessHooked(const QString& file, const QString& arg,
+                                             const QString& workDir) noexcept
 {
   return usvfsCreateProcessHooked(file, arg, workDir, getEnv());
 }
 
-bool UsvfsManager::usvfsCreateProcessHooked(const std::string& file,
-                                            const std::string& arg) noexcept
+pid_t UsvfsManager::usvfsCreateProcessHooked(const std::string& file,
+                                             const std::string& arg) noexcept
 {
   return usvfsCreateProcessHooked(QString::fromStdString(file),
                                   QString::fromStdString(arg));
 }
 
-bool UsvfsManager::usvfsCreateProcessHooked(const QString& file,
-                                            const QString& arg) noexcept
+pid_t UsvfsManager::usvfsCreateProcessHooked(const QString& file,
+                                             const QString& arg) noexcept
 {
   char* cwd             = get_current_dir_name();
   const QString workDir = QString::fromLocal8Bit(cwd);
