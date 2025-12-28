@@ -229,6 +229,8 @@ public:
   void mount() noexcept(false);
   bool unmount() noexcept;
 
+  bool isMounted() const noexcept;
+
   void setUpperDir(std::string upperDir) noexcept;
 
   static bool

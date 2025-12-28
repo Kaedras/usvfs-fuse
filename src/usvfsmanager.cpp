@@ -579,6 +579,13 @@ bool UsvfsManager::unmount() noexcept
   return true;
 }
 
+bool UsvfsManager::isMounted() const noexcept
+{
+  shared_lock lock(m_mtx);
+
+  return m_mounts.empty();
+}
+
 void UsvfsManager::setUpperDir(std::string upperDir) noexcept
 {
   m_upperDir = std::move(upperDir);
