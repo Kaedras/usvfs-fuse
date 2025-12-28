@@ -500,16 +500,19 @@ void UsvfsManager::usvfsPrintDebugInfo() noexcept
 
 void UsvfsManager::setDebugMode(bool value) noexcept
 {
+  scoped_lock lock(m_mtx);
   m_debugMode = value;
 }
 
 void UsvfsManager::setProcessDelay(std::chrono::milliseconds processDelay) noexcept
 {
+  scoped_lock lock(m_mtx);
   m_processDelay = processDelay;
 }
 
 void UsvfsManager::setLogLevel(LogLevel logLevel) noexcept
 {
+  scoped_lock lock(m_mtx);
   spdlog::get("usvfs")->set_level(ConvertLogLevel(logLevel));
 }
 
@@ -588,6 +591,7 @@ bool UsvfsManager::isMounted() const noexcept
 
 void UsvfsManager::setUpperDir(std::string upperDir) noexcept
 {
+  scoped_lock lock(m_mtx);
   m_upperDir = std::move(upperDir);
 }
 
