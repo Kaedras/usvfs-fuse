@@ -125,11 +125,12 @@ public:
   /**
    * spawn a new process that can see the virtual file system.
    */
-  bool usvfsCreateProcessHooked(const char* file, const char* arg, const char* workDir,
-                                char** envp) noexcept;
-  bool usvfsCreateProcessHooked(const char* file, const char* arg,
-                                const char* workDir) noexcept;
-  bool usvfsCreateProcessHooked(const char* file, const char* arg) noexcept;
+  bool usvfsCreateProcessHooked(const std::string& file, const std::string& arg,
+                                const std::string& workDir, char** envp) noexcept;
+  bool usvfsCreateProcessHooked(const std::string& file, const std::string& arg,
+                                const std::string& workDir) noexcept;
+  bool usvfsCreateProcessHooked(const std::string& file,
+                                const std::string& arg) noexcept;
 
   /**
    * retrieve a single log message.

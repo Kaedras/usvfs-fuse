@@ -302,8 +302,10 @@ std::vector<std::unique_ptr<QProcess>>& UsvfsManager::usvfsGetVFSProcessList() n
   return m_spawnedProcesses;
 }
 
-bool UsvfsManager::usvfsCreateProcessHooked(const char* file, const char* arg,
-                                            const char* workDir, char** envp) noexcept
+bool UsvfsManager::usvfsCreateProcessHooked(const std::string& file,
+                                            const std::string& arg,
+                                            const std::string& workDir,
+                                            char** envp) noexcept
 {
   scoped_lock lock(m_mtx);
   logger::trace("{}: {}, {}, {}", __FUNCTION__, file, arg, workDir);
@@ -321,8 +323,8 @@ bool UsvfsManager::usvfsCreateProcessHooked(const char* file, const char* arg,
 
   auto p = make_unique<QProcess>();
 
-  const QString program  = QString::fromLocal8Bit(file);
-  const QStringList args = QProcess::splitCommand(QString::fromLocal8Bit(arg));
+  const QString program  = QString::fromStdString(file);
+  const QStringList args = QProcess::splitCommand(QString::fromStdString(arg));
 
   QStringList env;
   for (int i = 0; envp[i] != nullptr; ++i) {
@@ -352,7 +354,7 @@ bool UsvfsManager::usvfsCreateProcessHooked(const char* file, const char* arg,
   }
 
   p->setEnvironment(env);
-  p->setWorkingDirectory(workDir);
+  p->setWorkingDirectory(QString::fromStdString(workDir));
   p->setProgram(program);
   p->setArguments(args);
 
@@ -374,18 +376,20 @@ bool UsvfsManager::usvfsCreateProcessHooked(const char* file, const char* arg,
   return true;
 }
 
-bool UsvfsManager::usvfsCreateProcessHooked(const char* file, const char* arg,
-                                            const char* workDir) noexcept
+bool UsvfsManager::usvfsCreateProcessHooked(const std::string& file,
+                                            const std::string& arg,
+                                            const std::string& workDir) noexcept
 {
   return usvfsCreateProcessHooked(file, arg, workDir, environ);
 }
 
-bool UsvfsManager::usvfsCreateProcessHooked(const char* file, const char* arg) noexcept
+bool UsvfsManager::usvfsCreateProcessHooked(const std::string& file,
+                                            const std::string& arg) noexcept
 {
   char* cwd            = get_current_dir_name();
   const string workDir = cwd;
   free(cwd);
-  return usvfsCreateProcessHooked(file, arg, workDir.c_str(), environ);
+  return usvfsCreateProcessHooked(file, arg, workDir, environ);
 }
 
 std::string UsvfsManager::usvfsCreateVFSDump() const noexcept
