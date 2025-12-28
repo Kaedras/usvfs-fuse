@@ -611,6 +611,9 @@ bool UsvfsManager::mount() noexcept
 bool UsvfsManager::unmount() noexcept
 {
   scoped_lock lock(m_mtx);
+  if (m_mounts.empty()) {
+    return true;
+  }
 
   logger::debug("unmounting {} mounts", m_mounts.size());
 
