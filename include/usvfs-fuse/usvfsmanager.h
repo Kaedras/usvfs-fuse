@@ -228,7 +228,7 @@ public:
 
   static const char* usvfsVersionString();
 
-  void mount() noexcept(false);
+  bool mount() noexcept;
   bool unmount() noexcept;
 
   bool isMounted() const noexcept;

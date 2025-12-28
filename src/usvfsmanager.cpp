@@ -522,14 +522,14 @@ const char* UsvfsManager::usvfsVersionString()
   return USVFS_VERSION_STRING;
 }
 
-void UsvfsManager::mount() noexcept(false)
+bool UsvfsManager::mount() noexcept
 {
   logger::info("mounting {} mount points", m_pendingMounts.size());
   scoped_lock lock(m_mtx);
 
   // move pending to a local list
   if (m_pendingMounts.empty()) {
-    return;
+    return true;
   }
   vector<unique_ptr<MountState>> toMount;
   toMount.swap(m_pendingMounts);
@@ -538,7 +538,9 @@ void UsvfsManager::mount() noexcept(false)
   if (!m_upperDir.empty()) {
     fd = open(m_upperDir.c_str(), OPEN_FLAGS, OPEN_PERMS);
     if (fd == -1) {
-      throw runtime_error("error opening upperDir: "s + strerror(errno));
+      logger::error("failed to open upper directory '{}': {}", m_upperDir,
+                    strerror(errno));
+      return false;
     }
   }
 
@@ -556,10 +558,11 @@ void UsvfsManager::mount() noexcept(false)
       t.detach();
     } catch (const exception& e) {
       // the remaining entries are dropped since toMount owns them and will be destroyed
-      throw runtime_error("Failed to create FUSE thread: "s + e.what());
+      logger::error("Failed to create FUSE thread: ", e.what());
+      return false;
     }
   }
-  // this_thread::sleep_for(100ms);
+  return true;
 }
 
 bool UsvfsManager::unmount() noexcept
