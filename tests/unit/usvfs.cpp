@@ -143,10 +143,10 @@ protected:
     usvfs->setDebugMode(enableDebugMode);
 
     usvfs->setUpperDir(upper);
-    ASSERT_TRUE(usvfs->usvfsVirtualLinkDirectoryStatic((src / "0").c_str(), mnt.c_str(),
-                                                       linkFlag::RECURSIVE));
-    ASSERT_TRUE(usvfs->usvfsVirtualLinkDirectoryStatic((src / "1").c_str(), mnt.c_str(),
-                                                       linkFlag::RECURSIVE));
+    ASSERT_TRUE(usvfs->usvfsVirtualLinkDirectoryStatic(
+        (src / "0").string(), mnt.string(), linkFlag::RECURSIVE));
+    ASSERT_TRUE(usvfs->usvfsVirtualLinkDirectoryStatic(
+        (src / "1").string(), mnt.string(), linkFlag::RECURSIVE));
     ASSERT_TRUE(usvfs->usvfsVirtualLinkFile("/tmp/usvfs/src/2/2.txt",
                                             "/tmp/usvfs/mnt/2.txt", 0));
 
