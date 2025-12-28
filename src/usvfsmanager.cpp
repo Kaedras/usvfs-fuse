@@ -120,7 +120,8 @@ void UsvfsManager::usvfsClearVirtualMappings() noexcept
   m_pendingMounts.clear();
 }
 
-bool UsvfsManager::usvfsVirtualLinkFile(const char* source, const char* destination,
+bool UsvfsManager::usvfsVirtualLinkFile(const std::string& source,
+                                        const std::string& destination,
                                         unsigned int flags) noexcept
 {
   unique_lock lock(m_mtx);
@@ -194,8 +195,8 @@ bool UsvfsManager::usvfsVirtualLinkFile(const char* source, const char* destinat
   return true;
 }
 
-bool UsvfsManager::usvfsVirtualLinkDirectoryStatic(const char* source,
-                                                   const char* destination,
+bool UsvfsManager::usvfsVirtualLinkDirectoryStatic(const std::string& source,
+                                                   const std::string& destination,
                                                    unsigned int flags) noexcept
 {
   unique_lock lock(m_mtx);
@@ -208,7 +209,7 @@ bool UsvfsManager::usvfsVirtualLinkDirectoryStatic(const char* source,
   error_code ec;
   FdMap fdMap;
   {
-    int fd = open(source, OPEN_FLAGS, OPEN_PERMS);
+    int fd = open(source.c_str(), OPEN_FLAGS, OPEN_PERMS);
     if (fd == -1) {
       logger::error("error opening {}: {}", source, strerror(errno));
       return false;

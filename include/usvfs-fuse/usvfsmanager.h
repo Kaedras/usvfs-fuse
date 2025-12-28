@@ -70,7 +70,7 @@ public:
    * @note: the directory the destination file resides in has to exist - at least
    * virtually.
    */
-  bool usvfsVirtualLinkFile(const char* source, const char* destination,
+  bool usvfsVirtualLinkFile(const std::string& source, const std::string& destination,
                             unsigned int flags) noexcept;
 
   /**
@@ -79,7 +79,8 @@ public:
    * @param failIfExists if true, this call fails if the destination directory exists
    * (virtually or physically)
    */
-  bool usvfsVirtualLinkDirectoryStatic(const char* source, const char* destination,
+  bool usvfsVirtualLinkDirectoryStatic(const std::string& source,
+                                       const std::string& destination,
                                        unsigned int flags) noexcept;
 
   /**
