@@ -644,10 +644,7 @@ void UsvfsManager::run_fuse(std::unique_ptr<MountState> state)
     return;
   }
 
-  {
-    scoped_lock lock(m_mtx);
-    m_mounts.emplace_back(std::move(state));
-  }
+  m_mounts.emplace_back(std::move(state));
 
   // Enter loop; this blocks until unmounted
   fuse_loop(raw->fusePtr);
