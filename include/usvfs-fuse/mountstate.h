@@ -13,5 +13,12 @@ struct MountState
   FdMap fdMap;
   fuse* fusePtr = nullptr;
 
+  char* stack    = nullptr;  // Start of stack buffer
+  char* stackTop = nullptr;  // End of stack buffer
+  int pidFd      = -1;
+  int nsFd       = -1;
+  uid_t uid;
+  uid_t gid;
+
   ~MountState();
 };

@@ -1,7 +1,6 @@
 #pragma once
 
 #include "logging.h"
-#include <QString>
 #include <shared_mutex>
 #include <string>
 
@@ -108,7 +107,7 @@ public:
   /**
    * retrieve a list of all processes connected to the vfs
    */
-  std::vector<std::unique_ptr<QProcess>>& usvfsGetVFSProcessList() noexcept;
+  const std::vector<pid_t>& usvfsGetVFSProcessList() const noexcept;
 
   // retrieve a list of all processes connected to the vfs, stores an array
   // of `count` elements in `*buffer`
@@ -129,17 +128,12 @@ public:
    */
   pid_t usvfsCreateProcessHooked(const std::string& file, const std::string& arg,
                                  const std::string& workDir, char** envp) noexcept;
-  pid_t usvfsCreateProcessHooked(const QString& file, const QString& arg,
-                                 const QString& workDir, QStringList env) noexcept;
 
   pid_t usvfsCreateProcessHooked(const std::string& file, const std::string& arg,
                                  const std::string& workDir) noexcept;
-  pid_t usvfsCreateProcessHooked(const QString& file, const QString& arg,
-                                 const QString& workDir) noexcept;
 
   pid_t usvfsCreateProcessHooked(const std::string& file,
                                  const std::string& arg) noexcept;
-  pid_t usvfsCreateProcessHooked(const QString& file, const QString& arg) noexcept;
 
   /**
    * retrieve a single log message.
@@ -245,6 +239,9 @@ public:
 
   void setUpperDir(std::string upperDir) noexcept;
 
+  // set whether to create mounts in a new user mount namespace
+  void setUseMountNamespace(bool value);
+
   static bool
   fileNameInSkipSuffixes(const std::string& fileName,
                          const std::set<std::string>& skipSuffixes) noexcept;
@@ -277,16 +274,18 @@ private:
   // mount function without locking for internal use
   bool mountInternal() noexcept;
 
+  bool m_debugMode         = false;
+  bool m_useMountNamespace = false;
+  std::string m_upperDir;
+  std::chrono::milliseconds m_processDelay = std::chrono::milliseconds::zero();
   std::set<std::string> m_skipFileSuffixes;
   std::set<std::string> m_skipDirectories;
   std::set<std::string> m_executableBlacklist;
   std::vector<ForcedLibrary> m_forceLoadLibraries;
+
   mutable std::shared_mutex m_mtx;
+  pid_t m_nsPidFd = -1;  // file descriptor to access the mount namespace
   std::vector<std::unique_ptr<MountState>> m_mounts;
   std::vector<std::unique_ptr<MountState>> m_pendingMounts;
-  std::vector<std::unique_ptr<QProcess>> m_spawnedProcesses;
-  std::chrono::milliseconds m_processDelay = std::chrono::milliseconds::zero();
-
-  std::string m_upperDir;
-  bool m_debugMode = false;
+  std::vector<pid_t> m_spawnedProcesses;
 };

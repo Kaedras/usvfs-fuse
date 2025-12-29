@@ -10,11 +10,13 @@
 #include "usvfs-fuse/virtualfiletreeitem.h"
 
 using namespace std;
-using namespace Qt::StringLiterals;
 namespace fs = std::filesystem;
 
 namespace
 {
+
+constexpr int pollTimeout  = 10;
+constexpr size_t stackSize = 1024 * 1024;  // stack size for cloned child
 
 shared_ptr<VirtualFileTreeItem> createFileTree(const string& path, FdMap& fdMap)
 {
@@ -107,13 +109,67 @@ fuse_operations createOperations()
   return ops;
 }
 
-QStringList getEnv()
+void writeToFile(const string& filename, string_view content)
 {
-  QStringList env;
-  for (int i = 0; environ[i] != nullptr; ++i) {
-    env << QString::fromLocal8Bit(environ[i]);
+  ofstream ofs(filename);
+  ofs.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+  ofs << content;
+}
+
+int childFunc(void* arg)
+{
+  auto* state = static_cast<MountState*>(arg);
+
+  // remap uid
+  writeToFile("/proc/self/uid_map", format("0 {} 1", state->uid));
+  // deny setgroups (see user_namespaces(7))
+  writeToFile("/proc/self/setgroups", "deny");
+  // remap gid
+  writeToFile("/proc/self/gid_map", format("0 {} 1", state->gid));
+
+  // enter existing namespace
+  if (state->nsFd != -1) {
+    logger::debug("usvfs entering existing namespace");
+    int result = setns(state->nsFd, CLONE_NEWUSER | CLONE_NEWNS);
+    if (result == -1) {
+      logger::error("setns() failed: {}", strerror(errno));
+      return -1;
+    }
   }
-  return env;
+
+  const char* argv[] = {"usvfs_fuse", "-o", "default_permissions"};
+  int argc           = 3;
+  fuse_args args     = FUSE_ARGS_INIT(argc, const_cast<char**>(argv));
+
+  fuse_operations ops = createOperations();
+
+  state->fusePtr = fuse_new(&args, &ops, sizeof(fuse_operations), state);
+  fuse_opt_free_args(&args);
+  if (state->fusePtr == nullptr) {
+    // Couldn't create FUSE handle; drop the mount
+    logger::error("fuse_new() failed");
+    return -1;
+  }
+  if (fuse_mount(state->fusePtr, state->mountpoint.c_str()) == -1) {
+    fuse_destroy(state->fusePtr);
+    state->fusePtr = nullptr;
+    logger::error("fuse_mount() failed for mountpoint {}: {}", state->mountpoint,
+                  strerror(errno));
+    return -1;
+  }
+
+  // set signal handlers
+  fuse_session* session = fuse_get_session(state->fusePtr);
+  fuse_set_signal_handlers(session);
+
+  // enter loop; this blocks until unmounted or interrupted by the signal handler
+  fuse_loop(state->fusePtr);
+
+  fuse_unmount(state->fusePtr);
+  fuse_destroy(state->fusePtr);
+  state->fusePtr = nullptr;
+
+  return 0;
 }
 
 }  // namespace
@@ -179,16 +235,15 @@ bool UsvfsManager::usvfsVirtualLinkFile(const std::string& source,
   if (result != nullptr) {
     return false;
   }
-  {
-    string parentDir = getParentPath(source);
-    int fd           = open(parentDir.c_str(), OPEN_FLAGS, OPEN_PERMS);
-    if (fd == -1) {
-      logger::error("open() failed for {}: {}", parentDir, strerror(errno));
-      return false;
-    }
-    logger::trace("adding fd {} for {}", fd, parentDir);
-    fdMap[parentDir] = fd;
+
+  string parentDir = getParentPath(source);
+  int fd           = open(parentDir.c_str(), OPEN_FLAGS, OPEN_PERMS);
+  if (fd == -1) {
+    logger::error("open() failed for {}: {}", parentDir, strerror(errno));
+    return false;
   }
+  logger::trace("adding fd {} for {}", fd, parentDir);
+  fdMap[parentDir] = fd;
 
   // create the file tree for existing files
   shared_ptr<VirtualFileTreeItem> destinationFileTree =
@@ -310,7 +365,7 @@ bool UsvfsManager::usvfsVirtualLinkDirectoryStatic(const std::string& source,
   return true;
 }
 
-std::vector<std::unique_ptr<QProcess>>& UsvfsManager::usvfsGetVFSProcessList() noexcept
+const std::vector<pid_t>& UsvfsManager::usvfsGetVFSProcessList() const noexcept
 {
   shared_lock lock(m_mtx);
   return m_spawnedProcesses;
@@ -321,116 +376,146 @@ pid_t UsvfsManager::usvfsCreateProcessHooked(const std::string& file,
                                              const std::string& workDir,
                                              char** envp) noexcept
 {
-  QStringList env;
-  for (int i = 0; envp[i] != nullptr; ++i) {
-    env << envp[i];
-  }
-
-  return usvfsCreateProcessHooked(QString::fromStdString(file),
-                                  QString::fromStdString(arg),
-                                  QString::fromStdString(workDir), std::move(env));
-}
-
-pid_t UsvfsManager::usvfsCreateProcessHooked(const QString& file, const QString& arg,
-                                             const QString& workDir,
-                                             QStringList env) noexcept
-{
   scoped_lock lock(m_mtx);
 
-  string fileStr = file.toStdString();
-  logger::trace("{}: {}, {}, {}", __FUNCTION__, fileStr, arg.toStdString(),
-                workDir.toStdString());
+  // sanity check
+  if (!m_mounts.empty() && m_nsPidFd == -1) {
+    logger::error("usvfs is mounted without any reference to a namespace, aborting");
+    return false;
+  }
 
-  bool blacklisted = m_executableBlacklist.contains(fileStr);
+  vector<string> envVector;
+  for (int i = 0; envp[i] != nullptr; ++i) {
+    envVector.emplace_back(envp[i]);
+  }
 
-  if (!blacklisted) {
+  logger::trace("{}: {}, {}, {}", __FUNCTION__, file, arg, workDir);
+
+  if (!m_executableBlacklist.contains(file)) {
     if (!mountInternal()) {
       return -1;
     }
   }
 
-  auto p = make_unique<QProcess>();
-
-  const QStringList args = QProcess::splitCommand(arg);
-
-  const bool wine = file.endsWith("wine"_L1) || file.endsWith("wine-staging"_L1) ||
-                    file.endsWith("wine64"_L1) || file.endsWith("wine64-staging"_L1);
-  const bool proton = file.endsWith("proton"_L1);
+  // handle wine dll overrides
+  const bool wine = file.ends_with("wine") || file.ends_with("wine-staging") ||
+                    file.ends_with("wine64") || file.ends_with("wine64-staging");
+  const bool proton = file.ends_with("proton");
 
   if (wine || proton) {
     if (!m_forceLoadLibraries.empty()) {
-      const QString processName = wine ? args.at(0) : args.at(1);
-      const std::vector<std::string> applicableLibraries =
-          librariesToForceLoad(processName.toStdString());
+      const size_t firstSpace = arg.find_first_of(' ');
+      const string processName =
+          wine ? arg.substr(0, firstSpace - 1)
+               : arg.substr(firstSpace, arg.find_first_of(' ') - 1);
+      logger::trace("using process name {}", processName);
+      const vector<string> applicableLibraries = librariesToForceLoad(processName);
       if (!applicableLibraries.empty()) {
-        QString dllOverrides = "WINEDLLOVERRIDES=\"";
+        string dllOverrides = "WINEDLLOVERRIDES=\"";
         for (size_t i = 0; i < applicableLibraries.size() - 1; ++i) {
           dllOverrides += applicableLibraries[i] + "=n,b;";
         }
         dllOverrides += applicableLibraries.back() + "=n,b\"";
-        env << dllOverrides;
-        logger::debug("adding '{}' to process", dllOverrides.toStdString());
+        envVector.emplace_back(dllOverrides);
+        logger::debug("adding '{}' to process", dllOverrides);
       }
     }
   }
 
-  p->setEnvironment(env);
-  p->setWorkingDirectory(workDir);
-  p->setProgram(file);
-  p->setArguments(args);
+  const string cmd = file + " " + arg;
 
-  // automatically unmount if no processes are left
-  QObject::connect(p.get(), &QProcess::finished, [&](int exitCode) {
-    logger::info("process '{}' has exited with code {}", fileStr, exitCode);
-    if (!anyProcessRunning()) {
-      logger::info("last process has exited, unmounting");
-      unmount();
-    }
-  });
+  int pipefd[2];
 
-  this_thread::sleep_for(m_processDelay);
-
-  p->start();
-  if (!p->waitForStarted()) {
-    logger::error("failed to start process '{}': {}", fileStr,
-                  p->errorString().toStdString());
+  int result = pipe(pipefd);
+  if (result == -1) {
+    logger::error("pipe failed: {}", strerror(errno));
     return -1;
   }
 
-  pid_t pid = p->processId();
-  m_spawnedProcesses.emplace_back(std::move(p));
-  return pid;
+  const pid_t pid = fork();
+
+  // error
+  if (pid == -1) {
+    close(pipefd[0]);
+    close(pipefd[1]);
+
+    logger::error("fork failed: {}", strerror(errno));
+    return -1;
+  }
+
+  // child
+  if (pid == 0) {
+    // close read end
+    close(pipefd[0]);
+    // set CLOEXEC on write end
+    fcntl(pipefd[1], F_SETFD, FD_CLOEXEC);
+
+    if (m_useMountNamespace) {
+      if (setns(m_nsPidFd, CLONE_NEWUSER | CLONE_NEWNS) == -1) {
+        logger::error("setns failed: {}", strerror(errno));
+        exit(EXIT_FAILURE);
+      }
+    }
+
+    if (chdir(workDir.c_str()) == -1) {
+      logger::error("chdir failed: {}", strerror(errno));
+    }
+
+    // create environment
+    char** env = static_cast<char**>(malloc((envVector.size() + 1) * sizeof(char*)));
+    int i      = 0;
+    for (const auto& v : envVector) {
+      env[i++] = strdup(v.c_str());
+    }
+    env[i] = nullptr;
+
+    execle("/bin/sh", "/bin/sh", "-c", cmd.c_str(), nullptr, env);
+
+    // write error to pipe
+    const int error = errno;
+    if (write(pipefd[1], &error, sizeof(int)) == -1) {
+      logger::error("Error writing exec error to pipe: {}\n Exec error was {}",
+                    strerror(errno), strerror(error));
+    }
+
+    _exit(EXIT_FAILURE);
+  }
+
+  // parent
+
+  // close write end
+  close(pipefd[1]);
+
+  int error;
+  size_t count = read(pipefd[0], &error, sizeof(int));
+
+  // close read end
+  close(pipefd[0]);
+
+  // check result
+  if (count == 0) {
+    // success
+    return pid;
+  }
+
+  logger::error("execl failed: {}", strerror(error));
+  return -1;
 }
 
 pid_t UsvfsManager::usvfsCreateProcessHooked(const std::string& file,
                                              const std::string& arg,
                                              const std::string& workDir) noexcept
 {
-  return usvfsCreateProcessHooked(QString::fromStdString(file),
-                                  QString::fromStdString(arg),
-                                  QString::fromStdString(workDir));
-}
-
-pid_t UsvfsManager::usvfsCreateProcessHooked(const QString& file, const QString& arg,
-                                             const QString& workDir) noexcept
-{
-  return usvfsCreateProcessHooked(file, arg, workDir, getEnv());
+  return usvfsCreateProcessHooked(file, arg, workDir, environ);
 }
 
 pid_t UsvfsManager::usvfsCreateProcessHooked(const std::string& file,
                                              const std::string& arg) noexcept
 {
-  return usvfsCreateProcessHooked(QString::fromStdString(file),
-                                  QString::fromStdString(arg));
-}
-
-pid_t UsvfsManager::usvfsCreateProcessHooked(const QString& file,
-                                             const QString& arg) noexcept
-{
-  char* cwd             = get_current_dir_name();
-  const QString workDir = QString::fromLocal8Bit(cwd);
+  char* cwd            = get_current_dir_name();
+  const string workDir = cwd;
   free(cwd);
-  return usvfsCreateProcessHooked(file, arg, workDir, getEnv());
+  return usvfsCreateProcessHooked(file, arg, workDir, environ);
 }
 
 std::string UsvfsManager::usvfsCreateVFSDump() const noexcept
@@ -589,8 +674,27 @@ bool UsvfsManager::unmount() noexcept
 
   for (std::unique_ptr<MountState>& mount : m_mounts) {
     logger::debug("unmounting {}", mount->mountpoint);
-    fuse_unmount(mount->fusePtr);
-    fuse_destroy(mount->fusePtr);
+    if (m_useMountNamespace) {
+      if (mount->pidFd == -1) {
+        logger::warn("mount pidFd is -1");
+        return false;
+      }
+
+      siginfo_t info;
+      if (pidfd_send_signal(mount->pidFd, SIGINT, nullptr, 0) == -1) {
+        logger::error("pidfd_send_signal() failed: {}", strerror(errno));
+        return false;
+      }
+      // wait for the child to exit
+      if (waitid(P_PIDFD, mount->pidFd, &info, WEXITED) == -1) {
+        logger::error("waitid() failed: {}", strerror(errno));
+        return false;
+      }
+      logger::debug("usvfs exited with code {}", info.si_status);
+    } else {
+      fuse_unmount(mount->fusePtr);
+      fuse_destroy(mount->fusePtr);
+    }
   }
   m_mounts.clear();
 
@@ -608,6 +712,12 @@ void UsvfsManager::setUpperDir(std::string upperDir) noexcept
 {
   scoped_lock lock(m_mtx);
   m_upperDir = std::move(upperDir);
+}
+
+void UsvfsManager::setUseMountNamespace(bool value)
+{
+  scoped_lock lock(m_mtx);
+  m_useMountNamespace = value;
 }
 
 UsvfsManager::UsvfsManager() noexcept
@@ -638,7 +748,7 @@ void UsvfsManager::run_fuse(std::unique_ptr<MountState> state)
     // Couldn't create FUSE handle; drop the mount
     return;
   }
-  if (fuse_mount(raw->fusePtr, raw->mountpoint.c_str()) != 0) {
+  if (fuse_mount(raw->fusePtr, raw->mountpoint.c_str()) == -1) {
     fuse_destroy(raw->fusePtr);
     raw->fusePtr = nullptr;
     return;
@@ -718,19 +828,21 @@ UsvfsManager::librariesToForceLoad(const std::string& processName) const noexcep
 
 bool UsvfsManager::anyProcessRunning() const noexcept
 {
-  return ranges::any_of(m_spawnedProcesses, [&](const unique_ptr<QProcess>& process) {
-    return process->state() == QProcess::Running;
+  return ranges::any_of(m_spawnedProcesses, [&](const pid_t& pid) {
+    int status;
+    return waitpid(pid, &status, WNOHANG) > 0;
   });
 }
 
 bool UsvfsManager::mountInternal() noexcept
 {
-  logger::info("mounting {} mount points", m_pendingMounts.size());
-
-  // move pending to a local list
   if (m_pendingMounts.empty()) {
     return true;
   }
+
+  logger::info("mounting {} mount points", m_pendingMounts.size());
+
+  // move pending to a local list
   vector<unique_ptr<MountState>> toMount;
   toMount.swap(m_pendingMounts);
 
@@ -744,22 +856,78 @@ bool UsvfsManager::mountInternal() noexcept
     }
   }
 
-  // start a thread for each pending mount
+  // start a thread or process for each pending mount
   for (auto& state : toMount) {
     if (!m_upperDir.empty()) {
       state->upperDir = m_upperDir;
       logger::trace("adding fd {} for {}", fd, m_upperDir);
       state->fdMap[m_upperDir] = fd;
     }
-    try {
+    if (m_useMountNamespace) {
+      // allocate memory to be used for the stack of the child.
+      state->stack =
+          static_cast<char*>(mmap(nullptr, stackSize, PROT_READ | PROT_WRITE,
+                                  MAP_PRIVATE | MAP_ANONYMOUS | MAP_STACK, -1, 0));
+      if (state->stack == MAP_FAILED) {
+        logger::error("mmap() failed: {}", strerror(errno));
+        return false;
+      }
+
+      state->stackTop = state->stack + stackSize;  // assume stack grows downward
+
+      state->uid = getuid();
+      state->gid = getgid();
+
+      // only create a new namespace if m_nsPidFd == -1
+      int flags;
+      if (m_nsPidFd == -1) {
+        flags = CLONE_NEWUSER | CLONE_NEWNS;
+      } else {
+        flags       = 0;
+        state->nsFd = m_nsPidFd;
+      }
+
+      int result = clone(childFunc, state->stackTop,
+                         flags | SIGCHLD | CLONE_PIDFD | CLONE_FILES | CLONE_VM,
+                         state.get(), &state->pidFd);
+      if (state->pidFd == -1 || result == -1) {
+        logger::error("clone() failed: {}", strerror(errno));
+        return false;
+      }
+
+      // check for error in child
+      pollfd pfd = {state->pidFd, POLLIN, 0};
+      result     = poll(&pfd, 1, pollTimeout);
+      if (result == -1) {
+        logger::error("poll() failed: {}", strerror(errno));
+        return false;
+      }
+      if (result == 1) {
+        const int e    = errno;
+        siginfo_t info = {};
+        if (waitid(P_PIDFD, state->pidFd, &info, WEXITED | WNOHANG) == -1 &&
+            e != EAGAIN) {
+          logger::error("waitid() failed: {}", strerror(errno));
+          return false;
+        }
+        if (info.si_code != 0) {
+          logger::error("child exited with status {}", info.si_code);
+          return false;
+        }
+      }
+
+      // store pid fd to access namespace
+      if (m_nsPidFd == -1) {
+        m_nsPidFd = state->pidFd;
+      }
+
+      logger::info("usvfs mounted in pid {}", pidfd_getpid(state->pidFd));
+      m_mounts.emplace_back(std::move(state));
+    } else {
       thread t([s = std::move(state), this]() mutable {
         run_fuse(std::move(s));
       });
       t.detach();
-    } catch (const exception& e) {
-      // the remaining entries are dropped since toMount owns them and will be destroyed
-      logger::error("Failed to create FUSE thread: ", e.what());
-      return false;
     }
   }
   return true;

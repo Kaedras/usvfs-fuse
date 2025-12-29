@@ -1,4 +1,3 @@
-#include <QProcess>
 #include <fcntl.h>
 #include <filesystem>
 #include <fstream>
@@ -12,7 +11,7 @@ namespace fs = std::filesystem;
 
 static constexpr auto delayAfterMount = 10ms;
 static constexpr mode_t mode          = 0755;
-static LogLevel logLevel              = LogLevel::Warning;
+static LogLevel logLevel              = LogLevel::Trace;
 static constexpr bool enableDebugMode = false;
 
 static const fs::path base  = fs::temp_directory_path() / "usvfs";
@@ -333,6 +332,7 @@ TEST(usvfs, CreateProcessHooked)
 
   auto usvfs = UsvfsManager::instance();
   usvfs->setProcessDelay(10ms);
+  usvfs->setUseMountNamespace(true);
 
   ASSERT_TRUE(usvfs->usvfsVirtualLinkDirectoryStatic((src / "0").string(), mnt.string(),
                                                      linkFlag::RECURSIVE));
@@ -341,9 +341,11 @@ TEST(usvfs, CreateProcessHooked)
   ASSERT_TRUE(
       usvfs->usvfsVirtualLinkFile("/tmp/usvfs/src/2/2.txt", "/tmp/usvfs/mnt/2.txt", 0));
 
-  EXPECT_GE(usvfs->usvfsCreateProcessHooked("ls", "-l", mnt.string()), 0);
+  pid_t pid = usvfs->usvfsCreateProcessHooked("tree", ".", mnt.string());
+  ASSERT_GE(pid, 0);
 
-  auto& procs = usvfs->usvfsGetVFSProcessList();
-  ASSERT_EQ(procs.size(), 1);
-  EXPECT_TRUE(procs.at(0)->waitForFinished());
+  int status;
+  EXPECT_GE(waitpid(pid, &status, 0), 0) << "error: " << strerror(errno);
+  EXPECT_TRUE(WIFEXITED(status));
+  EXPECT_EQ(WEXITSTATUS(status), 0);
 }

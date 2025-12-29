@@ -32,10 +32,6 @@
 #include <utility>
 #include <vector>
 
-// Qt
-#include <QProcess>
-#include <QString>
-
 extern "C"
 {
 #include <sys/pidfd.h>
