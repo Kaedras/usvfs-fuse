@@ -729,7 +729,6 @@ bool UsvfsManager::anyProcessRunning() const noexcept
 bool UsvfsManager::mountInternal() noexcept
 {
   logger::info("mounting {} mount points", m_pendingMounts.size());
-  scoped_lock lock(m_mtx);
 
   // move pending to a local list
   if (m_pendingMounts.empty()) {
