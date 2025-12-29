@@ -1,3 +1,4 @@
+#include <QProcess>
 #include <fcntl.h>
 #include <filesystem>
 #include <fstream>
@@ -323,4 +324,26 @@ TEST_F(UsvfsTest, statfs)
 {
   struct statvfs buf;
   EXPECT_GT(statvfs(mnt.c_str(), &buf), -1) << "error: " << strerror(errno);
+}
+
+TEST(usvfs, CreateProcessHooked)
+{
+  initLogging();
+  ASSERT_TRUE(createTmpDirs());
+
+  auto usvfs = UsvfsManager::instance();
+  usvfs->setProcessDelay(10ms);
+
+  ASSERT_TRUE(usvfs->usvfsVirtualLinkDirectoryStatic((src / "0").string(), mnt.string(),
+                                                     linkFlag::RECURSIVE));
+  ASSERT_TRUE(usvfs->usvfsVirtualLinkDirectoryStatic((src / "1").string(), mnt.string(),
+                                                     linkFlag::RECURSIVE));
+  ASSERT_TRUE(
+      usvfs->usvfsVirtualLinkFile("/tmp/usvfs/src/2/2.txt", "/tmp/usvfs/mnt/2.txt", 0));
+
+  EXPECT_GE(usvfs->usvfsCreateProcessHooked("ls", "-l", mnt.string()), 0);
+
+  auto& procs = usvfs->usvfsGetVFSProcessList();
+  ASSERT_EQ(procs.size(), 1);
+  EXPECT_TRUE(procs.at(0)->waitForFinished());
 }
