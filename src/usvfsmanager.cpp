@@ -339,7 +339,7 @@ pid_t UsvfsManager::usvfsCreateProcessHooked(const QString& file, const QString&
   bool blacklisted = m_executableBlacklist.contains(fileStr);
 
   if (!blacklisted) {
-    if (!mount()) {
+    if (!mountInternal()) {
       return -1;
     }
   }
@@ -564,45 +564,8 @@ const char* UsvfsManager::usvfsVersionString()
 
 bool UsvfsManager::mount() noexcept
 {
-  logger::info("mounting {} mount points", m_pendingMounts.size());
   scoped_lock lock(m_mtx);
-
-  // move pending to a local list
-  if (m_pendingMounts.empty()) {
-    return true;
-  }
-  vector<unique_ptr<MountState>> toMount;
-  toMount.swap(m_pendingMounts);
-
-  int fd;
-  if (!m_upperDir.empty()) {
-    fd = open(m_upperDir.c_str(), OPEN_FLAGS, OPEN_PERMS);
-    if (fd == -1) {
-      logger::error("failed to open upper directory '{}': {}", m_upperDir,
-                    strerror(errno));
-      return false;
-    }
-  }
-
-  // start a thread for each pending mount
-  for (auto& state : toMount) {
-    if (!m_upperDir.empty()) {
-      state->upperDir = m_upperDir;
-      logger::trace("adding fd {} for {}", fd, m_upperDir);
-      state->fdMap[m_upperDir] = fd;
-    }
-    try {
-      thread t([s = std::move(state), this]() mutable {
-        run_fuse(std::move(s));
-      });
-      t.detach();
-    } catch (const exception& e) {
-      // the remaining entries are dropped since toMount owns them and will be destroyed
-      logger::error("Failed to create FUSE thread: ", e.what());
-      return false;
-    }
-  }
-  return true;
+  return mountInternal();
 }
 
 bool UsvfsManager::unmount() noexcept
@@ -756,4 +719,47 @@ bool UsvfsManager::anyProcessRunning() const noexcept
   return ranges::any_of(m_spawnedProcesses, [&](const unique_ptr<QProcess>& process) {
     return process->state() == QProcess::Running;
   });
+}
+
+bool UsvfsManager::mountInternal() noexcept
+{
+  logger::info("mounting {} mount points", m_pendingMounts.size());
+  scoped_lock lock(m_mtx);
+
+  // move pending to a local list
+  if (m_pendingMounts.empty()) {
+    return true;
+  }
+  vector<unique_ptr<MountState>> toMount;
+  toMount.swap(m_pendingMounts);
+
+  int fd;
+  if (!m_upperDir.empty()) {
+    fd = open(m_upperDir.c_str(), OPEN_FLAGS, OPEN_PERMS);
+    if (fd == -1) {
+      logger::error("failed to open upper directory '{}': {}", m_upperDir,
+                    strerror(errno));
+      return false;
+    }
+  }
+
+  // start a thread for each pending mount
+  for (auto& state : toMount) {
+    if (!m_upperDir.empty()) {
+      state->upperDir = m_upperDir;
+      logger::trace("adding fd {} for {}", fd, m_upperDir);
+      state->fdMap[m_upperDir] = fd;
+    }
+    try {
+      thread t([s = std::move(state), this]() mutable {
+        run_fuse(std::move(s));
+      });
+      t.detach();
+    } catch (const exception& e) {
+      // the remaining entries are dropped since toMount owns them and will be destroyed
+      logger::error("Failed to create FUSE thread: ", e.what());
+      return false;
+    }
+  }
+  return true;
 }

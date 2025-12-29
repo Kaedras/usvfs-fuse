@@ -274,6 +274,9 @@ private:
 
   bool anyProcessRunning() const noexcept;
 
+  // mount function without locking for internal use
+  bool mountInternal() noexcept;
+
   std::set<std::string> m_skipFileSuffixes;
   std::set<std::string> m_skipDirectories;
   std::set<std::string> m_executableBlacklist;
