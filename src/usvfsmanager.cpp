@@ -125,7 +125,7 @@ UsvfsManager::~UsvfsManager() noexcept
 
 void UsvfsManager::usvfsClearVirtualMappings() noexcept
 {
-  unique_lock lock(m_mtx);
+  scoped_lock lock(m_mtx);
   m_pendingMounts.clear();
 }
 
@@ -133,7 +133,7 @@ bool UsvfsManager::usvfsVirtualLinkFile(const std::string& source,
                                         const std::string& destination,
                                         unsigned int flags) noexcept
 {
-  unique_lock lock(m_mtx);
+  scoped_lock lock(m_mtx);
 
   logger::trace("{}, source: {}, destination: {}", __FUNCTION__, source, destination);
 
@@ -210,7 +210,7 @@ bool UsvfsManager::usvfsVirtualLinkDirectoryStatic(const std::string& source,
                                                    const std::string& destination,
                                                    unsigned int flags) noexcept
 {
-  unique_lock lock(m_mtx);
+  scoped_lock lock(m_mtx);
 
   logger::trace("{}, source: {}, destination: {}", __FUNCTION__, source, destination);
 
