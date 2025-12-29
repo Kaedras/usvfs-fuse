@@ -135,6 +135,8 @@ bool UsvfsManager::usvfsVirtualLinkFile(const std::string& source,
 {
   unique_lock lock(m_mtx);
 
+  logger::trace("{}, source: {}, destination: {}", __FUNCTION__, source, destination);
+
   const fs::path srcPath = fs::path(source);
   const fs::path dstPath = fs::path(destination);
 
@@ -209,6 +211,9 @@ bool UsvfsManager::usvfsVirtualLinkDirectoryStatic(const std::string& source,
                                                    unsigned int flags) noexcept
 {
   unique_lock lock(m_mtx);
+
+  logger::trace("{}, source: {}, destination: {}", __FUNCTION__, source, destination);
+
   // TODO: make check case insensitive?
   if (flags & linkFlag::FAIL_IF_EXISTS && pathExists(destination)) {
     errno = EEXIST;
