@@ -426,7 +426,7 @@ pid_t UsvfsManager::usvfsCreateProcessHooked(const std::string& file,
     }
   }
 
-  const string cmd = file + " " + arg;
+  const string cmd = "'" + file + "' " + arg;
   logger::debug("{}: command string: {}", __FUNCTION__, cmd);
 
   int pipefd[2];
