@@ -172,6 +172,15 @@ int childFunc(void* arg)
   return 0;
 }
 
+vector<string> createEnv()
+{
+  vector<string> env;
+  for (int i = 0; environ[i] != nullptr; ++i) {
+    env.emplace_back(environ[i]);
+  }
+  return env;
+}
+
 }  // namespace
 
 UsvfsManager::~UsvfsManager() noexcept
@@ -374,7 +383,7 @@ const std::vector<pid_t>& UsvfsManager::usvfsGetVFSProcessList() const noexcept
 pid_t UsvfsManager::usvfsCreateProcessHooked(const std::string& file,
                                              const std::string& arg,
                                              const std::string& workDir,
-                                             char** envp) noexcept
+                                             std::vector<std::string> env) noexcept
 {
   scoped_lock lock(m_mtx);
 
@@ -382,11 +391,6 @@ pid_t UsvfsManager::usvfsCreateProcessHooked(const std::string& file,
   if (!m_mounts.empty() && m_nsPidFd == -1) {
     logger::error("usvfs is mounted without any reference to a namespace, aborting");
     return false;
-  }
-
-  vector<string> envVector;
-  for (int i = 0; envp[i] != nullptr; ++i) {
-    envVector.emplace_back(envp[i]);
   }
 
   logger::trace("{}: {}, {}, {}", __FUNCTION__, file, arg, workDir);
@@ -416,7 +420,7 @@ pid_t UsvfsManager::usvfsCreateProcessHooked(const std::string& file,
           dllOverrides += applicableLibraries[i] + "=n,b;";
         }
         dllOverrides += applicableLibraries.back() + "=n,b\"";
-        envVector.emplace_back(dllOverrides);
+        env.emplace_back(dllOverrides);
         logger::debug("adding '{}' to process", dllOverrides);
       }
     }
@@ -462,14 +466,14 @@ pid_t UsvfsManager::usvfsCreateProcessHooked(const std::string& file,
     }
 
     // create environment
-    char** env = static_cast<char**>(malloc((envVector.size() + 1) * sizeof(char*)));
-    int i      = 0;
-    for (const auto& v : envVector) {
-      env[i++] = strdup(v.c_str());
+    char** envp = static_cast<char**>(malloc((env.size() + 1) * sizeof(char*)));
+    int i       = 0;
+    for (const auto& v : env) {
+      envp[i++] = strdup(v.c_str());
     }
-    env[i] = nullptr;
+    envp[i] = nullptr;
 
-    execle("/bin/sh", "/bin/sh", "-c", cmd.c_str(), nullptr, env);
+    execle("/bin/sh", "/bin/sh", "-c", cmd.c_str(), nullptr, envp);
 
     // write error to pipe
     const int error = errno;
@@ -506,7 +510,7 @@ pid_t UsvfsManager::usvfsCreateProcessHooked(const std::string& file,
                                              const std::string& arg,
                                              const std::string& workDir) noexcept
 {
-  return usvfsCreateProcessHooked(file, arg, workDir, environ);
+  return usvfsCreateProcessHooked(file, arg, workDir, createEnv());
 }
 
 pid_t UsvfsManager::usvfsCreateProcessHooked(const std::string& file,
@@ -515,7 +519,7 @@ pid_t UsvfsManager::usvfsCreateProcessHooked(const std::string& file,
   char* cwd            = get_current_dir_name();
   const string workDir = cwd;
   free(cwd);
-  return usvfsCreateProcessHooked(file, arg, workDir, environ);
+  return usvfsCreateProcessHooked(file, arg, workDir, createEnv());
 }
 
 std::string UsvfsManager::usvfsCreateVFSDump() const noexcept

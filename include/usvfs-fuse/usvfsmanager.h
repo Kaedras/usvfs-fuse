@@ -127,7 +127,8 @@ public:
    * spawn a new process that can see the virtual file system.
    */
   pid_t usvfsCreateProcessHooked(const std::string& file, const std::string& arg,
-                                 const std::string& workDir, char** envp) noexcept;
+                                 const std::string& workDir,
+                                 std::vector<std::string> env) noexcept;
 
   pid_t usvfsCreateProcessHooked(const std::string& file, const std::string& arg,
                                  const std::string& workDir) noexcept;
