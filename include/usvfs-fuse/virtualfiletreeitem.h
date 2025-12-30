@@ -124,7 +124,4 @@ private:
   // find function for internal use to prevent unnecessary string copies
   [[nodiscard]] VirtualFileTreeItem* findPrivate(std::string_view value,
                                                  bool includeDeleted) noexcept;
-
-  std::vector<VirtualFileTreeItem*>
-  getAllItemsPrivate(bool includeRoot = false) noexcept;
 };

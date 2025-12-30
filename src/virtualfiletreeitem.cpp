@@ -44,7 +44,7 @@ VirtualFileTreeItem& VirtualFileTreeItem::operator+=(VirtualFileTreeItem& other)
   // unique_lock lock(m_mtx);
   m_realPath = other.m_realPath;
 
-  for (const auto& otherItem : other.getAllItemsPrivate(false)) {
+  for (const auto& otherItem : other.getAllItems(false)) {
     add(otherItem->filePath(), otherItem->realPath(), otherItem->m_type, true);
   }
 
@@ -401,22 +401,6 @@ VirtualFileTreeItem* VirtualFileTreeItem::findPrivate(std::string_view value,
   logger::debug("'{}' has been deleted, returning nullptr", value);
   errno = ENOENT;
   return nullptr;
-}
-
-std::vector<VirtualFileTreeItem*>
-VirtualFileTreeItem::getAllItemsPrivate(bool includeRoot) noexcept
-{
-  shared_lock lock(m_mtx);
-  std::vector<VirtualFileTreeItem*> result;
-  result.reserve(m_children.size() + 1);
-
-  if (m_parent != nullptr || includeRoot) {
-    result.emplace_back(this);
-  }
-  for (const auto& item : m_children | views::values) {
-    result.append_range(item->getAllItemsPrivate());
-  }
-  return result;
 }
 
 std::ostream& operator<<(std::ostream& os, const VirtualFileTreeItem& item) noexcept
