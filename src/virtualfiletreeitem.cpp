@@ -299,7 +299,8 @@ VirtualFileTreeItem::getAllItems(bool includeRoot) const noexcept
     result.emplace_back(this);
   }
   for (const auto& item : m_children | views::values) {
-    result.append_range(item->getAllItems());
+    auto allItems = item->getAllItems();
+    result.insert(result.end(), allItems.begin(), allItems.end());
   }
   return result;
 }
@@ -315,7 +316,8 @@ VirtualFileTreeItem::getAllItemPaths(bool includeRoot) const noexcept
     result.emplace_back(filePath());
   }
   for (const auto& item : m_children | views::values) {
-    result.append_range(item->getAllItemPaths());
+    auto allItemPaths = item->getAllItemPaths();
+    result.insert(result.end(), allItemPaths.begin(), allItemPaths.end());
   }
   return result;
 }
