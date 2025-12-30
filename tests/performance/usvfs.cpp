@@ -16,7 +16,7 @@ static const fs::path src  = base / "src";
 static const fs::path mnt  = base / "mnt";
 static const fs::path file = src / "0" / "0.txt";
 
-static void DoSetup_usvfs(const benchmark::State& state)
+static void DoSetup_usvfs(const benchmark::State&)
 {
   fs::create_directories(mnt);
   fs::create_directories(src / "0");
@@ -32,7 +32,7 @@ static void DoSetup_usvfs(const benchmark::State& state)
   this_thread::sleep_for(10ms);
 }
 
-static void DoSetup(const benchmark::State& state)
+static void DoSetup(const benchmark::State&)
 {
   fs::create_directories(file.parent_path());
 
@@ -40,14 +40,14 @@ static void DoSetup(const benchmark::State& state)
   ofs << "test";
 }
 
-static void DoTeardown_usvfs(const benchmark::State& state)
+static void DoTeardown_usvfs(const benchmark::State&)
 {
   auto usvfs = UsvfsManager::instance();
   usvfs->unmount();
   fs::remove_all(base);
 }
 
-static void DoTeardown(const benchmark::State& state)
+static void DoTeardown(const benchmark::State&)
 {
   fs::remove_all(base);
 }
