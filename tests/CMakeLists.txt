@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 4.0)
+cmake_minimum_required(VERSION 3.31)
 
 if (BUILD_UNIT_TESTS OR BUILD_TESTS)
     add_subdirectory(unit)
