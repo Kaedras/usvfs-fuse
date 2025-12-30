@@ -901,6 +901,7 @@ bool UsvfsManager::mountInternal() noexcept
       }
 
       // check for error in child
+      // todo: improve this to not not determine success with a timeout
       pollfd pfd = {state->pidFd, POLLIN, 0};
       result     = poll(&pfd, 1, pollTimeout);
       if (result == -1) {
