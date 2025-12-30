@@ -85,43 +85,9 @@ public:
                                        unsigned int flags) noexcept;
 
   /**
-   * connect to a virtual filesystem as a controller, without hooking the calling
-   * process. Please note that you can only be connected to one vfs, so this will
-   * silently disconnect from a previous vfs.
-   */
-  // bool usvfsConnectVFS(const usvfsParameters* p);
-
-  /**
-   * @brief create a new VFS. This is similar to ConnectVFS except it guarantees
-   *   the vfs is reset before use.
-   */
-  // bool usvfsCreateVFS(const usvfsParameters* p);
-
-  // std::string usvfsGetCurrentVFSName();
-
-  /**
-   * disconnect from a virtual filesystem. This removes hooks if necessary
-   */
-  // void usvfsDisconnectVFS();
-
-  /**
    * retrieve a list of all processes connected to the vfs
    */
   const std::vector<pid_t>& usvfsGetVFSProcessList() const noexcept;
-
-  // retrieve a list of all processes connected to the vfs, stores an array
-  // of `count` elements in `*buffer`
-  //
-  // if this returns TRUE and `count` is not 0, the caller must release the buffer
-  // with `free(*buffer)`
-  //
-  // return values:
-  //   - ERROR_INVALID_PARAMETERS:  either `count` or `buffer` is NULL
-  //   - ERROR_TOO_MANY_OPEN_FILES: there seems to be way too many usvfs processes
-  //                                running, probably some internal error
-  //   - ERROR_NOT_ENOUGH_MEMORY:   malloc() failed
-  //
-  // bool usvfsGetVFSProcessList2(size_t* count, uint32_t** buffer);
 
   /**
    * spawn a new process that can see the virtual file system.
@@ -211,21 +177,7 @@ public:
 
   void setProcessDelay(std::chrono::milliseconds processDelay) noexcept;
 
-  // #if defined(UNITTEST) || defined(_WINDLL)
-  // void usvfsInitLogging(bool toLocal = false);
-  // #endif
-
   void setLogLevel(LogLevel logLevel) noexcept;
-
-  /**
-   * used internally to initialize a process at startup-time as a "slave". Don't call
-   * directly
-   */
-  // DLLEXPORT void cdecl InitHooks(void* userData, size_t userDataSize);
-
-  // the instance and shm names are not updated
-  //
-  // DLLEXPORT void usvfsUpdateParameters(usvfsParameters* p);
 
   // DLLEXPORT int usvfsCreateMiniDump(PEXCEPTION_POINTERS exceptionPtrs,
   // CrashDumpsType type,
