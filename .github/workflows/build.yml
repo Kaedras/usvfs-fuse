@@ -21,6 +21,11 @@ jobs:
       - name: Install dependencies
         run: sudo apt-get update && sudo apt-get install libfuse3-dev gcc-14 -y
 
+      - name: Set default gcc version to 14
+        run: |
+          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 10
+          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-14 10
+
       - uses: actions/checkout@v4
 
       - name: Configure usvfs-fuse build
