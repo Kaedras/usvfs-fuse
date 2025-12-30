@@ -19,7 +19,7 @@ jobs:
           echo "VCPKG_ROOT=$VCPKG_INSTALLATION_ROOT" >> $GITHUB_ENV
 
       - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install libfuse3-dev -y
+        run: sudo apt-get update && sudo apt-get install libfuse3-dev gcc-14 -y
 
       - uses: actions/checkout@v4
 
