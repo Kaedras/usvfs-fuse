@@ -7,7 +7,7 @@ using [libfuse](https://github.com/libfuse/libfuse) for use on Linux.
 
 - CMake 3.31
 - GCC 15.2
-- libfuse 3.17
+- libfuse 3.14
 - icu
 - spdlog
 - gtest (when building unit tests)

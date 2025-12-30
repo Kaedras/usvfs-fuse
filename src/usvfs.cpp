@@ -403,11 +403,6 @@ int usvfs_open(const char* path, fuse_file_info* fi)
   }
 
   fi->fh = result;
-  // enable direct_io when open has flags O_DIRECT
-  if (fi->flags & O_DIRECT) {
-    fi->direct_io              = 1;
-    fi->parallel_direct_writes = 1;
-  }
 
   return 0;
 }
@@ -478,10 +473,9 @@ int usvfs_fsync(const char* path, int isdatasync, fuse_file_info* fi)
 }
 
 int usvfs_readdir(const char* path, void* buf, const fuse_fill_dir_t filler,
-                  off_t /*offset*/, fuse_file_info* /*fi*/,
-                  fuse_readdir_flags /*flags*/)
+                  off_t /*offset*/, fuse_file_info* /*fi*/, fuse_readdir_flags flags)
 {
-  logger::trace("{}, path: {}", __FUNCTION__, path);
+  logger::trace("{}, path: {}, flags: {}", __FUNCTION__, path, static_cast<int>(flags));
 
   GET_STATE()
 
@@ -490,9 +484,13 @@ int usvfs_readdir(const char* path, void* buf, const fuse_fill_dir_t filler,
     return -ENOENT;
   }
 
+  const fuse_fill_dir_flags fill_flags = flags & FUSE_READDIR_PLUS
+                                             ? FUSE_FILL_DIR_PLUS
+                                             : static_cast<fuse_fill_dir_flags>(0);
+
   // Standard entries
-  filler(buf, ".", nullptr, 0, FUSE_FILL_DIR_DEFAULTS);
-  filler(buf, "..", nullptr, 0, FUSE_FILL_DIR_DEFAULTS);
+  filler(buf, ".", nullptr, 0, fill_flags);
+  filler(buf, "..", nullptr, 0, fill_flags);
 
   for (const auto& [itemName, item] : tree->getChildren()) {
     const string realPath       = item->realPath();
@@ -507,7 +505,7 @@ int usvfs_readdir(const char* path, void* buf, const fuse_fill_dir_t filler,
       return -e;
     }
 
-    if (filler(buf, itemName.c_str(), &stbuf, 0, FUSE_FILL_DIR_DEFAULTS) != 0) {
+    if (filler(buf, itemName.c_str(), &stbuf, 0, fill_flags) != 0) {
       logger::error("{}: filler function returned error", __FUNCTION__);
       break;
     }

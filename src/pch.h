@@ -45,6 +45,7 @@ extern "C"
 
 // libfuse
 #ifndef FUSE_USE_VERSION
-#define FUSE_USE_VERSION 317
+#define FUSE_USE_VERSION FUSE_MAKE_VERSION(3, 14)
 #endif
 #include <fuse.h>
+#include <fuse_common.h>
