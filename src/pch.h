@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cerrno>
 #include <csignal>
+#include <cstdint>
 #include <cstring>
 #include <dirent.h>
 #include <err.h>
@@ -11,7 +12,6 @@
 #include <fstream>
 #include <iomanip>
 #include <iostream>
-#include <linux/openat2.h>
 #include <memory>
 #include <mutex>
 #include <poll.h>

@@ -1,5 +1,3 @@
-#include <utility>
-
 #include "usvfs-fuse/virtualfiletreeitem.h"
 
 #include "usvfs-fuse/logger.h"
