@@ -6,7 +6,7 @@ using [libfuse](https://github.com/libfuse/libfuse) for use on Linux.
 ## Requirements
 
 - CMake 3.31
-- GCC 15.2
+- GCC 14.2
 - libfuse 3.14
 - icu
 - spdlog
