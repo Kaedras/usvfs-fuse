@@ -17,13 +17,12 @@ using [libfuse](https://github.com/libfuse/libfuse) for use on Linux.
 
 ```shell
 mkdir build && cd build
-cmake .. # optionally add e.g. -DBUILD_TESTS=ON
+cmake .. # optionally add e.g. -DBUILD_TESTING=ON
 make -j$(nproc)
 ```
 
 optional build options:
-- BUILD_TESTS=ON/OFF: build all tests
-- BUILD_UNIT_TESTS=ON/OFF: build unit tests
+- BUILD_TESTING=ON/OFF: build unit tests
 - BUILD_PERF_TESTS=ON/OFF: build performance tests
 
 ## Known issues/limitations
