@@ -3,7 +3,7 @@
 #include "usvfs-fuse/logger.h"
 #include "usvfs-fuse/utils.h"
 
-int FdMap::at(const std::string& path) const noexcept
+int FdMap::at(const std::string_view path) const noexcept
 {
   try {
     return map.at(toLower(path));
@@ -13,7 +13,7 @@ int FdMap::at(const std::string& path) const noexcept
   }
 }
 
-int& FdMap::operator[](const std::string& path) noexcept
+int& FdMap::operator[](const std::string_view path) noexcept
 {
   return map[toLower(path)];
 }

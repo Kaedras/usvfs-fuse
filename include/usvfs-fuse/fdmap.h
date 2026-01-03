@@ -5,8 +5,8 @@
 class FdMap
 {
 public:
-  int at(const std::string& path) const noexcept;
-  int& operator[](const std::string& path) noexcept;
+  int at(std::string_view path) const noexcept;
+  int& operator[](std::string_view path) noexcept;
 
   std::unordered_map<std::string, int>::iterator begin() noexcept;
   std::unordered_map<std::string, int>::iterator end() noexcept;
