@@ -704,7 +704,7 @@ bool UsvfsManager::unmount() noexcept
     return true;
   }
 
-  logger::debug("unmounting {} mounts", m_mounts.size());
+  logger::info("unmounting {} mounts", m_mounts.size());
 
   if (anyProcessRunning()) {
     logger::warn("there is still at least one process running, not unmounting");
