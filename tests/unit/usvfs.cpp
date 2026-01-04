@@ -9,7 +9,6 @@
 using namespace std;
 namespace fs = std::filesystem;
 
-static constexpr auto delayAfterMount = 10ms;
 static constexpr mode_t mode          = 0755;
 static LogLevel logLevel              = LogLevel::Trace;
 static constexpr bool enableDebugMode = false;
@@ -17,13 +16,14 @@ static constexpr bool enableDebugMode = false;
 static const fs::path base  = fs::temp_directory_path() / "usvfs";
 static const fs::path src   = base / "src";
 static const fs::path mnt   = base / "mnt";
+static const fs::path mnt2  = base / "mnt2";
 static const fs::path upper = base / "upper";
 
 static const vector filesToCheck = {
     pair{mnt / "0.txt", "hello 0"},
     pair{mnt / "0/0.txt", "hello 0/0"},
     pair{mnt / "1.txt", "hello 1"},
-    pair{mnt / "2.txt", "hello 2"},
+    pair{mnt2 / "2.txt", "hello 2"},
     pair{mnt / "already_existed.txt", "hello from the other side"},
     pair{mnt / "already_existing_dir/already_existed0.txt",
          "hello 0 from the other side"},
@@ -57,6 +57,12 @@ bool createTmpDirs()
   fs::create_directories(mnt, ec);
   if (ec) {
     cerr << "cannot create mount dir: " << ec.message() << "\n";
+    fs::remove_all(base);
+    return false;
+  }
+  fs::create_directories(mnt2, ec);
+  if (ec) {
+    cerr << "cannot create mount2 dir: " << ec.message() << "\n";
     fs::remove_all(base);
     return false;
   }
@@ -148,10 +154,9 @@ protected:
     ASSERT_TRUE(usvfs->usvfsVirtualLinkDirectoryStatic(
         (src / "1").string(), mnt.string(), linkFlag::RECURSIVE));
     ASSERT_TRUE(usvfs->usvfsVirtualLinkFile("/tmp/usvfs/src/2/2.txt",
-                                            "/tmp/usvfs/mnt/2.txt", 0));
+                                            "/tmp/usvfs/mnt2/2.txt", 0));
 
     ASSERT_NO_THROW(usvfs->mount());
-    this_thread::sleep_for(delayAfterMount);
     // dumpUsvfs();
   }
   void TearDown() override
@@ -174,7 +179,7 @@ TEST_F(UsvfsTest, getattr)
       mnt / "0.txt",
       mnt / "0/0.txt",
       mnt / "1.txt",
-      mnt / "2.txt",
+      mnt2 / "2.txt",
       mnt / "empty_dir",
       mnt / "already_existed.txt",
       mnt / "already_existing_dir",
