@@ -241,26 +241,36 @@ bool UsvfsManager::usvfsVirtualLinkFile(const std::string& source,
     }
   }
 
-  VirtualFileTreeItem sourceFileTree("/", dstDir, dir);
-  auto result = sourceFileTree.add(dstPath.filename().string(), source, file, true);
-  if (result == nullptr) {
-    return false;
-  }
+  string srcParentDir = getParentPath(source);
+  string dstParentDir = getParentPath(destination);
 
-  string parentDir = getParentPath(source);
-  int fd           = open(parentDir.c_str(), OPEN_FLAGS, OPEN_PERMS);
+  // open a file descriptor for the source parent directory
+  int fd = open(srcParentDir.c_str(), OPEN_FLAGS, OPEN_PERMS);
   if (fd == -1) {
-    logger::error("open() failed for {}: {}", parentDir, strerror(errno));
+    logger::error("open() failed for {}: {}", srcParentDir, strerror(errno));
     return false;
   }
-  logger::trace("adding fd {} for {}", fd, parentDir);
-  fdMap[parentDir] = fd;
+  logger::trace("adding fd {} for {}", fd, srcParentDir);
+  fdMap[srcParentDir] = fd;
+
+  // open a file descriptor for the destination parent directory
+  fd = open(dstParentDir.c_str(), OPEN_FLAGS, OPEN_PERMS);
+  if (fd == -1) {
+    logger::error("open() failed for {}: {}", dstParentDir, strerror(errno));
+    return false;
+  }
+  logger::trace("adding fd {} for {}", fd, dstParentDir);
+  fdMap[dstParentDir] = fd;
 
   // create the file tree for existing files
   shared_ptr<VirtualFileTreeItem> destinationFileTree =
-      createFileTree(destination, fdMap);
+      createFileTree(dstParentDir, fdMap);
 
-  *destinationFileTree += sourceFileTree;
+  auto result =
+      destinationFileTree->add(dstPath.filename().string(), source, file, true);
+  if (result == nullptr) {
+    return false;
+  }
 
   // prepare state and enqueue to the pending list (no mounting yet)
   auto state        = make_unique<MountState>();
