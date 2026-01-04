@@ -243,7 +243,7 @@ bool UsvfsManager::usvfsVirtualLinkFile(const std::string& source,
 
   VirtualFileTreeItem sourceFileTree("/", dstDir, dir);
   auto result = sourceFileTree.add(dstPath.filename().string(), source, file, true);
-  if (result != nullptr) {
+  if (result == nullptr) {
     return false;
   }
 
