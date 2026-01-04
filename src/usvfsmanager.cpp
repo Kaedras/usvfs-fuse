@@ -760,6 +760,7 @@ UsvfsManager::UsvfsManager() noexcept
 
 void UsvfsManager::run_fuse(std::unique_ptr<MountState> state)
 {
+  unique_lock lock(state->mtx);
   const char* opts = m_debugMode ? "default_permissions,debug" : "default_permissions";
   const char* argv[] = {"usvfs_fuse", "-o", opts};
   int argc           = 3;
@@ -771,16 +772,27 @@ void UsvfsManager::run_fuse(std::unique_ptr<MountState> state)
   raw->fusePtr    = fuse_new(&args, &ops, sizeof(fuse_operations), raw);
   fuse_opt_free_args(&args);
   if (!raw->fusePtr) {
-    // Couldn't create FUSE handle; drop the mount
+    logger::error("fuse_new() failed for mountpoint {}", raw->mountpoint);
+    raw->status = MountState::failure;
+    lock.unlock();
+    raw->cv.notify_all();
     return;
   }
   if (fuse_mount(raw->fusePtr, raw->mountpoint.c_str()) == -1) {
     fuse_destroy(raw->fusePtr);
     raw->fusePtr = nullptr;
+    logger::error("fuse_mount() failed for mountpoint {}", raw->mountpoint);
+    raw->status = MountState::failure;
+    lock.unlock();
+    raw->cv.notify_all();
     return;
   }
 
   m_mounts.emplace_back(std::move(state));
+
+  raw->status = MountState::success;
+  lock.unlock();
+  raw->cv.notify_all();
 
   // Enter loop; this blocks until unmounted
   fuse_loop(raw->fusePtr);
@@ -951,10 +963,24 @@ bool UsvfsManager::mountInternal() noexcept
       logger::info("usvfs mounted in pid {}", pidfd_getpid(state->pidFd));
       m_mounts.emplace_back(std::move(state));
     } else {
+      MountState* raw = state.get();
+
       thread t([s = std::move(state), this]() mutable {
         run_fuse(std::move(s));
       });
       t.detach();
+
+      // wait until mount state is no longer unknown
+      unique_lock lock(raw->mtx);
+      raw->cv.wait(lock, [&] {
+        return raw->status != MountState::unknown;
+      });
+      if (raw->status == MountState::failure) {
+        logger::error("mount failed");
+        return false;
+      }
+
+      logger::info("successfully mounted {}", raw->mountpoint);
     }
   }
   return true;
