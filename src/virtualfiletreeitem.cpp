@@ -106,6 +106,7 @@ VirtualFileTreeItem::add(std::string name, std::string realPath, Type type,
       nameLc, make_shared<VirtualFileTreeItem>(name, realPath, type, this));
   if (!wasInserted) {
     logger::error("m_children.emplace(key='{}') failed on file '{}'", nameLc, name);
+    return nullptr;
   }
   return newItem->second;
 }
