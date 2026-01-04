@@ -212,11 +212,13 @@ bool UsvfsManager::usvfsVirtualLinkFile(const std::string& source,
   string dstDir = dstPath.parent_path().string();
 
   if (fileNameInSkipSuffixes(srcPath.filename().string())) {
+    logger::debug("file {} should be skipped", source);
     return flags & linkFlag::FAIL_IF_SKIPPED ? false : true;
   }
 
   if (flags & linkFlag::FAIL_IF_EXISTS) {
     if (pathExists(destination)) {
+      logger::debug("destination {} exists, not linking", destination);
       errno = EEXIST;
       return false;
     }
@@ -225,6 +227,7 @@ bool UsvfsManager::usvfsVirtualLinkFile(const std::string& source,
   // check if destination exists in pending mounts
   for (const auto& state : m_pendingMounts) {
     if (state->mountpoint == dstDir) {
+      logger::debug("mountpoint already exists, adding to file tree");
       // destination exists, add to the existing file tree
       auto result = state->fileTree->add(dstPath.filename().string(), source, file);
       if (result != nullptr) {
