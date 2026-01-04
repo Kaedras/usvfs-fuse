@@ -15,7 +15,9 @@ class logger;
 namespace sinks
 {
   class sink;
-}
+  template <typename Mutex>
+  class rotating_file_sink;
+}  // namespace sinks
 }  // namespace spdlog
 
 struct fuse_file_info;
@@ -179,6 +181,8 @@ public:
 
   void setLogLevel(LogLevel logLevel) noexcept;
 
+  void setLogFile(const std::string& logFile) noexcept;
+
   // DLLEXPORT int usvfsCreateMiniDump(PEXCEPTION_POINTERS exceptionPtrs,
   // CrashDumpsType type,
   // const wchar_t* dumpPath);
@@ -241,4 +245,5 @@ private:
   std::vector<std::unique_ptr<MountState>> m_mounts;
   std::vector<std::unique_ptr<MountState>> m_pendingMounts;
   std::vector<pid_t> m_spawnedProcesses;
+  std::shared_ptr<spdlog::sinks::rotating_file_sink<std::mutex>> m_fileSink;
 };

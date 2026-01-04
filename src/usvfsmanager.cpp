@@ -15,8 +15,10 @@ namespace fs = std::filesystem;
 namespace
 {
 
-constexpr int pollTimeout  = 10;
-constexpr size_t stackSize = 1024 * 1024;  // stack size for cloned child
+constexpr int pollTimeout        = 10;
+constexpr size_t stackSize       = 1024 * 1024;       // stack size for cloned child
+constexpr size_t maxLogFileSize  = 1024 * 1024 * 10;  // 10 MiB
+constexpr size_t maxLogFileCount = 10;
 
 shared_ptr<VirtualFileTreeItem> createFileTree(const string& path, FdMap& fdMap)
 {
@@ -652,6 +654,25 @@ void UsvfsManager::setLogLevel(LogLevel logLevel) noexcept
   spdlog::get("usvfs")->set_level(ConvertLogLevel(logLevel));
 }
 
+void UsvfsManager::setLogFile(const std::string& logFile) noexcept
+{
+  scoped_lock lock(m_mtx);
+
+  if (m_fileSink == nullptr) {
+    shared_ptr<spdlog::logger> logger = spdlog::get("usvfs");
+    vector<spdlog::sink_ptr> sinks    = logger->sinks();
+
+    m_fileSink = make_shared<spdlog::sinks::rotating_file_sink_mt>(
+        logFile, maxLogFileSize, maxLogFileCount, true);
+    m_fileSink->set_level(spdlog::level::debug);
+    sinks.emplace_back(m_fileSink);
+
+    logger = make_shared<spdlog::logger>("usvfs", sinks.begin(), sinks.end());
+
+    spdlog::register_or_replace(logger);
+  }
+}
+
 const char* UsvfsManager::usvfsVersionString()
 {
   return USVFS_VERSION_STRING;
@@ -731,7 +752,7 @@ UsvfsManager::UsvfsManager() noexcept
 
   auto logger = spdlog::get("usvfs");
   if (logger == nullptr) {
-    logger = spdlog::create<spdlog::sinks::stdout_sink_mt>("usvfs");
+    logger = spdlog::create<spdlog::sinks::stdout_color_sink_mt>("usvfs");
     logger->set_pattern("%H:%M:%S.%e [%L] %v");
     logger->set_level(spdlog::level::info);
   }
