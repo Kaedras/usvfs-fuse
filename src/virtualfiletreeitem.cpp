@@ -55,7 +55,7 @@ std::shared_ptr<VirtualFileTreeItem>
 VirtualFileTreeItem::add(std::string name, std::string realPath, Type type,
                          bool updateExisting) noexcept
 {
-  if (name.empty()) {
+  if (name.empty() || realPath.empty()) {
     logger::error("attempted to add an entry with empty name!");
     errno = EINVAL;
     return nullptr;
