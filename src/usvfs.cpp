@@ -26,7 +26,7 @@ MountState* getState()
   return static_cast<MountState*>(context ? context->private_data : nullptr);
 }
 
-int usvfs_getattr(const char* path, struct stat* stbuf, fuse_file_info* fi)
+int usvfs_getattr(const char* path, struct stat* stbuf, fuse_file_info* fi) noexcept
 {
   logger::trace("{}, path: {}", __FUNCTION__, path);
 
@@ -75,7 +75,7 @@ int usvfs_getattr(const char* path, struct stat* stbuf, fuse_file_info* fi)
   return 0;
 }
 
-int usvfs_readlink(const char* path, char* buf, size_t size)
+int usvfs_readlink(const char* path, char* buf, size_t size) noexcept
 {
   logger::trace("{}, path: {}", __FUNCTION__, path);
   GET_STATE()
@@ -96,7 +96,7 @@ int usvfs_readlink(const char* path, char* buf, size_t size)
   return 0;
 }
 
-int usvfs_mkdir(const char* path, mode_t mode)
+int usvfs_mkdir(const char* path, mode_t mode) noexcept
 {
   logger::trace("{}, path: {}, mode: {}", __FUNCTION__, path, mode);
   GET_STATE()
@@ -160,7 +160,7 @@ int usvfs_mkdir(const char* path, mode_t mode)
   return 0;
 }
 
-int usvfs_unlink(const char* path)
+int usvfs_unlink(const char* path) noexcept
 {
   logger::trace("{}, path: {}", __FUNCTION__, path);
   GET_STATE()
@@ -182,7 +182,7 @@ int usvfs_unlink(const char* path)
   return 0;
 }
 
-int usvfs_rmdir(const char* path)
+int usvfs_rmdir(const char* path) noexcept
 {
   logger::trace("{}, path: {}", __FUNCTION__, path);
 
@@ -216,7 +216,7 @@ int usvfs_rmdir(const char* path)
   return 0;
 }
 
-int usvfs_symlink(const char* target, const char* linkpath)
+int usvfs_symlink(const char* target, const char* linkpath) noexcept
 {
 #warning STUB
   logger::warn("{}, target: '{}', linkpath: '{}' - STUB!", __FUNCTION__, target,
@@ -224,7 +224,7 @@ int usvfs_symlink(const char* target, const char* linkpath)
   return -ENOSYS;
 }
 
-int usvfs_rename(const char* from, const char* to, const unsigned int flags)
+int usvfs_rename(const char* from, const char* to, const unsigned int flags) noexcept
 {
   logger::trace("{}, oldPath: '{}', newPath: '{}'", __FUNCTION__, from, to);
 
@@ -293,14 +293,14 @@ int usvfs_rename(const char* from, const char* to, const unsigned int flags)
   return 0;
 }
 
-int usvfs_link(const char* from, const char* to)
+int usvfs_link(const char* from, const char* to) noexcept
 {
 #warning STUB
   logger::warn("{}, from: '{}', to: '{}' - STUB!", __FUNCTION__, from, to);
   return -ENOSYS;
 }
 
-int usvfs_chmod(const char* path, mode_t mode, fuse_file_info* fi)
+int usvfs_chmod(const char* path, mode_t mode, fuse_file_info* fi) noexcept
 {
   logger::trace("{}, path: '{}', mode: '{}'", __FUNCTION__, path, mode);
 
@@ -326,7 +326,7 @@ int usvfs_chmod(const char* path, mode_t mode, fuse_file_info* fi)
   return 0;
 }
 
-int usvfs_chown(const char* path, uid_t uid, gid_t gid, fuse_file_info* fi)
+int usvfs_chown(const char* path, uid_t uid, gid_t gid, fuse_file_info* fi) noexcept
 {
   logger::trace("{}, path: {}, uid: {}, gid: {}", __FUNCTION__, path, uid, gid);
 
@@ -353,7 +353,7 @@ int usvfs_chown(const char* path, uid_t uid, gid_t gid, fuse_file_info* fi)
   return 0;
 }
 
-int usvfs_truncate(const char* path, off_t size, fuse_file_info* fi)
+int usvfs_truncate(const char* path, off_t size, fuse_file_info* fi) noexcept
 {
   logger::trace("{}, path: {}, size: {}", __FUNCTION__, path, size);
 
@@ -390,7 +390,7 @@ int usvfs_truncate(const char* path, off_t size, fuse_file_info* fi)
   return 0;
 }
 
-int usvfs_open(const char* path, fuse_file_info* fi)
+int usvfs_open(const char* path, fuse_file_info* fi) noexcept
 {
   logger::trace("{}, path: {}, flags: {}", __FUNCTION__, path, fi->flags);
   GET_STATE()
@@ -408,7 +408,7 @@ int usvfs_open(const char* path, fuse_file_info* fi)
 }
 
 int usvfs_read(const char* path, char* buf, const size_t size, const off_t offset,
-               fuse_file_info* fi)
+               fuse_file_info* fi) noexcept
 {
   logger::trace("{}, path: {}", __FUNCTION__, path);
   const int fd      = static_cast<int>(fi->fh);
@@ -419,7 +419,7 @@ int usvfs_read(const char* path, char* buf, const size_t size, const off_t offse
   return static_cast<int>(res);
 }
 
-int usvfs_release(const char* path, fuse_file_info* fi)
+int usvfs_release(const char* path, fuse_file_info* fi) noexcept
 {
   logger::trace("{}, path: {}", __FUNCTION__, path);
   if (fi && fi->fh != 0) {
@@ -430,7 +430,7 @@ int usvfs_release(const char* path, fuse_file_info* fi)
 }
 
 int usvfs_write(const char* path, const char* buf, const size_t size,
-                const off_t offset, fuse_file_info* fi)
+                const off_t offset, fuse_file_info* fi) noexcept
 {
   logger::trace("{}, path: {}", __FUNCTION__, path);
   const ssize_t result = pwrite(static_cast<int>(fi->fh), buf, size, offset);
@@ -440,7 +440,7 @@ int usvfs_write(const char* path, const char* buf, const size_t size,
   return static_cast<int>(result);
 }
 
-int usvfs_statfs(const char* path, struct statvfs* stbuf)
+int usvfs_statfs(const char* path, struct statvfs* stbuf) noexcept
 {
   logger::trace("{}, path: {}", __FUNCTION__, path);
 
@@ -455,7 +455,7 @@ int usvfs_statfs(const char* path, struct statvfs* stbuf)
   return 0;
 }
 
-int usvfs_flush(const char* path, fuse_file_info* fi)
+int usvfs_flush(const char* path, fuse_file_info* fi) noexcept
 {
 #warning STUB
   (void)fi;
@@ -463,7 +463,7 @@ int usvfs_flush(const char* path, fuse_file_info* fi)
   return -ENOSYS;
 }
 
-int usvfs_fsync(const char* path, int isdatasync, fuse_file_info* fi)
+int usvfs_fsync(const char* path, int isdatasync, fuse_file_info* fi) noexcept
 {
 #warning STUB
   (void)isdatasync;
@@ -473,7 +473,8 @@ int usvfs_fsync(const char* path, int isdatasync, fuse_file_info* fi)
 }
 
 int usvfs_readdir(const char* path, void* buf, const fuse_fill_dir_t filler,
-                  off_t /*offset*/, fuse_file_info* /*fi*/, fuse_readdir_flags flags)
+                  off_t /*offset*/, fuse_file_info* /*fi*/,
+                  fuse_readdir_flags flags) noexcept
 {
   logger::trace("{}, path: {}, flags: {}", __FUNCTION__, path, static_cast<int>(flags));
 
@@ -514,7 +515,7 @@ int usvfs_readdir(const char* path, void* buf, const fuse_fill_dir_t filler,
   return 0;
 }
 
-int usvfs_releasedir(const char* path, fuse_file_info* fi)
+int usvfs_releasedir(const char* path, fuse_file_info* fi) noexcept
 {
   logger::trace("{}, path: {}", __FUNCTION__, path);
   if (fi && fi->fh != 0) {
@@ -524,7 +525,7 @@ int usvfs_releasedir(const char* path, fuse_file_info* fi)
   return 0;
 }
 
-int usvfs_fsyncdir(const char* path, int, fuse_file_info* fi)
+int usvfs_fsyncdir(const char* path, int, fuse_file_info* fi) noexcept
 {
 #warning STUB
   (void)fi;
@@ -532,7 +533,7 @@ int usvfs_fsyncdir(const char* path, int, fuse_file_info* fi)
   return -ENOSYS;
 }
 
-int usvfs_create(const char* path, mode_t mode, fuse_file_info* fi)
+int usvfs_create(const char* path, mode_t mode, fuse_file_info* fi) noexcept
 {
   logger::trace("{}, path: {}, mode: {}", __FUNCTION__, path, mode);
   GET_STATE()

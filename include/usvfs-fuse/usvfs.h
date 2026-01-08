@@ -13,7 +13,7 @@
  * `fi` will always be NULL if the file is not currently open, but
  * may also be NULL if the file is open.
  */
-int usvfs_getattr(const char* path, struct stat* stbuf, fuse_file_info* fi);
+int usvfs_getattr(const char* path, struct stat* stbuf, fuse_file_info* fi) noexcept;
 
 /** Read the target of a symbolic link
  *
@@ -23,7 +23,7 @@ int usvfs_getattr(const char* path, struct stat* stbuf, fuse_file_info* fi);
  * buffer, it should be truncated.	The return value should be 0
  * for success.
  */
-int usvfs_readlink(const char* path, char* buf, size_t size);
+int usvfs_readlink(const char* path, char* buf, size_t size) noexcept;
 
 /** Create a file node
  *
@@ -39,16 +39,16 @@ int usvfs_mknod(const char* path, mode_t mode, dev_t);
  * bits set, i.e. S_ISDIR(mode) can be false.  To obtain the
  * correct directory type bits use  mode|S_IFDIR
  * */
-int usvfs_mkdir(const char* path, mode_t mode);
+int usvfs_mkdir(const char* path, mode_t mode) noexcept;
 
 // Remove a file
-int usvfs_unlink(const char* path);
+int usvfs_unlink(const char* path) noexcept;
 
 // Remove a directory
-int usvfs_rmdir(const char* path);
+int usvfs_rmdir(const char* path) noexcept;
 
 // Create a symbolic link
-int usvfs_symlink(const char* target, const char* linkpath);
+int usvfs_symlink(const char* target, const char* linkpath) noexcept;
 
 /** Rename a file
  *
@@ -59,17 +59,17 @@ int usvfs_symlink(const char* target, const char* linkpath);
  * must atomically exchange the two files, i.e. both must
  * exist and neither may be deleted.
  */
-int usvfs_rename(const char* from, const char* to, unsigned int flags);
+int usvfs_rename(const char* from, const char* to, unsigned int flags) noexcept;
 
 // Create a hard link to a file
-int usvfs_link(const char* from, const char* to);
+int usvfs_link(const char* from, const char* to) noexcept;
 
 /** Change the permission bits of a file
  *
  * `fi` will always be NULL if the file is not currently open, but
  * may also be NULL if the file is open.
  */
-int usvfs_chmod(const char* path, mode_t mode, fuse_file_info* fi);
+int usvfs_chmod(const char* path, mode_t mode, fuse_file_info* fi) noexcept;
 
 /** Change the owner and group of a file
  *
@@ -79,7 +79,7 @@ int usvfs_chmod(const char* path, mode_t mode, fuse_file_info* fi);
  * Unless FUSE_CAP_HANDLE_KILLPRIV is disabled, this method is
  * expected to reset the setuid and setgid bits.
  */
-int usvfs_chown(const char* path, uid_t uid, gid_t gid, fuse_file_info* fi);
+int usvfs_chown(const char* path, uid_t uid, gid_t gid, fuse_file_info* fi) noexcept;
 
 /** Change the size of a file
  *
@@ -89,7 +89,7 @@ int usvfs_chown(const char* path, uid_t uid, gid_t gid, fuse_file_info* fi);
  * Unless FUSE_CAP_HANDLE_KILLPRIV is disabled, this method is
  * expected to reset the setuid and setgid bits.
  */
-int usvfs_truncate(const char* path, off_t size, fuse_file_info* fi);
+int usvfs_truncate(const char* path, off_t size, fuse_file_info* fi) noexcept;
 
 /** Open a file
  *
@@ -138,7 +138,7 @@ int usvfs_truncate(const char* path, off_t size, fuse_file_info* fi);
  * to the filesystem process.
  *
  */
-int usvfs_open(const char* path, fuse_file_info* fi);
+int usvfs_open(const char* path, fuse_file_info* fi) noexcept;
 
 /** Read data from an open file
  *
@@ -150,7 +150,7 @@ int usvfs_open(const char* path, fuse_file_info* fi);
  * this operation.
  */
 int usvfs_read(const char* path, char* buf, size_t size, off_t offset,
-               fuse_file_info* fi);
+               fuse_file_info* fi) noexcept;
 
 /** Write data to an open file
  *
@@ -162,13 +162,13 @@ int usvfs_read(const char* path, char* buf, size_t size, off_t offset,
  * expected to reset the setuid and setgid bits.
  */
 int usvfs_write(const char* path, const char* buf, size_t size, off_t offset,
-                fuse_file_info* fi);
+                fuse_file_info* fi) noexcept;
 
 /** Get file system statistics
  *
  * The 'f_favail', 'f_fsid' and 'f_flag' fields are ignored
  */
-int usvfs_statfs(const char* path, struct statvfs* stbuf);
+int usvfs_statfs(const char* path, struct statvfs* stbuf) noexcept;
 
 /** Possibly flush cached data
  *
@@ -198,7 +198,7 @@ int usvfs_statfs(const char* path, struct statvfs* stbuf);
  *
  * [close]: http://pubs.opengroup.org/onlinepubs/9699919799/functions/close.html
  */
-int usvfs_flush(const char* path, fuse_file_info* fi);
+int usvfs_flush(const char* path, fuse_file_info* fi) noexcept;
 
 /** Release an open file
  *
@@ -212,27 +212,28 @@ int usvfs_flush(const char* path, fuse_file_info* fi);
  * release will mean, that no more reads/writes will happen on the
  * file.  The return value of release is ignored.
  */
-int usvfs_release(const char* path, fuse_file_info* fi);
+int usvfs_release(const char* path, fuse_file_info* fi) noexcept;
 
 /** Synchronize file contents
  *
  * If the datasync parameter is non-zero, then only the user data
  * should be flushed, not the meta data.
  */
-int usvfs_fsync(const char* path, int isdatasync, fuse_file_info* fi);
+int usvfs_fsync(const char* path, int isdatasync, fuse_file_info* fi) noexcept;
 
 // Set extended attributes
 int usvfs_setxattr(const char* path, const char* name, const char* value, size_t size,
-                   int flags);
+                   int flags) noexcept;
 
 // Get extended attributes
-int usvfs_getxattr(const char* path, const char* name, char* value, size_t size);
+int usvfs_getxattr(const char* path, const char* name, char* value,
+                   size_t size) noexcept;
 
 // List extended attributes
-int usvfs_listxattr(const char* path, char* list, size_t size);
+int usvfs_listxattr(const char* path, char* list, size_t size) noexcept;
 
 // Remove extended attributes
-int usvfs_removexattr(const char* path, const char* name);
+int usvfs_removexattr(const char* path, const char* name) noexcept;
 
 /** Open directory
  *
@@ -242,7 +243,7 @@ int usvfs_removexattr(const char* path, const char* name);
  * filehandle in the fuse_file_info structure, which will be
  * passed to readdir, releasedir and fsyncdir.
  */
-int usvfs_opendir(const char* path, fuse_file_info* fi);
+int usvfs_opendir(const char* path, fuse_file_info* fi) noexcept;
 
 /** Read directory
  *
@@ -267,14 +268,14 @@ int usvfs_opendir(const char* path, fuse_file_info* fi);
  * set.
  */
 int usvfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler, off_t offset,
-                  fuse_file_info* fi, fuse_readdir_flags flags);
+                  fuse_file_info* fi, fuse_readdir_flags flags) noexcept;
 
 /** Release directory
  *
  * If the directory has been removed after the call to opendir, the
  * path parameter will be NULL.
  */
-int usvfs_releasedir(const char* path, fuse_file_info* fi);
+int usvfs_releasedir(const char* path, fuse_file_info* fi) noexcept;
 
 /** Synchronize directory contents
  *
@@ -284,7 +285,7 @@ int usvfs_releasedir(const char* path, fuse_file_info* fi);
  * If the datasync parameter is non-zero, then only the user data
  * should be flushed, not the meta data
  */
-int usvfs_fsyncdir(const char* path, int, fuse_file_info* fi);
+int usvfs_fsyncdir(const char* path, int, fuse_file_info* fi) noexcept;
 
 /**
  * Initialize filesystem
@@ -294,14 +295,14 @@ int usvfs_fsyncdir(const char* path, int, fuse_file_info* fi);
  * parameter to the destroy() method. It overrides the initial
  * value provided to fuse_main() / fuse_new().
  */
-void* usvfs_init(fuse_conn_info* conn, fuse_config* cfg);
+void* usvfs_init(fuse_conn_info* conn, fuse_config* cfg) noexcept;
 
 /**
  * Clean up filesystem
  *
  * Called on filesystem exit.
  */
-void usvfs_destroy(void* private_data);
+void usvfs_destroy(void* private_data) noexcept;
 
 /**
  * Check file access permissions
@@ -312,7 +313,7 @@ void usvfs_destroy(void* private_data);
  *
  * This method is not called under Linux kernel versions 2.4.x
  */
-int usvfs_access(const char* pathname, int mode);
+int usvfs_access(const char* pathname, int mode) noexcept;
 
 /**
  * Create and open a file
@@ -324,7 +325,7 @@ int usvfs_access(const char* pathname, int mode);
  * versions earlier than 2.6.15, the mknod() and open() methods
  * will be called instead.
  */
-int usvfs_create(const char* path, mode_t mode, fuse_file_info* fi);
+int usvfs_create(const char* path, mode_t mode, fuse_file_info* fi) noexcept;
 
 /**
  * Perform POSIX file locking operation
@@ -356,7 +357,7 @@ int usvfs_create(const char* path, mode_t mode, fuse_file_info* fi);
  * allow file locking to work locally.  Hence it is only
  * interesting for network filesystems and similar.
  */
-int usvfs_lock(const char* path, fuse_file_info* fi, int cmd, flock* lock);
+int usvfs_lock(const char* path, fuse_file_info* fi, int cmd, flock* lock) noexcept;
 
 /**
  * Change the access and modification times of a file with
@@ -370,7 +371,7 @@ int usvfs_lock(const char* path, fuse_file_info* fi, int cmd, flock* lock);
  *
  * See the utimensat(2) man page for details.
  */
-int usvfs_utimens(const char* path, const timespec tv[2], fuse_file_info* fi);
+int usvfs_utimens(const char* path, const timespec tv[2], fuse_file_info* fi) noexcept;
 
 /**
  * Map block index within file to block index within device
@@ -397,7 +398,7 @@ int usvfs_utimens(const char* path, const timespec tv[2], fuse_file_info* fi);
  * is truncated to 32 bits.
  */
 int usvfs_ioctl(const char*, unsigned int cmd, void* arg, fuse_file_info*,
-                unsigned int flags, void* data);
+                unsigned int flags, void* data) noexcept;
 
 /**
  * Poll for IO readiness events
@@ -414,7 +415,8 @@ int usvfs_ioctl(const char*, unsigned int cmd, void* arg, fuse_file_info*,
  * The callee is responsible for destroying ph with
  * fuse_pollhandle_destroy() when no longer in use.
  */
-int usvfs_poll(const char*, fuse_file_info*, fuse_pollhandle* ph, unsigned* reventsp);
+int usvfs_poll(const char*, fuse_file_info*, fuse_pollhandle* ph,
+               unsigned* reventsp) noexcept;
 
 /** Write contents of buffer to an open file
  *
@@ -425,7 +427,8 @@ int usvfs_poll(const char*, fuse_file_info*, fuse_pollhandle* ph, unsigned* reve
  * Unless FUSE_CAP_HANDLE_KILLPRIV is disabled, this method is
  * expected to reset the setuid and setgid bits.
  */
-int usvfs_write_buf(const char* path, fuse_bufvec* buf, off_t off, fuse_file_info* fi);
+int usvfs_write_buf(const char* path, fuse_bufvec* buf, off_t off,
+                    fuse_file_info* fi) noexcept;
 
 /** Store data from an open file in a buffer
  *
@@ -442,7 +445,7 @@ int usvfs_write_buf(const char* path, fuse_bufvec* buf, off_t off, fuse_file_inf
  * allocated memory will be freed by the caller.
  */
 int usvfs_read_buf(const char* path, fuse_bufvec** bufp, size_t size, off_t off,
-                   fuse_file_info* fi);
+                   fuse_file_info* fi) noexcept;
 /**
  * Perform BSD file locking operation
  *
@@ -461,7 +464,7 @@ int usvfs_read_buf(const char* path, fuse_bufvec** bufp, size_t size, off_t off,
  * allow file locking to work locally.  Hence it is only
  * interesting for network filesystems and similar.
  */
-int usvfs_flock(const char* path, fuse_file_info* fi, int op);
+int usvfs_flock(const char* path, fuse_file_info* fi, int op) noexcept;
 
 /**
  * Allocates space for an open file
@@ -472,7 +475,7 @@ int usvfs_flock(const char* path, fuse_file_info* fi, int op);
  * of space on the file system media.
  */
 int usvfs_fallocate(const char* path, int mode, off_t offset, off_t length,
-                    fuse_file_info* fi);
+                    fuse_file_info* fi) noexcept;
 
 /**
  * Copy a range of data from one file to another
@@ -489,9 +492,9 @@ int usvfs_fallocate(const char* path, int mode, off_t offset, off_t length,
 ssize_t usvfs_copy_file_range(const char* path_in, fuse_file_info* fi_in,
                               off_t offset_in, const char* path_out,
                               fuse_file_info* fi_out, off_t offset_out, size_t size,
-                              int flags);
+                              int flags) noexcept;
 
 /**
  * Find next data or hole after the specified offset
  */
-off_t usvfs_lseek(const char* path, off_t off, int whence, fuse_file_info* fi);
+off_t usvfs_lseek(const char* path, off_t off, int whence, fuse_file_info* fi) noexcept;
