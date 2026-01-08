@@ -1,7 +1,6 @@
 #pragma once
 
 #define OPEN_FLAGS (O_PATH | O_DIRECTORY)
-#define OPEN_PERMS 777
 
 /** Get file attributes.
  *

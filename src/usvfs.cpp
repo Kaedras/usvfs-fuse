@@ -142,7 +142,7 @@ int usvfs_mkdir(const char* path, mode_t mode)
   }
 
   // open and save the file descriptor
-  int fd = openat(parentFd, fileName.c_str(), OPEN_FLAGS, OPEN_PERMS);
+  int fd = openat(parentFd, fileName.c_str(), OPEN_FLAGS);
   if (fd < 0) {
     const int e = errno;
     logger::error("openat failed: {}", parentFd, realParentPath, fileName, strerror(e));

@@ -26,7 +26,7 @@ shared_ptr<VirtualFileTreeItem> createFileTree(const string& path, FdMap& fdMap)
   error_code ec;
   auto fileTree = make_shared<VirtualFileTreeItem>("/", path, dir);
 
-  int fd = open(path.c_str(), OPEN_FLAGS, OPEN_PERMS);
+  int fd = open(path.c_str(), OPEN_FLAGS);
   if (fd == -1) {
     throw runtime_error(
         format("error opening directory {}: {}", path, strerror(errno)));
@@ -50,7 +50,7 @@ shared_ptr<VirtualFileTreeItem> createFileTree(const string& path, FdMap& fdMap)
     }
 
     if (entry.is_directory()) {
-      fd = open(entry.path().string().c_str(), OPEN_FLAGS, OPEN_PERMS);
+      fd = open(entry.path().string().c_str(), OPEN_FLAGS);
       if (fd == -1) {
         throw runtime_error(
             format("error opening directory {}: {}", path, strerror(errno)));
@@ -232,7 +232,7 @@ bool UsvfsManager::usvfsVirtualLinkFile(const std::string& source,
       auto result = state->fileTree->add(dstPath.filename().string(), source, file);
       if (result != nullptr) {
         string parentDir = getParentPath(source);
-        int fd           = open(parentDir.c_str(), OPEN_FLAGS, OPEN_PERMS);
+        int fd           = open(parentDir.c_str(), OPEN_FLAGS);
         if (fd == -1) {
           logger::error("open() failed for {}: {}", parentDir, strerror(errno));
           return false;
@@ -248,7 +248,7 @@ bool UsvfsManager::usvfsVirtualLinkFile(const std::string& source,
   string dstParentDir = getParentPath(destination);
 
   // open a file descriptor for the source parent directory
-  int fd = open(srcParentDir.c_str(), OPEN_FLAGS, OPEN_PERMS);
+  int fd = open(srcParentDir.c_str(), OPEN_FLAGS);
   if (fd == -1) {
     logger::error("open() failed for {}: {}", srcParentDir, strerror(errno));
     return false;
@@ -257,7 +257,7 @@ bool UsvfsManager::usvfsVirtualLinkFile(const std::string& source,
   fdMap[srcParentDir] = fd;
 
   // open a file descriptor for the destination parent directory
-  fd = open(dstParentDir.c_str(), OPEN_FLAGS, OPEN_PERMS);
+  fd = open(dstParentDir.c_str(), OPEN_FLAGS);
   if (fd == -1) {
     logger::error("open() failed for {}: {}", dstParentDir, strerror(errno));
     return false;
@@ -302,7 +302,7 @@ bool UsvfsManager::usvfsVirtualLinkDirectoryStatic(const std::string& source,
   error_code ec;
   FdMap fdMap;
   {
-    int fd = open(source.c_str(), OPEN_FLAGS, OPEN_PERMS);
+    int fd = open(source.c_str(), OPEN_FLAGS);
     if (fd == -1) {
       logger::error("error opening {}: {}", source, strerror(errno));
       return false;
@@ -345,7 +345,7 @@ bool UsvfsManager::usvfsVirtualLinkDirectoryStatic(const std::string& source,
         return false;
       }
       if (entry.is_directory()) {
-        int fd = open(entry.path().string().c_str(), OPEN_FLAGS, OPEN_PERMS);
+        int fd = open(entry.path().string().c_str(), OPEN_FLAGS);
         if (fd == -1) {
           logger::error("open('{}') failed: {}", entry.path().string(),
                         strerror(errno));
@@ -899,7 +899,7 @@ bool UsvfsManager::mountInternal() noexcept
 
   int fd;
   if (!m_upperDir.empty()) {
-    fd = open(m_upperDir.c_str(), OPEN_FLAGS, OPEN_PERMS);
+    fd = open(m_upperDir.c_str(), OPEN_FLAGS);
     if (fd == -1) {
       logger::error("failed to open upper directory '{}': {}", m_upperDir,
                     strerror(errno));
