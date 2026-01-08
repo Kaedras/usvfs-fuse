@@ -599,7 +599,7 @@ void UsvfsManager::usvfsAddSkipDirectory(const std::string& directory) noexcept
   m_skipDirectories.emplace(directory);
 }
 
-void UsvfsManager::usvfsClearSkipDirectories()
+void UsvfsManager::usvfsClearSkipDirectories() noexcept
 {
   scoped_lock lock(m_mtx);
   logger::debug("clearing skip directories");
@@ -686,7 +686,7 @@ void UsvfsManager::setLogFile(const std::string& logFile) noexcept
   }
 }
 
-const char* UsvfsManager::usvfsVersionString()
+const char* UsvfsManager::usvfsVersionString() noexcept
 {
   return USVFS_VERSION_STRING;
 }
@@ -753,7 +753,7 @@ void UsvfsManager::setUpperDir(std::string upperDir) noexcept
   m_upperDir = std::move(upperDir);
 }
 
-void UsvfsManager::setUseMountNamespace(bool value)
+void UsvfsManager::setUseMountNamespace(bool value) noexcept
 {
   scoped_lock lock(m_mtx);
   m_useMountNamespace = value;

@@ -155,7 +155,7 @@ public:
   /**
    * clears the directory skip-list
    */
-  void usvfsClearSkipDirectories();
+  void usvfsClearSkipDirectories() noexcept;
 
   /**
    * adds a library to be force loaded when the given process is injected
@@ -187,7 +187,7 @@ public:
   // CrashDumpsType type,
   // const wchar_t* dumpPath);
 
-  static const char* usvfsVersionString();
+  static const char* usvfsVersionString() noexcept;
 
   bool mount() noexcept;
   bool unmount() noexcept;
@@ -197,7 +197,7 @@ public:
   void setUpperDir(std::string upperDir) noexcept;
 
   // set whether to create mounts in a new user mount namespace
-  void setUseMountNamespace(bool value);
+  void setUseMountNamespace(bool value) noexcept;
 
   static bool
   fileNameInSkipSuffixes(const std::string& fileName,
