@@ -223,3 +223,33 @@ TEST_F(FileTreeTest, MergeTrees)
   ss << root;
   EXPECT_EQ(ss.str(), expectedResult);
 }
+
+TEST_F(FileTreeTest, CopyTree)
+{
+  VirtualFileTreeItem root("/", "/tmp", dir);
+  addItems(root);
+
+  VirtualFileTreeItem copy = root;
+
+  // helper function, required because find returns nullptr if the value has not been
+  // found
+  auto find = [&](const char* value) -> string {
+    const VirtualFileTreeItem* result = copy.find(value);
+    if (result == nullptr) {
+      return "";
+    }
+    return result->realPath();
+  };
+
+  EXPECT_EQ(find("/1"), "/tmp/a");
+  EXPECT_EQ(find("/1/1"), "/tmp/a/a");
+  EXPECT_EQ(find("/2"), "/tmp/b");
+  EXPECT_EQ(find("/2/1"), "/tmp/b/a");
+  EXPECT_EQ(find("/2/2"), "/tmp/b/b");
+  EXPECT_EQ(find("/2/2/1"), "/tmp/b/b/a");
+  EXPECT_EQ(find("/2/3"), "/tmp/b/c");
+  EXPECT_EQ(find("/3"), "/tmp/c");
+  EXPECT_EQ(find("/3/1"), "/tmp/c/a");
+  EXPECT_EQ(find("/3/2"), "/tmp/c/b");
+  EXPECT_EQ(find("/3/2/1"), "/tmp/c/b/a");
+}
