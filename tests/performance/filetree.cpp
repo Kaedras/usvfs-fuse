@@ -15,6 +15,15 @@ static void createFiletree(benchmark::State& state)
   }
 }
 
+static void copyFiletree(benchmark::State& state)
+{
+  const VirtualFileTreeItem root("/", "/tmp", dir);
+  for (auto _ : state) {
+    auto copy = root;
+    benchmark::DoNotOptimize(copy);
+  }
+}
+
 static void addItemToFiletree(benchmark::State& state)
 {
   for (auto _ : state) {
@@ -34,8 +43,19 @@ static void findInFiletree(benchmark::State& state)
   }
 }
 
+static void eraseFromFiletree(benchmark::State& state)
+{
+  for (auto _ : state) {
+    auto root = VirtualFileTreeItem("/", "/tmp", dir);
+    root.add("/a", "/tmp/a", dir);
+    root.erase("/a");
+  }
+}
+
 BENCHMARK(createFiletree);
+BENCHMARK(copyFiletree);
 BENCHMARK(addItemToFiletree);
 BENCHMARK(findInFiletree);
+BENCHMARK(eraseFromFiletree);
 
 }  // namespace benchmarks
