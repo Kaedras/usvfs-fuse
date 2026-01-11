@@ -456,7 +456,7 @@ pid_t UsvfsManager::usvfsCreateProcessHooked(const std::string& file,
     }
 
     // create environment
-    char** envp = static_cast<char**>(malloc((env.size() + 1) * sizeof(char*)));
+    char** envp = static_cast<char**>(calloc(env.size() + 1, sizeof(char*)));
     int i       = 0;
     for (const auto& v : env) {
       // ensure null termination
