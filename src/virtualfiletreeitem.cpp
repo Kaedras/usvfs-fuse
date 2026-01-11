@@ -398,27 +398,21 @@ VirtualFileTreeItem::addInternal(std::string name, std::string realPath, Type ty
                                    updateExisting);
   }
 
-  // check if the item already exists
-  if (const auto existingItem = m_children.find(name);
-      existingItem != m_children.end()) {
+  auto [it, wasInserted] = m_children.try_emplace(nameLc, nullptr);
+  if (!wasInserted) {
     if (!updateExisting) {
       logger::error("item '{}' already exists and should not be updated", name);
       errno = EEXIST;
       return nullptr;
     }
     logger::debug("setting real path of existing item '{}' to '{}'", name, realPath);
-    existingItem->second->m_realPath = realPath;
+    it->second->m_realPath = realPath;
 
-    return existingItem->second;
+    return it->second;
   }
 
-  auto [newItem, wasInserted] = m_children.emplace(
-      nameLc, make_shared<VirtualFileTreeItem>(name, realPath, type, this));
-  if (!wasInserted) {
-    logger::error("m_children.emplace(key='{}') failed on file '{}'", nameLc, name);
-    return nullptr;
-  }
-  return newItem->second;
+  it->second = make_shared<VirtualFileTreeItem>(name, realPath, type, this);
+  return it->second;
 }
 
 std::ostream& operator<<(std::ostream& os, const VirtualFileTreeItem& item) noexcept
