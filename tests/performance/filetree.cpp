@@ -15,6 +15,15 @@ static void createFiletree(benchmark::State& state)
   }
 }
 
+static void copyEmptyFiletree(benchmark::State& state)
+{
+  VirtualFileTreeItem root("/", "/tmp", dir);
+  for (auto _ : state) {
+    auto copy = root;
+    benchmark::DoNotOptimize(copy);
+  }
+}
+
 static void copyFiletree(benchmark::State& state)
 {
   VirtualFileTreeItem root("/", "/tmp", dir);
@@ -55,6 +64,7 @@ static void eraseFromFiletree(benchmark::State& state)
 }
 
 BENCHMARK(createFiletree);
+BENCHMARK(copyEmptyFiletree);
 BENCHMARK(copyFiletree);
 BENCHMARK(addItemToFiletree);
 BENCHMARK(findInFiletree);
