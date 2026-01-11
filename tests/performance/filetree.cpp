@@ -17,7 +17,9 @@ static void createFiletree(benchmark::State& state)
 
 static void copyFiletree(benchmark::State& state)
 {
-  const VirtualFileTreeItem root("/", "/tmp", dir);
+  VirtualFileTreeItem root("/", "/tmp", dir);
+  root.add("/a", "/tmp/a", dir);
+  root.add("/a/a", "/tmp/a/a", file);
   for (auto _ : state) {
     auto copy = root;
     benchmark::DoNotOptimize(copy);
