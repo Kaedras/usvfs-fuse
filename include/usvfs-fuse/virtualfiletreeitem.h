@@ -124,4 +124,9 @@ private:
   // find function for internal use to prevent unnecessary string copies
   [[nodiscard]] VirtualFileTreeItem* findPrivate(std::string_view value,
                                                  bool includeDeleted) noexcept;
+
+  // add function without locking for internal use
+  std::shared_ptr<VirtualFileTreeItem>
+  addInternal(std::string name, std::string realPath, Type type,
+              bool updateExisting = false) noexcept;
 };

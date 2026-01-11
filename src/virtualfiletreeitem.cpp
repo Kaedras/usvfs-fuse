@@ -40,12 +40,11 @@ VirtualFileTreeItem::VirtualFileTreeItem(std::string name, std::string realPath,
 
 VirtualFileTreeItem& VirtualFileTreeItem::operator+=(VirtualFileTreeItem& other)
 {
-#warning figure out how to properly lock this without causing a deadlock
-  // unique_lock lock(m_mtx);
+  unique_lock lock(m_mtx);
   m_realPath = other.m_realPath;
 
   for (const auto& otherItem : other.getAllItems(false)) {
-    add(otherItem->filePath(), otherItem->realPath(), otherItem->m_type, true);
+    addInternal(otherItem->filePath(), otherItem->realPath(), otherItem->m_type, true);
   }
 
   return *this;
@@ -61,54 +60,7 @@ VirtualFileTreeItem::add(std::string name, std::string realPath, Type type,
     return nullptr;
   }
   unique_lock lock(m_mtx);
-  if (name == "/") {
-    errno = EEXIST;
-    return nullptr;
-  }
-
-  // remove leading '/'
-  if (name[0] == '/') {
-    name.erase(0, 1);
-  }
-
-  // convert name to lower case
-  const string nameLc = toLower(name);
-
-  if (const size_t pos = name.find('/', 0); pos != std::string::npos) {
-    std::string subDirectory = nameLc.substr(0, pos);
-
-    auto foundEntry = m_children.find(subDirectory);
-
-    if (foundEntry == m_children.end()) {
-      logger::error("subdirectory does not exist");
-      errno = ENOENT;
-      return nullptr;
-    }
-    return foundEntry->second->add(name.substr(pos + 1), std::move(realPath), type,
-                                   updateExisting);
-  }
-
-  // check if the item already exists
-  if (const auto existingItem = m_children.find(name);
-      existingItem != m_children.end()) {
-    if (!updateExisting) {
-      logger::error("item '{}' already exists and should not be updated", name);
-      errno = EEXIST;
-      return nullptr;
-    }
-    logger::debug("setting real path of existing item '{}' to '{}'", name, realPath);
-    existingItem->second->m_realPath = realPath;
-
-    return existingItem->second;
-  }
-
-  auto [newItem, wasInserted] = m_children.emplace(
-      nameLc, make_shared<VirtualFileTreeItem>(name, realPath, type, this));
-  if (!wasInserted) {
-    logger::error("m_children.emplace(key='{}') failed on file '{}'", nameLc, name);
-    return nullptr;
-  }
-  return newItem->second;
+  return addInternal(std::move(name), std::move(realPath), type, updateExisting);
 }
 
 std::shared_ptr<VirtualFileTreeItem>
@@ -402,6 +354,60 @@ VirtualFileTreeItem* VirtualFileTreeItem::findPrivate(std::string_view value,
   logger::debug("'{}' has been deleted, returning nullptr", value);
   errno = ENOENT;
   return nullptr;
+}
+
+std::shared_ptr<VirtualFileTreeItem>
+VirtualFileTreeItem::addInternal(std::string name, std::string realPath, Type type,
+                                 bool updateExisting) noexcept
+{
+  if (name == "/") {
+    errno = EEXIST;
+    return nullptr;
+  }
+
+  // remove leading '/'
+  if (name[0] == '/') {
+    name.erase(0, 1);
+  }
+
+  // convert name to lower case
+  const string nameLc = toLower(name);
+
+  if (const size_t pos = name.find('/', 0); pos != std::string::npos) {
+    std::string subDirectory = nameLc.substr(0, pos);
+
+    auto foundEntry = m_children.find(subDirectory);
+
+    if (foundEntry == m_children.end()) {
+      logger::error("subdirectory does not exist");
+      errno = ENOENT;
+      return nullptr;
+    }
+    return foundEntry->second->add(name.substr(pos + 1), std::move(realPath), type,
+                                   updateExisting);
+  }
+
+  // check if the item already exists
+  if (const auto existingItem = m_children.find(name);
+      existingItem != m_children.end()) {
+    if (!updateExisting) {
+      logger::error("item '{}' already exists and should not be updated", name);
+      errno = EEXIST;
+      return nullptr;
+    }
+    logger::debug("setting real path of existing item '{}' to '{}'", name, realPath);
+    existingItem->second->m_realPath = realPath;
+
+    return existingItem->second;
+  }
+
+  auto [newItem, wasInserted] = m_children.emplace(
+      nameLc, make_shared<VirtualFileTreeItem>(name, realPath, type, this));
+  if (!wasInserted) {
+    logger::error("m_children.emplace(key='{}') failed on file '{}'", nameLc, name);
+    return nullptr;
+  }
+  return newItem->second;
 }
 
 std::ostream& operator<<(std::ostream& os, const VirtualFileTreeItem& item) noexcept
