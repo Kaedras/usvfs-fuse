@@ -451,8 +451,7 @@ pid_t UsvfsManager::usvfsCreateProcessHooked(const std::string& file,
 
   int pipefd[2];
 
-  int result = pipe(pipefd);
-  if (result == -1) {
+  if (pipe(pipefd) == -1) {
     logger::error("pipe failed: {}", strerror(errno));
     return -1;
   }
