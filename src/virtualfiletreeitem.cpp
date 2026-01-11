@@ -38,6 +38,15 @@ VirtualFileTreeItem::VirtualFileTreeItem(std::string name, std::string realPath,
   }
 }
 
+VirtualFileTreeItem::VirtualFileTreeItem(const VirtualFileTreeItem& other)
+    : m_fileName(other.m_fileName), m_realPath(other.m_realPath),
+      m_parent(other.m_parent), m_type(other.m_type), m_deleted(other.m_deleted)
+{
+  for (const auto& otherItem : other.getAllItems(false)) {
+    addInternal(otherItem->filePath(), otherItem->realPath(), otherItem->m_type);
+  }
+}
+
 VirtualFileTreeItem& VirtualFileTreeItem::operator+=(const VirtualFileTreeItem& other)
 {
   unique_lock lock(m_mtx);

@@ -24,6 +24,9 @@ public:
                       VirtualFileTreeItem* parent = nullptr) noexcept(false);
   VirtualFileTreeItem(std::string name, std::string realPath,
                       VirtualFileTreeItem* parent = nullptr) noexcept(false);
+
+  VirtualFileTreeItem(const VirtualFileTreeItem& other);
+
   ~VirtualFileTreeItem() = default;
 
   VirtualFileTreeItem& operator+=(const VirtualFileTreeItem& other);
