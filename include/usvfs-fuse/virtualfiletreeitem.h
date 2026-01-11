@@ -51,6 +51,8 @@ public:
   std::shared_ptr<VirtualFileTreeItem> add(std::string name, std::string realPath,
                                            bool updateExisting = false) noexcept;
 
+  std::shared_ptr<VirtualFileTreeItem> clone() const;
+
   VirtualFileTreeItem* getParent() const noexcept;
 
   Type getType() const noexcept;
