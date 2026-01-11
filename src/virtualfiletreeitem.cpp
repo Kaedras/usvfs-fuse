@@ -125,7 +125,7 @@ bool VirtualFileTreeItem::erase(std::string name, bool reallyErase) noexcept
   // convert name to lower case
   toLowerInplace(name);
 
-  if (const size_t pos = name.find('/', 0); pos != std::string::npos) {
+  if (const size_t pos = name.find('/', 0); pos != string::npos) {
     std::string subDirectory = name.substr(0, pos);
     const auto foundEntry    = m_children.find(subDirectory);
 
@@ -327,7 +327,7 @@ VirtualFileTreeItem* VirtualFileTreeItem::findPrivate(std::string_view value,
     value.remove_prefix(1);
   }
 
-  if (const size_t pos = value.find('/'); pos != std::string::npos) {
+  if (const size_t pos = value.find('/'); pos != string::npos) {
     const string_view subDirectory = value.substr(0, pos);
 
     // the item is in a subdirectory
