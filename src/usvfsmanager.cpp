@@ -62,7 +62,7 @@ shared_ptr<VirtualFileTreeItem> createFileTree(const string& path, FdMap& fdMap)
   return fileTree;
 }
 
-fuse_operations createOperations()
+fuse_operations createOperations() noexcept
 {
   fuse_operations ops = {};
   ops.getattr         = usvfs_getattr;
@@ -111,23 +111,28 @@ fuse_operations createOperations()
   return ops;
 }
 
-void writeToFile(const string& filename, string_view content)
+void writeToFile(const string& filename, string_view content) noexcept(false)
 {
   ofstream ofs(filename);
   ofs.exceptions(std::ifstream::failbit | std::ifstream::badbit);
   ofs << content;
 }
 
-int childFunc(void* arg)
+int childFunc(void* arg) noexcept
 {
   auto* state = static_cast<MountState*>(arg);
 
-  // remap uid
-  writeToFile("/proc/self/uid_map", format("0 {} 1", state->uid));
-  // deny setgroups (see user_namespaces(7))
-  writeToFile("/proc/self/setgroups", "deny");
-  // remap gid
-  writeToFile("/proc/self/gid_map", format("0 {} 1", state->gid));
+  try {
+    // remap uid
+    writeToFile("/proc/self/uid_map", format("0 {} 1", state->uid));
+    // deny setgroups (see user_namespaces(7))
+    writeToFile("/proc/self/setgroups", "deny");
+    // remap gid
+    writeToFile("/proc/self/gid_map", format("0 {} 1", state->gid));
+  } catch (const exception& e) {
+    logger::error("failed to set up namespace, {}", e.what());
+    return -1;
+  }
 
   // enter existing namespace
   if (state->nsFd != -1) {
@@ -174,7 +179,7 @@ int childFunc(void* arg)
   return 0;
 }
 
-vector<string> createEnv()
+vector<string> createEnv() noexcept
 {
   vector<string> env;
   for (int i = 0; environ[i] != nullptr; ++i) {
