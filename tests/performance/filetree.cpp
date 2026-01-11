@@ -47,7 +47,7 @@ static void addItemToFiletree(benchmark::State& state)
 
 static void findInFiletree(benchmark::State& state)
 {
-  auto root = VirtualFileTreeItem("/", "/tmp", dir);
+  VirtualFileTreeItem root("/", "/tmp", dir);
   root.add("/a", "/tmp/a", file);
 
   for (auto _ : state) {
