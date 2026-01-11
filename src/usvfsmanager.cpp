@@ -179,15 +179,6 @@ int childFunc(void* arg) noexcept
   return 0;
 }
 
-vector<string> createEnv() noexcept
-{
-  vector<string> env;
-  for (int i = 0; environ[i] != nullptr; ++i) {
-    env.emplace_back(environ[i]);
-  }
-  return env;
-}
-
 }  // namespace
 
 UsvfsManager::~UsvfsManager() noexcept
@@ -382,7 +373,7 @@ const std::vector<pid_t>& UsvfsManager::usvfsGetVFSProcessList() const noexcept
 pid_t UsvfsManager::usvfsCreateProcessHooked(const std::string& file,
                                              const std::string& arg,
                                              const std::string& workDir,
-                                             std::vector<std::string> env) noexcept
+                                             std::vector<std::string_view> env) noexcept
 {
   scoped_lock lock(m_mtx);
 
@@ -468,7 +459,11 @@ pid_t UsvfsManager::usvfsCreateProcessHooked(const std::string& file,
     char** envp = static_cast<char**>(malloc((env.size() + 1) * sizeof(char*)));
     int i       = 0;
     for (const auto& v : env) {
-      envp[i++] = strdup(v.c_str());
+      // ensure null termination
+      vector buf(v.begin(), v.end());
+      buf.push_back('\0');
+
+      envp[i++] = strdup(buf.data());
     }
     envp[i] = nullptr;
 

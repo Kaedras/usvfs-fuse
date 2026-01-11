@@ -66,6 +66,14 @@ static void getFileNameFromPath(benchmark::State& state)
   }
 }
 
+static void createEnv(benchmark::State& state)
+{
+  for (auto _ : state) {
+    auto result = ::createEnv();
+    benchmark::DoNotOptimize(result);
+  }
+}
+
 BENCHMARK_CAPTURE(iequals, ascii, "abc", "aBC");
 BENCHMARK_CAPTURE(iequals, unicode, "テストtest", "テストtESt");
 BENCHMARK_CAPTURE(iendsWith, ascii, "test", "ST");
@@ -76,5 +84,6 @@ BENCHMARK(toLower);
 BENCHMARK(toUpper);
 BENCHMARK(getParentPath);
 BENCHMARK(getFileNameFromPath);
+BENCHMARK(createEnv);
 
 }  // namespace benchmarks

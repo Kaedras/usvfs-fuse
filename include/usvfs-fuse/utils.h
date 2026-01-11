@@ -2,6 +2,7 @@
 
 #include <string>
 #include <string_view>
+#include <vector>
 
 bool iequals(std::string_view lhs, std::string_view rhs);
 bool iendsWith(std::string_view lhs, std::string_view rhs);
@@ -18,3 +19,5 @@ std::string getFileNameFromPath(std::string_view path);
  * @note Returns empty string instead of "/"
  */
 std::string getParentPath(std::string_view path);
+
+std::vector<std::string_view> createEnv() noexcept;

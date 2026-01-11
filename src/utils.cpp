@@ -114,3 +114,22 @@ std::string getParentPath(const std::string_view path)
   }
   return string(path.substr(0, pos));
 }
+
+std::vector<std::string_view> createEnv() noexcept
+{
+  // determine vector size
+  // iterating over environ twice and allocating all memory at once is faster than
+  // iterating once and allocating memory for each item separately
+  int count = 0;
+  while (environ[count] != nullptr) {
+    ++count;
+  }
+
+  vector<string_view> env;
+  env.reserve(count);
+
+  for (int i = 0; environ[i] != nullptr; ++i) {
+    env.emplace_back(environ[i]);
+  }
+  return env;
+}

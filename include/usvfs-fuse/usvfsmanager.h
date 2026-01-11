@@ -83,7 +83,7 @@ public:
    */
   pid_t usvfsCreateProcessHooked(const std::string& file, const std::string& arg,
                                  const std::string& workDir,
-                                 std::vector<std::string> env) noexcept;
+                                 std::vector<std::string_view> env) noexcept;
 
   pid_t usvfsCreateProcessHooked(const std::string& file, const std::string& arg,
                                  const std::string& workDir) noexcept;
