@@ -164,10 +164,8 @@ VirtualFileTreeItem* VirtualFileTreeItem::find(std::string_view value,
                                                bool includeDeleted) noexcept
 {
   shared_lock lock(m_mtx);
-  // convert name to lower case
-  const string lower = toLower(value);
 
-  return findPrivate(lower, includeDeleted);
+  return findPrivate(toLower(value), includeDeleted);
 }
 
 std::string VirtualFileTreeItem::fileName() const noexcept
