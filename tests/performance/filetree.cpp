@@ -37,9 +37,11 @@ static void copyFiletree(benchmark::State& state)
 
 static void addItemToFiletree(benchmark::State& state)
 {
+  const VirtualFileTreeItem root("/", "/tmp", dir);
   for (auto _ : state) {
-    auto root = VirtualFileTreeItem("/", "/tmp", dir);
-    root.add("/a", "/tmp/a", file);
+    auto copy = root;
+    copy.add("/a", "/tmp/a", dir);
+    copy.add("/a/a", "/tmp/a/a", file);
   }
 }
 
@@ -56,10 +58,11 @@ static void findInFiletree(benchmark::State& state)
 
 static void eraseFromFiletree(benchmark::State& state)
 {
+  VirtualFileTreeItem root("/", "/tmp", dir);
+  root.add("/a", "/tmp/a", dir);
   for (auto _ : state) {
-    auto root = VirtualFileTreeItem("/", "/tmp", dir);
-    root.add("/a", "/tmp/a", dir);
-    root.erase("/a");
+    auto copy = root;
+    copy.erase("/a");
   }
 }
 
