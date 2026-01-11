@@ -38,7 +38,7 @@ VirtualFileTreeItem::VirtualFileTreeItem(std::string name, std::string realPath,
   }
 }
 
-VirtualFileTreeItem& VirtualFileTreeItem::operator+=(VirtualFileTreeItem& other)
+VirtualFileTreeItem& VirtualFileTreeItem::operator+=(const VirtualFileTreeItem& other)
 {
   unique_lock lock(m_mtx);
   m_realPath = other.m_realPath;

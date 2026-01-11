@@ -26,7 +26,7 @@ public:
                       VirtualFileTreeItem* parent = nullptr) noexcept(false);
   ~VirtualFileTreeItem() = default;
 
-  VirtualFileTreeItem& operator+=(VirtualFileTreeItem& other);
+  VirtualFileTreeItem& operator+=(const VirtualFileTreeItem& other);
 
   /**
    * @brief Add a new item to the virtual file tree
