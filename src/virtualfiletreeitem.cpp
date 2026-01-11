@@ -323,7 +323,9 @@ VirtualFileTreeItem* VirtualFileTreeItem::findPrivate(std::string_view value,
   }
 
   // remove leading '/'
-  value = value[0] == '/' ? value.substr(1) : value;
+  if (value[0] == '/') {
+    value.remove_prefix(1);
+  }
 
   if (const size_t pos = value.find('/'); pos != std::string::npos) {
     const string_view subDirectory = value.substr(0, pos);
