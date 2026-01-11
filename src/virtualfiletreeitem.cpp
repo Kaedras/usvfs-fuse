@@ -42,8 +42,12 @@ VirtualFileTreeItem::VirtualFileTreeItem(const VirtualFileTreeItem& other)
     : m_fileName(other.m_fileName), m_realPath(other.m_realPath),
       m_parent(other.m_parent), m_type(other.m_type), m_deleted(other.m_deleted)
 {
-  auto clone = other.clone();
-  m_children = std::move(clone->m_children);
+  shared_lock lock(other.m_mtx);
+  for (const auto& [name, item] : other.m_children) {
+    auto childClone      = make_shared<VirtualFileTreeItem>(*item);
+    childClone->m_parent = this;
+    m_children.emplace(name, std::move(childClone));
+  }
 }
 
 VirtualFileTreeItem& VirtualFileTreeItem::operator+=(const VirtualFileTreeItem& other)
@@ -91,12 +95,7 @@ VirtualFileTreeItem::add(std::string name, std::string realPath,
 
 std::shared_ptr<VirtualFileTreeItem> VirtualFileTreeItem::clone() const
 {
-  auto tree = make_shared<VirtualFileTreeItem>(m_fileName, m_realPath, m_type);
-  for (const auto& item : m_children) {
-    tree->m_children.emplace(item.first, item.second->clone());
-  }
-
-  return tree;
+  return make_shared<VirtualFileTreeItem>(*this);
 }
 
 VirtualFileTreeItem* VirtualFileTreeItem::getParent() const noexcept
