@@ -26,12 +26,6 @@ struct fuse;
 
 namespace linkFlag
 {
-static constexpr unsigned int FAIL_IF_EXISTS =
-    0x00000001;  // if set, linking fails in case of an error
-static constexpr unsigned int MONITOR_CHANGES =
-    0x00000002;  // if set, changes to the source directory after the link operation
-// will be updated in the virtual fs. only relevant in static
-// link directory operations
 static constexpr unsigned int CREATE_TARGET =
     0x00000004;  // if set, file creation (including move or copy) operations to
 // destination will be redirected to the source. Only one createtarget
@@ -41,12 +35,6 @@ static constexpr unsigned int CREATE_TARGET =
 // one of its ancestors, the inner-most create-target is used
 static constexpr unsigned int RECURSIVE =
     0x00000008;  // if set, directories are linked recursively
-static constexpr unsigned int FAIL_IF_SKIPPED =
-    0x00000010;  // if set, linking fails if the file or directory is skipped
-// files or directories are skipped depending on whats been added to
-// the skip file suffixes or skip directories list in
-// the sharedparameters class, those lists are checked during virtual
-// linking
 }  // namespace linkFlag
 
 class __attribute__((visibility("default"))) UsvfsManager
@@ -79,7 +67,6 @@ public:
   /**
    * link a directory virtually. This static variant recursively links all files
    * individually, change notifications are used to update the information.
-   * @param failIfExists if true, this call fails if the destination directory exists
    * (virtually or physically)
    */
   bool usvfsVirtualLinkDirectoryStatic(const std::string& source,
@@ -219,9 +206,6 @@ private:
   [[nodiscard]] bool fileNameInSkipSuffixes(const std::string& fileName) const noexcept;
   [[nodiscard]] bool
   fileNameInSkipDirectories(const std::string& directoryName) const noexcept;
-
-  // bool assertPathExists(const std::string& path) const noexcept;
-  [[nodiscard]] bool pathExists(const std::string& path) const noexcept;
 
   [[nodiscard]] std::vector<std::string>
   librariesToForceLoad(const std::string& processName) const noexcept;

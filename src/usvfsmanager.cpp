@@ -203,7 +203,7 @@ void UsvfsManager::usvfsClearVirtualMappings() noexcept
 
 bool UsvfsManager::usvfsVirtualLinkFile(const std::string& source,
                                         const std::string& destination,
-                                        unsigned int flags) noexcept
+                                        unsigned int) noexcept
 {
   scoped_lock lock(m_mtx);
 
@@ -218,15 +218,7 @@ bool UsvfsManager::usvfsVirtualLinkFile(const std::string& source,
 
   if (fileNameInSkipSuffixes(srcPath.filename().string())) {
     logger::debug("file {} should be skipped", source);
-    return flags & linkFlag::FAIL_IF_SKIPPED ? false : true;
-  }
-
-  if (flags & linkFlag::FAIL_IF_EXISTS) {
-    if (pathExists(destination)) {
-      logger::debug("destination {} exists, not linking", destination);
-      errno = EEXIST;
-      return false;
-    }
+    return true;
   }
 
   // check if destination exists in pending mounts
@@ -298,12 +290,6 @@ bool UsvfsManager::usvfsVirtualLinkDirectoryStatic(const std::string& source,
 
   logger::trace("{}, source: {}, destination: {}", __FUNCTION__, source, destination);
 
-  // TODO: make check case insensitive?
-  if (flags & linkFlag::FAIL_IF_EXISTS && pathExists(destination)) {
-    errno = EEXIST;
-    return false;
-  }
-
   error_code ec;
   FdMap fdMap;
   {
@@ -329,13 +315,6 @@ bool UsvfsManager::usvfsVirtualLinkDirectoryStatic(const std::string& source,
       string fileName = entry.path().filename().string();
       if ((entry.is_directory() && fileNameInSkipDirectories(fileName)) ||
           (!entry.is_directory() && fileNameInSkipSuffixes(fileName))) {
-        // Fail if we desire to fail when a dir/file is skipped
-        if (flags & linkFlag::FAIL_IF_SKIPPED) {
-          logger::debug("{} '{}' skipped, failing as defined by link flags",
-                        entry.is_directory() ? "directory" : "file", fileName);
-          return false;
-        }
-
         continue;
       }
 
@@ -850,21 +829,6 @@ bool UsvfsManager::fileNameInSkipDirectories(
     }
     return false;
   });
-}
-
-bool UsvfsManager::pathExists(const std::string& path) const noexcept
-{
-  if (fs::exists(path)) {
-    return true;
-  }
-
-  for (const auto& mount : m_pendingMounts) {
-    if (mount->fileTree->find(path) != nullptr) {
-      return true;
-    }
-  }
-
-  return false;
 }
 
 std::vector<std::string>
