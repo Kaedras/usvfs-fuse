@@ -63,7 +63,7 @@ public:
    */
   bool erase(std::string name, bool reallyErase = true) noexcept;
 
-  [[nodiscard]] VirtualFileTreeItem* find(const std::string& value,
+  [[nodiscard]] VirtualFileTreeItem* find(std::string_view value,
                                           bool includeDeleted = false) noexcept;
 
   /**

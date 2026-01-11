@@ -151,7 +151,7 @@ bool VirtualFileTreeItem::erase(std::string name, bool reallyErase) noexcept
   return true;
 }
 
-VirtualFileTreeItem* VirtualFileTreeItem::find(const std::string& value,
+VirtualFileTreeItem* VirtualFileTreeItem::find(std::string_view value,
                                                bool includeDeleted) noexcept
 {
   shared_lock lock(m_mtx);
