@@ -66,11 +66,29 @@ static void eraseFromFiletree(benchmark::State& state)
   }
 }
 
+static void mergeFileTrees(benchmark::State& state)
+{
+  VirtualFileTreeItem a("/", "/tmp", dir);
+  a.add("/a", "/tmp/a", dir);
+  a.add("/b", "/tmp/b", dir);
+
+  VirtualFileTreeItem b("/", "/tmp", dir);
+  b.add("/c", "/tmp/c", dir);
+  b.add("/d", "/tmp/d", dir);
+
+  for (auto _ : state) {
+    auto merged = a;
+    merged += b;
+    benchmark::DoNotOptimize(merged);
+  }
+}
+
 BENCHMARK(createFiletree);
 BENCHMARK(copyEmptyFiletree);
 BENCHMARK(copyFiletree);
 BENCHMARK(addItemToFiletree);
 BENCHMARK(findInFiletree);
 BENCHMARK(eraseFromFiletree);
+BENCHMARK(mergeFileTrees);
 
 }  // namespace benchmarks
