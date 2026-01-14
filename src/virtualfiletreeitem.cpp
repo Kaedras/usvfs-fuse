@@ -53,10 +53,20 @@ VirtualFileTreeItem::VirtualFileTreeItem(const VirtualFileTreeItem& other)
 VirtualFileTreeItem& VirtualFileTreeItem::operator+=(const VirtualFileTreeItem& other)
 {
   unique_lock lock(m_mtx);
+  shared_lock lock_other(other.m_mtx);
+
   m_realPath = other.m_realPath;
 
-  for (const auto& otherItem : other.getAllItems(false)) {
-    addInternal(otherItem->filePath(), otherItem->realPath(), otherItem->m_type, true);
+  for (const auto& [name, item] : other.m_children) {
+    // try to insert a nullptr
+    auto [it, wasInserted] = m_children.try_emplace(name, nullptr);
+    if (wasInserted) {
+      // item did not exist, replace nullptr with a clone
+      it->second = item->clone();
+    } else {
+      // item already exists, merge recursively
+      *it->second += *item;
+    }
   }
 
   return *this;
