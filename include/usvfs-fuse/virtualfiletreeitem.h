@@ -7,7 +7,8 @@
 #include <vector>
 
 class VirtualFileTreeItem;
-using FileMap = std::map<std::string, std::shared_ptr<VirtualFileTreeItem>>;
+using FileMap =
+    std::map<std::string, std::shared_ptr<VirtualFileTreeItem>, std::less<>>;
 
 enum Type
 {
