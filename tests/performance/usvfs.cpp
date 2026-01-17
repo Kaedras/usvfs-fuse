@@ -60,7 +60,10 @@ static void open(benchmark::State& state)
   }
 }
 
-BENCHMARK(open)->Setup(DoSetup)->Teardown(DoTeardown);
-BENCHMARK(open)->Name("usvfs_open")->Setup(DoSetup_usvfs)->Teardown(DoTeardown_usvfs);
+BENCHMARK(open)->Name("usvfs/open")->Setup(DoSetup)->Teardown(DoTeardown);
+BENCHMARK(open)
+    ->Name("usvfs/usvfs_open")
+    ->Setup(DoSetup_usvfs)
+    ->Teardown(DoTeardown_usvfs);
 
 }  // namespace benchmarks

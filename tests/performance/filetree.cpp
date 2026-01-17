@@ -126,13 +126,16 @@ static void mergeFiletrees(benchmark::State& state)
   }
 }
 
-BENCHMARK(createFiletree);
-BENCHMARK(copyEmptyFiletree);
-BENCHMARK(copyFiletree)->DenseRange(1, 10);
-BENCHMARK(addItemToFiletree)->UseManualTime();
-BENCHMARK(addMultipleItemsToFiletree)->UseManualTime();
-BENCHMARK(findInFiletree)->DenseRange(1, 10);
-BENCHMARK(eraseFromFiletree)->UseManualTime()->DenseRange(1, 10);
-BENCHMARK(mergeFiletrees)->UseManualTime();
+BENCHMARK(createFiletree)->Name("filetree/create");
+BENCHMARK(copyEmptyFiletree)->Name("filetree/copyEmpty");
+BENCHMARK(copyFiletree)->Name("filetree/copy")->DenseRange(1, 10);
+BENCHMARK(addItemToFiletree)->Name("filetree/add")->UseManualTime();
+BENCHMARK(addMultipleItemsToFiletree)->Name("filetree/addMultiple")->UseManualTime();
+BENCHMARK(findInFiletree)->Name("filetree/find")->DenseRange(1, 10);
+BENCHMARK(eraseFromFiletree)
+    ->Name("filetree/erase")
+    ->UseManualTime()
+    ->DenseRange(1, 10);
+BENCHMARK(mergeFiletrees)->Name("filetree/merge")->UseManualTime();
 
 }  // namespace benchmarks
