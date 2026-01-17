@@ -61,16 +61,50 @@ bool istartsWith(const std::string_view lhs, const std::string_view rhs)
 
 std::string toLower(const std::string_view str)
 {
+  // try using ASCII first
+  bool is_ascii = true;
+  for (const unsigned char c : str) {
+    if (c > 127) {
+      is_ascii = false;
+      break;
+    }
+  }
+
+  string result;
+  result.reserve(str.length());
+
+  if (is_ascii) {
+    for (const char c : str) {
+      result.push_back(static_cast<char>(tolower(c)));
+    }
+    return result;
+  }
+
   auto unicodeStr = UnicodeString::fromUTF8(str);
   unicodeStr.toLower();
 
-  string result;
   unicodeStr.toUTF8String(result);
   return result;
 }
 
 void toLowerInplace(std::string& str)
 {
+  // try using ASCII first
+  bool is_ascii = true;
+  for (const unsigned char c : str) {
+    if (c > 127) {
+      is_ascii = false;
+      break;
+    }
+  }
+
+  if (is_ascii) {
+    for (char& c : str) {
+      c = tolower(c);
+    }
+    return;
+  }
+
   auto unicodeStr = UnicodeString::fromUTF8(str);
   unicodeStr.toLower();
 
@@ -80,16 +114,50 @@ void toLowerInplace(std::string& str)
 
 std::string toUpper(const std::string_view str)
 {
+  // try using ASCII first
+  bool is_ascii = true;
+  for (const unsigned char c : str) {
+    if (c > 127) {
+      is_ascii = false;
+      break;
+    }
+  }
+
+  string result;
+  result.reserve(str.length());
+
+  if (is_ascii) {
+    for (const char c : str) {
+      result.push_back(static_cast<char>(toupper(c)));
+    }
+    return result;
+  }
+
   auto unicodeStr = UnicodeString::fromUTF8(str);
   unicodeStr.toUpper();
 
-  string result;
   unicodeStr.toUTF8String(result);
   return result;
 }
 
 void toUpperInplace(std::string& str)
 {
+  // try using ASCII first
+  bool is_ascii = true;
+  for (const unsigned char c : str) {
+    if (c > 127) {
+      is_ascii = false;
+      break;
+    }
+  }
+
+  if (is_ascii) {
+    for (char& c : str) {
+      c = toupper(c);
+    }
+    return;
+  }
+
   auto unicodeStr = UnicodeString::fromUTF8(str);
   unicodeStr.toUpper();
 
