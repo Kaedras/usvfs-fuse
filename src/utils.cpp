@@ -19,7 +19,7 @@ bool iequals(const std::string_view lhs, const std::string_view rhs)
       is_ascii = false;
       break;
     }
-    if (std::tolower(a) != std::tolower(b)) {
+    if (tolower(a) != tolower(b)) {
       return false;
     }
   }
@@ -100,7 +100,7 @@ void toUpperInplace(std::string& str)
 std::string getFileNameFromPath(const std::string_view path)
 {
   const size_t pos = path.find_last_of('/');
-  if (pos == std::string::npos) {
+  if (pos == string::npos) {
     return string(path);
   }
   return string(path.substr(pos + 1));
@@ -109,7 +109,7 @@ std::string getFileNameFromPath(const std::string_view path)
 std::string getParentPath(const std::string_view path)
 {
   const size_t pos = path.find_last_of('/');
-  if (pos == std::string::npos) {
+  if (pos == string::npos) {
     return string(path);
   }
   return string(path.substr(0, pos));
