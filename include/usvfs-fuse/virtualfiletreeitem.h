@@ -73,7 +73,7 @@ public:
 
   /**
    * @brief Get the file name
-   * @note Returns empty string for root items
+   * @note Returns '/' for root items
    */
   [[nodiscard]] std::string fileName() const noexcept;
 
