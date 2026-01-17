@@ -35,6 +35,9 @@ jobs:
       - name: Build usvfs-fuse
         run: cmake --build build --config RelWithDebInfo
 
+      - name: Install usvfs-fuse
+        run: cmake --install build --config RelWithDebInfo
+
       - name: Upload usvfs-fuse artifact
         uses: actions/upload-artifact@master
         with:
@@ -58,4 +61,4 @@ jobs:
           path: build
 
       - name: Test usvfs-fuse
-        run: ctest --test-dir build -C RelWithDebInfo
+        run: ctest --test-dir build -C RelWithDebInfo --output-on-failure
