@@ -66,7 +66,7 @@ public:
    * @return True if the item was successfully removed, false otherwise. See errno for
    * error details
    */
-  bool erase(std::string path, bool reallyErase = true) noexcept;
+  bool erase(std::string_view path, bool reallyErase = true) noexcept;
 
   [[nodiscard]] VirtualFileTreeItem* find(std::string_view path,
                                           bool includeDeleted = false) noexcept;
@@ -142,4 +142,5 @@ private:
 
   // isEmpty function without locking
   bool isEmptyInternal() const noexcept;
+  bool eraseInternal(std::string_view path, bool reallyErase = true) noexcept;
 };

@@ -132,56 +132,22 @@ void VirtualFileTreeItem::setType(Type type) noexcept
   m_type = type;
 }
 
-bool VirtualFileTreeItem::erase(std::string path, bool reallyErase) noexcept
+bool VirtualFileTreeItem::erase(std::string_view path, bool reallyErase) noexcept
 {
+  unique_lock lock(m_mtx);
+
   if (path.empty()) {
     logger::error("attempted to call {} with an empty path", __FUNCTION__);
     errno = EINVAL;
     return false;
   }
 
-  unique_lock lock(m_mtx);
   // remove leading '/'
   if (path[0] == '/') {
-    path.erase(0, 1);
+    path.remove_prefix(1);
   }
 
-  // convert path to lower case
-  toLowerInplace(path);
-
-  if (const size_t pos = path.find('/', 0); pos != string::npos) {
-    std::string subDirectory = path.substr(0, pos);
-    const auto foundEntry    = m_children.find(subDirectory);
-
-    if (foundEntry == m_children.end()) {
-      errno = ENOENT;
-      logger::debug("subdirectory {} not found", subDirectory);
-      return false;
-    }
-
-    return foundEntry->second->erase(path.substr(pos + 1));
-  }
-
-  const auto foundEntry = m_children.find(path);
-
-  // check if the entry exists
-  if (foundEntry == m_children.end()) {
-    errno = ENOENT;
-    logger::debug("{} not found", path);
-    return false;
-  }
-
-  // check if the entry is empty
-  if (!foundEntry->second->getChildren().empty()) {
-    errno = ENOTEMPTY;
-    return false;
-  }
-
-  if (reallyErase) {
-    return m_children.erase(path);
-  }
-  foundEntry->second->setDeleted(true);
-  return true;
+  return eraseInternal(toLower(path), reallyErase);
 }
 
 VirtualFileTreeItem* VirtualFileTreeItem::find(std::string_view path,
@@ -447,6 +413,46 @@ bool VirtualFileTreeItem::isEmptyInternal() const noexcept
   return ranges::all_of(m_children, [](const auto& entry) {
     return entry.second->isEmpty();
   });
+}
+
+bool VirtualFileTreeItem::eraseInternal(std::string_view path,
+                                        bool reallyErase) noexcept
+{
+  // check if path is inside a subdirectory
+  if (const size_t pos = path.find('/', 0); pos != string::npos) {
+    string_view subDir = path.substr(0, pos);
+    const auto it      = m_children.find(subDir);
+
+    if (it == m_children.end()) {
+      errno = ENOENT;
+      logger::debug("subdirectory {} not found", subDir);
+      return false;
+    }
+
+    return it->second->eraseInternal(path.substr(pos + 1));
+  }
+
+  const auto it = m_children.find(path);
+
+  // check if the entry exists
+  if (it == m_children.end()) {
+    errno = ENOENT;
+    logger::debug("{} not found", path);
+    return false;
+  }
+
+  // check if the entry is empty
+  if (!it->second->isEmpty()) {
+    errno = ENOTEMPTY;
+    return false;
+  }
+
+  if (reallyErase) {
+    m_children.erase(it);
+    return true;
+  }
+  it->second->setDeleted(true);
+  return true;
 }
 
 std::ostream& operator<<(std::ostream& os, const VirtualFileTreeItem& item) noexcept
