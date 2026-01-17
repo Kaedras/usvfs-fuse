@@ -6,15 +6,15 @@
 using namespace std;
 namespace fs = std::filesystem;
 
-VirtualFileTreeItem::VirtualFileTreeItem(std::string name, std::string realPath,
+VirtualFileTreeItem::VirtualFileTreeItem(std::string path, std::string realPath,
                                          Type type,
                                          VirtualFileTreeItem* parent) noexcept(false)
-    : m_fileName(std::move(name)), m_realPath(std::move(realPath)), m_parent(parent),
+    : m_fileName(std::move(path)), m_realPath(std::move(realPath)), m_parent(parent),
       m_type(type), m_deleted(false)
 {
   logger::trace("{}: '{}', '{}'", __FUNCTION__, m_fileName, m_realPath);
   if (m_fileName.empty()) {
-    throw runtime_error("item name is empty");
+    throw runtime_error("filename is empty");
   }
 
   if (m_realPath.empty()) {
@@ -22,9 +22,9 @@ VirtualFileTreeItem::VirtualFileTreeItem(std::string name, std::string realPath,
   }
 }
 
-VirtualFileTreeItem::VirtualFileTreeItem(std::string name, std::string realPath,
+VirtualFileTreeItem::VirtualFileTreeItem(std::string path, std::string realPath,
                                          VirtualFileTreeItem* parent) noexcept(false)
-    : m_fileName(std::move(name)), m_realPath(std::move(realPath)), m_parent(parent),
+    : m_fileName(std::move(path)), m_realPath(std::move(realPath)), m_parent(parent),
       m_deleted(false)
 {
   if (fs::exists(realPath)) {
@@ -73,20 +73,20 @@ VirtualFileTreeItem& VirtualFileTreeItem::operator+=(const VirtualFileTreeItem& 
 }
 
 std::shared_ptr<VirtualFileTreeItem>
-VirtualFileTreeItem::add(std::string name, std::string realPath, Type type,
+VirtualFileTreeItem::add(std::string path, std::string realPath, Type type,
                          bool updateExisting) noexcept
 {
-  if (name.empty() || realPath.empty()) {
-    logger::error("attempted to add an entry with empty name!");
+  if (path.empty() || realPath.empty()) {
+    logger::error("attempted to add an entry with empty path!");
     errno = EINVAL;
     return nullptr;
   }
   unique_lock lock(m_mtx);
-  return addInternal(std::move(name), std::move(realPath), type, updateExisting);
+  return addInternal(std::move(path), std::move(realPath), type, updateExisting);
 }
 
 std::shared_ptr<VirtualFileTreeItem>
-VirtualFileTreeItem::add(std::string name, std::string realPath,
+VirtualFileTreeItem::add(std::string path, std::string realPath,
                          bool updateExisting) noexcept
 {
   Type type;
@@ -100,7 +100,7 @@ VirtualFileTreeItem::add(std::string name, std::string realPath,
     type = unknown;
   }
 
-  return add(std::move(name), std::move(realPath), type, updateExisting);
+  return add(std::move(path), std::move(realPath), type, updateExisting);
 }
 
 std::shared_ptr<VirtualFileTreeItem> VirtualFileTreeItem::clone() const
@@ -126,25 +126,25 @@ void VirtualFileTreeItem::setType(Type type) noexcept
   m_type = type;
 }
 
-bool VirtualFileTreeItem::erase(std::string name, bool reallyErase) noexcept
+bool VirtualFileTreeItem::erase(std::string path, bool reallyErase) noexcept
 {
-  if (name.empty()) {
-    logger::error("attempted to call {} with an empty name", __FUNCTION__);
+  if (path.empty()) {
+    logger::error("attempted to call {} with an empty path", __FUNCTION__);
     errno = EINVAL;
     return false;
   }
 
   unique_lock lock(m_mtx);
   // remove leading '/'
-  if (name[0] == '/') {
-    name.erase(0, 1);
+  if (path[0] == '/') {
+    path.erase(0, 1);
   }
 
-  // convert name to lower case
-  toLowerInplace(name);
+  // convert path to lower case
+  toLowerInplace(path);
 
-  if (const size_t pos = name.find('/', 0); pos != string::npos) {
-    std::string subDirectory = name.substr(0, pos);
+  if (const size_t pos = path.find('/', 0); pos != string::npos) {
+    std::string subDirectory = path.substr(0, pos);
     const auto foundEntry    = m_children.find(subDirectory);
 
     if (foundEntry == m_children.end()) {
@@ -153,15 +153,15 @@ bool VirtualFileTreeItem::erase(std::string name, bool reallyErase) noexcept
       return false;
     }
 
-    return foundEntry->second->erase(name.substr(pos + 1));
+    return foundEntry->second->erase(path.substr(pos + 1));
   }
 
-  const auto foundEntry = m_children.find(name);
+  const auto foundEntry = m_children.find(path);
 
   // check if the entry exists
   if (foundEntry == m_children.end()) {
     errno = ENOENT;
-    logger::debug("{} not found", name);
+    logger::debug("{} not found", path);
     return false;
   }
 
@@ -172,18 +172,18 @@ bool VirtualFileTreeItem::erase(std::string name, bool reallyErase) noexcept
   }
 
   if (reallyErase) {
-    return m_children.erase(name);
+    return m_children.erase(path);
   }
   foundEntry->second->setDeleted(true);
   return true;
 }
 
-VirtualFileTreeItem* VirtualFileTreeItem::find(std::string_view value,
+VirtualFileTreeItem* VirtualFileTreeItem::find(std::string_view path,
                                                bool includeDeleted) noexcept
 {
   shared_lock lock(m_mtx);
 
-  return findPrivate(toLower(value), includeDeleted);
+  return findPrivate(toLower(path), includeDeleted);
 }
 
 std::string VirtualFileTreeItem::fileName() const noexcept
@@ -318,59 +318,59 @@ void VirtualFileTreeItem::dumpTree(std::ostream& os, int level) const
   }
 }
 
-VirtualFileTreeItem* VirtualFileTreeItem::findPrivate(std::string_view value,
+VirtualFileTreeItem* VirtualFileTreeItem::findPrivate(std::string_view path,
                                                       bool includeDeleted) noexcept
 {
   shared_lock lock(m_mtx);
   // special case: return `this` if it is the root item
-  if (value == "/" || value.empty()) {
+  if (path == "/" || path.empty()) {
     // sanity check
     if (m_parent != nullptr) {
       logger::warn(
           "findPrivate() was called with parameter '{}', but m_parent is not nullptr",
-          value);
+          path);
       errno = EINVAL;
       return nullptr;
     }
 
     logger::debug("findPrivate() was called with parameter '{}', returning 'this'",
-                  value);
+                  path);
     return this;
   }
 
   // remove leading '/'
-  if (value[0] == '/') {
-    value.remove_prefix(1);
+  if (path[0] == '/') {
+    path.remove_prefix(1);
   }
 
-  if (const size_t pos = value.find('/'); pos != string::npos) {
-    const string_view subDirectory = value.substr(0, pos);
+  if (const size_t pos = path.find('/'); pos != string::npos) {
+    const string_view subDirectory = path.substr(0, pos);
 
     // the item is in a subdirectory
     const auto it = m_children.find(string(subDirectory));
     if (it == m_children.end()) {
-      logger::debug("could not find '{}'", value);
+      logger::debug("could not find '{}'", path);
       errno = ENOENT;
       return nullptr;
     }
 
-    const size_t nextPos = value.find('/', subDirectory.length());
+    const size_t nextPos = path.find('/', subDirectory.length());
     if (nextPos == string_view::npos) {
       // no further subdirectories
       if (!it->second->isDeleted() || includeDeleted) {
         return it->second.get();
       }
-      logger::debug("'{}' has been deleted, returning nullptr", value);
+      logger::debug("'{}' has been deleted, returning nullptr", path);
       errno = ENOENT;
       return nullptr;
     }
-    return it->second->findPrivate(value.substr(nextPos), includeDeleted);
+    return it->second->findPrivate(path.substr(nextPos), includeDeleted);
   }
 
-  // item is not in a subdirectory
-  const auto it = m_children.find(string(value));
+  // path is not in a subdirectory
+  const auto it = m_children.find(string(path));
   if (it == m_children.end()) {
-    logger::debug("could not find '{}'", value);
+    logger::debug("could not find '{}'", path);
     errno = ENOENT;
     return nullptr;
   }
@@ -378,30 +378,30 @@ VirtualFileTreeItem* VirtualFileTreeItem::findPrivate(std::string_view value,
   if (!it->second->isDeleted() || includeDeleted) {
     return it->second.get();
   }
-  logger::debug("'{}' has been deleted, returning nullptr", value);
+  logger::debug("'{}' has been deleted, returning nullptr", path);
   errno = ENOENT;
   return nullptr;
 }
 
 std::shared_ptr<VirtualFileTreeItem>
-VirtualFileTreeItem::addInternal(std::string name, std::string realPath, Type type,
+VirtualFileTreeItem::addInternal(std::string path, std::string realPath, Type type,
                                  bool updateExisting) noexcept
 {
-  if (name == "/") {
+  if (path == "/") {
     errno = EEXIST;
     return nullptr;
   }
 
   // remove leading '/'
-  if (name[0] == '/') {
-    name.erase(0, 1);
+  if (path[0] == '/') {
+    path.erase(0, 1);
   }
 
-  // convert name to lower case
-  const string nameLc = toLower(name);
+  // convert path to lower case
+  const string pathLc = toLower(path);
 
-  if (const size_t pos = name.find('/', 0); pos != std::string::npos) {
-    std::string subDirectory = nameLc.substr(0, pos);
+  if (const size_t pos = path.find('/', 0); pos != std::string::npos) {
+    std::string subDirectory = pathLc.substr(0, pos);
 
     auto foundEntry = m_children.find(subDirectory);
 
@@ -410,24 +410,24 @@ VirtualFileTreeItem::addInternal(std::string name, std::string realPath, Type ty
       errno = ENOENT;
       return nullptr;
     }
-    return foundEntry->second->add(name.substr(pos + 1), std::move(realPath), type,
+    return foundEntry->second->add(path.substr(pos + 1), std::move(realPath), type,
                                    updateExisting);
   }
 
-  auto [it, wasInserted] = m_children.try_emplace(nameLc, nullptr);
+  auto [it, wasInserted] = m_children.try_emplace(pathLc, nullptr);
   if (!wasInserted) {
     if (!updateExisting) {
-      logger::error("item '{}' already exists and should not be updated", name);
+      logger::error("item '{}' already exists and should not be updated", path);
       errno = EEXIST;
       return nullptr;
     }
-    logger::debug("setting real path of existing item '{}' to '{}'", name, realPath);
+    logger::debug("setting real path of existing item '{}' to '{}'", path, realPath);
     it->second->m_realPath = realPath;
 
     return it->second;
   }
 
-  it->second = make_shared<VirtualFileTreeItem>(name, realPath, type, this);
+  it->second = make_shared<VirtualFileTreeItem>(path, realPath, type, this);
   return it->second;
 }
 

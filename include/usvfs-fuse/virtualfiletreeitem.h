@@ -20,9 +20,9 @@ class VirtualFileTreeItem
 {
 public:
   VirtualFileTreeItem() = delete;
-  VirtualFileTreeItem(std::string name, std::string realPath, Type type,
+  VirtualFileTreeItem(std::string path, std::string realPath, Type type,
                       VirtualFileTreeItem* parent = nullptr) noexcept(false);
-  VirtualFileTreeItem(std::string name, std::string realPath,
+  VirtualFileTreeItem(std::string path, std::string realPath,
                       VirtualFileTreeItem* parent = nullptr) noexcept(false);
 
   VirtualFileTreeItem(const VirtualFileTreeItem& other);
@@ -37,18 +37,17 @@ public:
    * This method either creates a new item or updates the path of an existing item,
    * depending on the provided parameters and the current state of the tree
    *
-   * @param name The name of the item to add or update. Subdirectories should be
-   * separated by '/'
+   * @param path The path of the item to add or update
    * @param realPath The full real path corresponding to the item in the filesystem
    * @param type The type of the new item, e.g. std::filesystem::directory
    * @param updateExisting Indicates whether to update the real path of an existing item
    * if it already exists. If false, the method will not overwrite existing items
    * @return True if the item was successfully added or updated, false otherwise
    */
-  std::shared_ptr<VirtualFileTreeItem> add(std::string name, std::string realPath,
+  std::shared_ptr<VirtualFileTreeItem> add(std::string path, std::string realPath,
                                            Type type,
                                            bool updateExisting = false) noexcept;
-  std::shared_ptr<VirtualFileTreeItem> add(std::string name, std::string realPath,
+  std::shared_ptr<VirtualFileTreeItem> add(std::string path, std::string realPath,
                                            bool updateExisting = false) noexcept;
 
   std::shared_ptr<VirtualFileTreeItem> clone() const;
@@ -60,15 +59,15 @@ public:
 
   /**
    * @brief Erase a file or directory from the file tree. Directories must be empty
-   * @param name File or directory path to remove
+   * @param path Path to remove
    * @param reallyErase Whether to delete the item from the tree or to mark it as
    * deleted
    * @return True if the item was successfully removed, false otherwise. See errno for
    * error details
    */
-  bool erase(std::string name, bool reallyErase = true) noexcept;
+  bool erase(std::string path, bool reallyErase = true) noexcept;
 
-  [[nodiscard]] VirtualFileTreeItem* find(std::string_view value,
+  [[nodiscard]] VirtualFileTreeItem* find(std::string_view path,
                                           bool includeDeleted = false) noexcept;
 
   /**
@@ -127,11 +126,11 @@ private:
   mutable std::shared_mutex m_mtx;
 
   // find function for internal use to prevent unnecessary string copies
-  [[nodiscard]] VirtualFileTreeItem* findPrivate(std::string_view value,
+  [[nodiscard]] VirtualFileTreeItem* findPrivate(std::string_view path,
                                                  bool includeDeleted) noexcept;
 
   // add function without locking for internal use
   std::shared_ptr<VirtualFileTreeItem>
-  addInternal(std::string name, std::string realPath, Type type,
+  addInternal(std::string path, std::string realPath, Type type,
               bool updateExisting = false) noexcept;
 };
