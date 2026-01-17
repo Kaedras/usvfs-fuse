@@ -68,7 +68,8 @@ int usvfs_getattr(const char* path, struct stat* stbuf, fuse_file_info* fi) noex
 
   if (res == -1) {
     const int e = errno;
-    logger::error("stat error for file {}: {}", item->realPath(), strerror(e));
+    logger::error("stat error for {} '{}': {}", item->isDir() ? "directory" : "file",
+                  item->realPath(), strerror(e));
     return -e;
   }
 
