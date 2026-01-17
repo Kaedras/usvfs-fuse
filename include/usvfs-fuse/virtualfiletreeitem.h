@@ -33,14 +33,10 @@ public:
   VirtualFileTreeItem& operator+=(const VirtualFileTreeItem& other) noexcept;
 
   /**
-   * @brief Add a new item to the virtual file tree
-   *
-   * This method either creates a new item or updates the path of an existing item,
-   * depending on the provided parameters and the current state of the tree
-   *
+   * @brief Add a new item to the virtual file tree or update an existing item
    * @param path The path of the item to add or update
    * @param realPath The full real path corresponding to the item in the filesystem
-   * @param type The type of the new item, e.g. std::filesystem::directory
+   * @param type The type of the new item
    * @param updateExisting Indicates whether to update the real path of an existing item
    * if it already exists. If false, the method will not overwrite existing items
    * @return True if the item was successfully added or updated, false otherwise
@@ -48,14 +44,37 @@ public:
   std::shared_ptr<VirtualFileTreeItem> add(std::string_view path, std::string realPath,
                                            Type type,
                                            bool updateExisting = false) noexcept;
+
+  /**
+   * @brief Add a new item to the virtual file tree or update an existing item. The type
+   * will be determined by checking the file on disk
+   * @param path The path of the item to add or update
+   * @param realPath The full real path corresponding to the item in the filesystem
+   * @param updateExisting Indicates whether to update the real path of an existing item
+   * if it already exists. If false, the method will not overwrite existing items
+   * @return True if the item was successfully added or updated, false otherwise
+   */
   std::shared_ptr<VirtualFileTreeItem> add(std::string_view path, std::string realPath,
                                            bool updateExisting = false) noexcept;
 
+  /**
+   * @brief Create a deep copy
+   */
   std::shared_ptr<VirtualFileTreeItem> clone() const noexcept;
 
+  /**
+   * @brief Get the parent item
+   */
   VirtualFileTreeItem* getParent() const noexcept;
 
+  /**
+   * @brief Get the type of the item
+   */
   Type getType() const noexcept;
+
+  /**
+   * @brief Set the type of the item
+   */
   void setType(Type type) noexcept;
 
   /**
@@ -68,6 +87,12 @@ public:
    */
   bool erase(std::string_view path, bool reallyErase = true) noexcept;
 
+  /**
+   * @brief Look up a path in the file tree
+   * @param path Path to look up
+   * @param includeDeleted Whether to include deleted items in the results
+   * @return Pointer to the found item, nullptr if nothing was found
+   */
   [[nodiscard]] VirtualFileTreeItem* find(std::string_view path,
                                           bool includeDeleted = false) noexcept;
 
@@ -98,8 +123,14 @@ public:
    */
   void setRealPath(std::string realPath) noexcept;
 
+  /**
+   * @brief Check if the item is marked as deleted
+   */
   bool isDeleted() const noexcept;
 
+  /**
+   * @brief Mark the item as deleted or not deleted
+   */
   void setDeleted(bool deleted) noexcept;
 
   /**
