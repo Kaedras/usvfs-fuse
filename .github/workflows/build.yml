@@ -19,7 +19,7 @@ jobs:
           echo "VCPKG_ROOT=$VCPKG_INSTALLATION_ROOT" >> $GITHUB_ENV
 
       - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install libfuse3-dev gcc-14 -y
+        run: sudo apt-get update && sudo apt-get install libfuse3-dev gcc-14 googletest -y
 
       - name: Set default gcc version to 14
         run: |
@@ -30,10 +30,13 @@ jobs:
 
       - name: Configure usvfs-fuse build
         run: |
-          cmake --preset linux "-DCMAKE_INSTALL_PREFIX=install"
+          cmake --preset linux -DCMAKE_INSTALL_PREFIX=install -DBUILD_TESTING=ON
 
       - name: Build usvfs-fuse
         run: cmake --build build --config RelWithDebInfo
+
+      - name: Test usvfs-fuse
+        run: ctest --test-dir build -C RelWithDebInfo
 
       - name: Install usvfs-fuse
         run: cmake --install build --config RelWithDebInfo
