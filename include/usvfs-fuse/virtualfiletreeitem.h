@@ -26,11 +26,11 @@ public:
   VirtualFileTreeItem(std::string path, std::string realPath,
                       VirtualFileTreeItem* parent = nullptr) noexcept(false);
 
-  VirtualFileTreeItem(const VirtualFileTreeItem& other);
+  VirtualFileTreeItem(const VirtualFileTreeItem& other) noexcept;
 
   ~VirtualFileTreeItem() = default;
 
-  VirtualFileTreeItem& operator+=(const VirtualFileTreeItem& other);
+  VirtualFileTreeItem& operator+=(const VirtualFileTreeItem& other) noexcept;
 
   /**
    * @brief Add a new item to the virtual file tree
@@ -51,7 +51,7 @@ public:
   std::shared_ptr<VirtualFileTreeItem> add(std::string_view path, std::string realPath,
                                            bool updateExisting = false) noexcept;
 
-  std::shared_ptr<VirtualFileTreeItem> clone() const;
+  std::shared_ptr<VirtualFileTreeItem> clone() const noexcept;
 
   VirtualFileTreeItem* getParent() const noexcept;
 
@@ -120,7 +120,7 @@ public:
   friend std::ostream& operator<<(std::ostream& os,
                                   const VirtualFileTreeItem& item) noexcept;
 
-  void dumpTree(std::ostream& os, int level = 0) const;
+  void dumpTree(std::ostream& os, int level = 0) const noexcept;
 
 private:
   std::string m_fileName;

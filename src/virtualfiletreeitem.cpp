@@ -38,7 +38,7 @@ VirtualFileTreeItem::VirtualFileTreeItem(std::string path, std::string realPath,
   }
 }
 
-VirtualFileTreeItem::VirtualFileTreeItem(const VirtualFileTreeItem& other)
+VirtualFileTreeItem::VirtualFileTreeItem(const VirtualFileTreeItem& other) noexcept
     : m_fileName(other.m_fileName), m_realPath(other.m_realPath),
       m_parent(other.m_parent), m_type(other.m_type), m_deleted(other.m_deleted)
 {
@@ -50,7 +50,8 @@ VirtualFileTreeItem::VirtualFileTreeItem(const VirtualFileTreeItem& other)
   }
 }
 
-VirtualFileTreeItem& VirtualFileTreeItem::operator+=(const VirtualFileTreeItem& other)
+VirtualFileTreeItem&
+VirtualFileTreeItem::operator+=(const VirtualFileTreeItem& other) noexcept
 {
   unique_lock lock(m_mtx);
   shared_lock lock_other(other.m_mtx);
@@ -109,9 +110,14 @@ VirtualFileTreeItem::add(std::string_view path, std::string realPath,
   return add(path, std::move(realPath), type, updateExisting);
 }
 
-std::shared_ptr<VirtualFileTreeItem> VirtualFileTreeItem::clone() const
+std::shared_ptr<VirtualFileTreeItem> VirtualFileTreeItem::clone() const noexcept
 {
-  return make_shared<VirtualFileTreeItem>(*this);
+  try {
+    return make_shared<VirtualFileTreeItem>(*this);
+  } catch (const std::bad_alloc&) {
+    errno = ENOMEM;
+    return nullptr;
+  }
 }
 
 VirtualFileTreeItem* VirtualFileTreeItem::getParent() const noexcept
@@ -286,7 +292,7 @@ VirtualFileTreeItem::getAllItemPaths(bool includeRoot) const noexcept
   return result;
 }
 
-void VirtualFileTreeItem::dumpTree(std::ostream& os, int level) const
+void VirtualFileTreeItem::dumpTree(std::ostream& os, int level) const noexcept
 {
   shared_lock lock(m_mtx);
 
