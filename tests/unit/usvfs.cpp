@@ -95,7 +95,7 @@ bool cleanup()
 
 bool runCmd(const string& cmd)
 {
-  cout << "running " << cmd << endl;
+  cout << "running " << quoted(cmd) << endl;
   const int result = system(cmd.c_str());
   return WIFEXITED(result) && WEXITSTATUS(result) == 0;
 }
@@ -190,7 +190,8 @@ TEST_F(UsvfsTest, getattr)
 
   struct stat st{};
   for (const auto& filePath : pathsToStat) {
-    EXPECT_EQ(stat(filePath.c_str(), &st), 0) << "error: " << strerror(errno);
+    EXPECT_EQ(stat(filePath.c_str(), &st), 0)
+        << "error for '" << filePath << "': " << strerror(errno);
   }
 
   EXPECT_EQ(stat((mnt / "DOES_NOT_EXIST").c_str(), &st), -1);
