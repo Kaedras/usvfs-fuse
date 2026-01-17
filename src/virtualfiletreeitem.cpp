@@ -248,6 +248,12 @@ void VirtualFileTreeItem::setDeleted(bool deleted) noexcept
   m_deleted = deleted;
 }
 
+bool VirtualFileTreeItem::isEmpty() const noexcept
+{
+  shared_lock lock(m_mtx);
+  return isEmptyInternal();
+}
+
 const FileMap& VirtualFileTreeItem::getChildren() const noexcept
 {
   shared_lock lock(m_mtx);
@@ -429,6 +435,13 @@ VirtualFileTreeItem::addInternal(std::string path, std::string realPath, Type ty
 
   it->second = make_shared<VirtualFileTreeItem>(path, realPath, type, this);
   return it->second;
+}
+
+bool VirtualFileTreeItem::isEmptyInternal() const noexcept
+{
+  return ranges::all_of(m_children, [](const auto& entry) {
+    return entry.second->isEmpty();
+  });
 }
 
 std::ostream& operator<<(std::ostream& os, const VirtualFileTreeItem& item) noexcept

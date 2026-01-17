@@ -101,6 +101,11 @@ public:
 
   void setDeleted(bool deleted) noexcept;
 
+  /**
+   * @brief Check whether there are any children that are not marked as deleted
+   */
+  bool isEmpty() const noexcept;
+
   [[nodiscard]] const FileMap& getChildren() const noexcept;
 
   bool isDir() const noexcept;
@@ -133,4 +138,7 @@ private:
   std::shared_ptr<VirtualFileTreeItem>
   addInternal(std::string path, std::string realPath, Type type,
               bool updateExisting = false) noexcept;
+
+  // isEmpty function without locking
+  bool isEmptyInternal() const noexcept;
 };

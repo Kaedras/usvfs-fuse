@@ -195,10 +195,8 @@ int usvfs_rmdir(const char* path) noexcept
   }
 
   // check if the directory is empty
-  for (const auto& child : item->getChildren() | views::values) {
-    if (!child->isDeleted()) {
-      return -ENOTEMPTY;
-    }
+  if (!item->isEmpty()) {
+    return -ENOTEMPTY;
   }
 
   string realParentPath = getParentPath(item->realPath());
