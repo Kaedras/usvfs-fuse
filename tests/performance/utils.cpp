@@ -89,9 +89,11 @@ BENCHMARK_CAPTURE(istartsWith, ascii, "abc", "AB")->Name("utils/istartsWith/asci
 BENCHMARK_CAPTURE(istartsWith, unicode, "テストtest", "テストT")
     ->Name("utils/istartsWith/unicode");
 BENCHMARK_CAPTURE(toLower, ascii, "ABC")->Name("utils/toLower/ascii");
-BENCHMARK_CAPTURE(toLower, unicode, "テスト")->Name("utils/toLower/unicode");
+BENCHMARK_CAPTURE(toLower, unicode, "ÄÜöabC/テスト/жзИЙ/ԱբգԴ")
+    ->Name("utils/toLower/unicode");
 BENCHMARK_CAPTURE(toUpper, ascii, "abc")->Name("utils/toUpper/ascii");
-BENCHMARK_CAPTURE(toUpper, unicode, "テスト")->Name("utils/toUpper/unicode");
+BENCHMARK_CAPTURE(toUpper, unicode, "ÄÜöabC/テスト/жзИЙ/ԱբգԴ")
+    ->Name("utils/toUpper/unicode");
 BENCHMARK(getParentPath)->Name("utils/getParentPath");
 BENCHMARK(getFileNameFromPath)->Name("utils/getFileNameFromPath");
 BENCHMARK(createEnv)->Name("utils/createEnv");
