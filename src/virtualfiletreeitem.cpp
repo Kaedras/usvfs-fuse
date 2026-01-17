@@ -155,6 +155,14 @@ VirtualFileTreeItem* VirtualFileTreeItem::find(std::string_view path,
 {
   shared_lock lock(m_mtx);
 
+  if (path == "/" || path.empty()) {
+    return this;
+  }
+
+  if (path[0] == '/') {
+    path.remove_prefix(1);
+  }
+
   return findPrivate(toLower(path), includeDeleted);
 }
 
@@ -299,33 +307,11 @@ void VirtualFileTreeItem::dumpTree(std::ostream& os, int level) const
 VirtualFileTreeItem* VirtualFileTreeItem::findPrivate(std::string_view path,
                                                       bool includeDeleted) noexcept
 {
-  shared_lock lock(m_mtx);
-  // special case: return `this` if it is the root item
-  if (path == "/" || path.empty()) {
-    // sanity check
-    if (m_parent != nullptr) {
-      logger::warn(
-          "findPrivate() was called with parameter '{}', but m_parent is not nullptr",
-          path);
-      errno = EINVAL;
-      return nullptr;
-    }
-
-    logger::debug("findPrivate() was called with parameter '{}', returning 'this'",
-                  path);
-    return this;
-  }
-
-  // remove leading '/'
-  if (path[0] == '/') {
-    path.remove_prefix(1);
-  }
-
-  if (const size_t pos = path.find('/'); pos != string::npos) {
+  const size_t pos = path.find('/');
+  if (pos != string::npos) {
+    // path is inside a subdirectory
     const string_view subDirectory = path.substr(0, pos);
-
-    // the item is in a subdirectory
-    const auto it = m_children.find(string(subDirectory));
+    const auto it                  = m_children.find(subDirectory);
     if (it == m_children.end()) {
       logger::debug("could not find '{}'", path);
       errno = ENOENT;
@@ -342,11 +328,11 @@ VirtualFileTreeItem* VirtualFileTreeItem::findPrivate(std::string_view path,
       errno = ENOENT;
       return nullptr;
     }
-    return it->second->findPrivate(path.substr(nextPos), includeDeleted);
+    return it->second->findPrivate(path.substr(nextPos + 1), includeDeleted);
   }
 
   // path is not in a subdirectory
-  const auto it = m_children.find(string(path));
+  const auto it = m_children.find(path);
   if (it == m_children.end()) {
     logger::debug("could not find '{}'", path);
     errno = ENOENT;
