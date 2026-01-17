@@ -256,7 +256,7 @@ std::vector<const VirtualFileTreeItem*>
 VirtualFileTreeItem::getAllItems(bool includeRoot) const noexcept
 {
   shared_lock lock(m_mtx);
-  std::vector<const VirtualFileTreeItem*> result;
+  vector<const VirtualFileTreeItem*> result;
   result.reserve(m_children.size() + 1);
 
   if (m_parent != nullptr || includeRoot) {
@@ -273,7 +273,7 @@ std::vector<std::string>
 VirtualFileTreeItem::getAllItemPaths(bool includeRoot) const noexcept
 {
   shared_lock lock(m_mtx);
-  std::vector<string> result;
+  vector<string> result;
   result.reserve(m_children.size() + 1);
 
   if (m_parent != nullptr || includeRoot) {
