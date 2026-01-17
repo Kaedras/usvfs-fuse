@@ -163,7 +163,7 @@ VirtualFileTreeItem* VirtualFileTreeItem::find(std::string_view path,
     path.remove_prefix(1);
   }
 
-  return findPrivate(toLower(path), includeDeleted);
+  return findInternal(toLower(path), includeDeleted);
 }
 
 std::string VirtualFileTreeItem::fileName() const noexcept
@@ -304,8 +304,8 @@ void VirtualFileTreeItem::dumpTree(std::ostream& os, int level) const
   }
 }
 
-VirtualFileTreeItem* VirtualFileTreeItem::findPrivate(std::string_view path,
-                                                      bool includeDeleted) noexcept
+VirtualFileTreeItem* VirtualFileTreeItem::findInternal(std::string_view path,
+                                                       bool includeDeleted) noexcept
 {
   const size_t pos = path.find('/');
   if (pos != string::npos) {
@@ -328,7 +328,7 @@ VirtualFileTreeItem* VirtualFileTreeItem::findPrivate(std::string_view path,
       errno = ENOENT;
       return nullptr;
     }
-    return it->second->findPrivate(path.substr(nextPos + 1), includeDeleted);
+    return it->second->findInternal(path.substr(nextPos + 1), includeDeleted);
   }
 
   // path is not in a subdirectory

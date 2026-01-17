@@ -131,9 +131,9 @@ private:
   FileMap m_children;
   mutable std::shared_mutex m_mtx;
 
-  // find function for internal use to prevent unnecessary string copies
-  [[nodiscard]] VirtualFileTreeItem* findPrivate(std::string_view path,
-                                                 bool includeDeleted) noexcept;
+  // find function without locking
+  [[nodiscard]] VirtualFileTreeItem* findInternal(std::string_view path,
+                                                  bool includeDeleted) noexcept;
 
   // add function without locking for internal use
   std::shared_ptr<VirtualFileTreeItem>
