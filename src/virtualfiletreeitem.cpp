@@ -73,20 +73,26 @@ VirtualFileTreeItem& VirtualFileTreeItem::operator+=(const VirtualFileTreeItem& 
 }
 
 std::shared_ptr<VirtualFileTreeItem>
-VirtualFileTreeItem::add(std::string path, std::string realPath, Type type,
+VirtualFileTreeItem::add(std::string_view path, std::string realPath, Type type,
                          bool updateExisting) noexcept
 {
+  unique_lock lock(m_mtx);
+
   if (path.empty() || realPath.empty()) {
     logger::error("attempted to add an entry with empty path!");
     errno = EINVAL;
     return nullptr;
   }
-  unique_lock lock(m_mtx);
-  return addInternal(std::move(path), std::move(realPath), type, updateExisting);
+
+  if (path[0] == '/') {
+    path.remove_prefix(1);
+  }
+
+  return addInternal(path, toLower(path), std::move(realPath), type, updateExisting);
 }
 
 std::shared_ptr<VirtualFileTreeItem>
-VirtualFileTreeItem::add(std::string path, std::string realPath,
+VirtualFileTreeItem::add(std::string_view path, std::string realPath,
                          bool updateExisting) noexcept
 {
   Type type;
@@ -100,7 +106,7 @@ VirtualFileTreeItem::add(std::string path, std::string realPath,
     type = unknown;
   }
 
-  return add(std::move(path), std::move(realPath), type, updateExisting);
+  return add(path, std::move(realPath), type, updateExisting);
 }
 
 std::shared_ptr<VirtualFileTreeItem> VirtualFileTreeItem::clone() const
@@ -390,7 +396,8 @@ VirtualFileTreeItem* VirtualFileTreeItem::findPrivate(std::string_view path,
 }
 
 std::shared_ptr<VirtualFileTreeItem>
-VirtualFileTreeItem::addInternal(std::string path, std::string realPath, Type type,
+VirtualFileTreeItem::addInternal(std::string_view path, std::string_view pathLc,
+                                 std::string realPath, Type type,
                                  bool updateExisting) noexcept
 {
   if (path == "/") {
@@ -400,14 +407,12 @@ VirtualFileTreeItem::addInternal(std::string path, std::string realPath, Type ty
 
   // remove leading '/'
   if (path[0] == '/') {
-    path.erase(0, 1);
+    path.remove_prefix(1);
+    pathLc.remove_prefix(1);
   }
 
-  // convert path to lower case
-  const string pathLc = toLower(path);
-
-  if (const size_t pos = path.find('/', 0); pos != std::string::npos) {
-    std::string subDirectory = pathLc.substr(0, pos);
+  if (const size_t pos = path.find('/', 0); pos != string::npos) {
+    string subDirectory = string(pathLc.substr(0, pos));
 
     auto foundEntry = m_children.find(subDirectory);
 
@@ -416,11 +421,11 @@ VirtualFileTreeItem::addInternal(std::string path, std::string realPath, Type ty
       errno = ENOENT;
       return nullptr;
     }
-    return foundEntry->second->add(path.substr(pos + 1), std::move(realPath), type,
-                                   updateExisting);
+    return foundEntry->second->addInternal(path.substr(pos + 1), pathLc.substr(pos + 1),
+                                           std::move(realPath), type, updateExisting);
   }
 
-  auto [it, wasInserted] = m_children.try_emplace(pathLc, nullptr);
+  auto [it, wasInserted] = m_children.try_emplace(string(pathLc), nullptr);
   if (!wasInserted) {
     if (!updateExisting) {
       logger::error("item '{}' already exists and should not be updated", path);
@@ -433,7 +438,7 @@ VirtualFileTreeItem::addInternal(std::string path, std::string realPath, Type ty
     return it->second;
   }
 
-  it->second = make_shared<VirtualFileTreeItem>(path, realPath, type, this);
+  it->second = make_shared<VirtualFileTreeItem>(string(path), realPath, type, this);
   return it->second;
 }
 

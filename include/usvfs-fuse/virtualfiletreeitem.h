@@ -45,10 +45,10 @@ public:
    * if it already exists. If false, the method will not overwrite existing items
    * @return True if the item was successfully added or updated, false otherwise
    */
-  std::shared_ptr<VirtualFileTreeItem> add(std::string path, std::string realPath,
+  std::shared_ptr<VirtualFileTreeItem> add(std::string_view path, std::string realPath,
                                            Type type,
                                            bool updateExisting = false) noexcept;
-  std::shared_ptr<VirtualFileTreeItem> add(std::string path, std::string realPath,
+  std::shared_ptr<VirtualFileTreeItem> add(std::string_view path, std::string realPath,
                                            bool updateExisting = false) noexcept;
 
   std::shared_ptr<VirtualFileTreeItem> clone() const;
@@ -137,8 +137,8 @@ private:
 
   // add function without locking for internal use
   std::shared_ptr<VirtualFileTreeItem>
-  addInternal(std::string path, std::string realPath, Type type,
-              bool updateExisting = false) noexcept;
+  addInternal(std::string_view path, std::string_view pathLc, std::string realPath,
+              Type type, bool updateExisting = false) noexcept;
 
   // isEmpty function without locking
   bool isEmptyInternal() const noexcept;
