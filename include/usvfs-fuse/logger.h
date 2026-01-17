@@ -9,7 +9,9 @@ void log(spdlog::level::level_enum level, spdlog::format_string_t<Args...> fmt,
 {
   auto logger = spdlog::get("usvfs");
   if (logger == nullptr) {
-    spdlog::critical("logger 'usvfs' not found");
+    logger = spdlog::create<spdlog::sinks::stdout_color_sink_mt>("usvfs");
+    logger->set_pattern("%H:%M:%S.%e [%L] %v");
+    logger->set_level(spdlog::level::info);
   } else {
     logger->log(level, fmt, std::forward<Args>(args)...);
   }
