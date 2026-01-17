@@ -8,7 +8,7 @@ add_executable(
         utils.cpp
         filetree.cpp
 )
-set_target_properties(usvfs-tests PROPERTIES CXX_STANDARD 23)
+set_target_properties(usvfs-performance-tests PROPERTIES CXX_STANDARD 23)
 target_link_libraries(
         usvfs-performance-tests
         PRIVATE
