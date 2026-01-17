@@ -105,6 +105,43 @@ TEST_F(FileTreeTest, PrintTreeNonASCII)
   EXPECT_EQ(s.str(), expectedResult);
 }
 
+TEST_F(FileTreeTest, DumpTree)
+{
+  VirtualFileTreeItem root("/", "/tmp", dir);
+  addItems(root);
+
+  static const string expectedResult = "/ -> /tmp\n"
+                                       " 1/ -> /tmp/a\n"
+                                       "  1/ -> /tmp/a/a\n"
+                                       " 2/ -> /tmp/b\n"
+                                       "  1/ -> /tmp/b/a\n"
+                                       "  2/ -> /tmp/b/b\n"
+                                       "   1/ -> /tmp/b/b/a\n"
+                                       "  3/ -> /tmp/b/c\n"
+                                       " 3/ -> /tmp/c\n"
+                                       "  1/ -> /tmp/c/a\n"
+                                       "  2/ -> /tmp/c/b\n"
+                                       "   1/ -> /tmp/c/b/a\n";
+
+  stringstream s;
+  root.dumpTree(s);
+  EXPECT_EQ(s.str(), expectedResult);
+}
+
+TEST_F(FileTreeTest, DumpTreeNonASCII)
+{
+  VirtualFileTreeItem root("/", "/tmp", dir);
+  addItemsNonASCII(root);
+
+  static const string expectedResult = "/ -> /tmp\n"
+                                       " Ä/ -> /tmp/Ö\n"
+                                       " こんいちわ/ -> /tmp/テスト\n";
+
+  stringstream s;
+  root.dumpTree(s);
+  EXPECT_EQ(s.str(), expectedResult);
+}
+
 TEST_F(FileTreeTest, CanFindInsertedItems)
 {
   VirtualFileTreeItem root("/", "/tmp", dir);
