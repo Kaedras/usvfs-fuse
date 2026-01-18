@@ -11,26 +11,26 @@ target_precompile_headers(usvfs-fuse PRIVATE pch.h)
 target_sources(usvfs-fuse
         PRIVATE
             fdmap.cpp
-            mountstate.cpp
-            usvfs.cpp
-            usvfsmanager.cpp
-            utils.cpp
-            virtualfiletreeitem.cpp
-            loghelpers.h
-            loghelpers.cpp
             fdmap.h
             logger.h
+            loghelpers.cpp
+            loghelpers.h
+            mountstate.cpp
             mountstate.h
+            usvfs.cpp
             usvfs.h
+            usvfsmanager.cpp
+            utils.cpp
             utils.h
+            virtualfiletreeitem.cpp
             virtualfiletreeitem.h
         PUBLIC
         FILE_SET HEADERS
         BASE_DIRS ${PROJECT_SOURCE_DIR}/include
         FILES
+            ${PROJECT_SOURCE_DIR}/include/usvfs-fuse/logging.h
             ${PROJECT_SOURCE_DIR}/include/usvfs-fuse/usvfs_version.h
             ${PROJECT_SOURCE_DIR}/include/usvfs-fuse/usvfsmanager.h
-            ${PROJECT_SOURCE_DIR}/include/usvfs-fuse/logging.h
 )
 
 target_compile_options(usvfs-fuse PRIVATE -Wall -Wextra -Wpedantic)
