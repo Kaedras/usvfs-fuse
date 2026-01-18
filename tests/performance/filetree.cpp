@@ -1,17 +1,11 @@
 #include "../../src/virtualfiletreeitem.h"
+#include "benchmark_utils.h"
 #include <benchmark/benchmark.h>
 #include <filesystem>
 #include <iostream>
 
 using namespace std;
 namespace fs = std::filesystem;
-
-#define START() auto start = std::chrono::high_resolution_clock::now()
-#define END()                                                                          \
-  auto end = std::chrono::high_resolution_clock::now();                                \
-  auto elapsed_seconds =                                                               \
-      std::chrono::duration_cast<std::chrono::duration<double>>(end - start);          \
-  state.SetIterationTime(elapsed_seconds.count())
 
 #define CREATE_FILE_TREE_WITH_DEPTH()                                                  \
   VirtualFileTreeItem root("/", "/tmp", dir);                                          \

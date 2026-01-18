@@ -7,6 +7,7 @@ add_executable(
         usvfs.cpp
         utils.cpp
         filetree.cpp
+        benchmark_utils.h
 )
 set_target_properties(usvfs-performance-tests PROPERTIES CXX_STANDARD 23)
 target_link_libraries(
