@@ -100,7 +100,7 @@ void toLowerInplace(std::string& str)
 
   if (is_ascii) {
     for (char& c : str) {
-      c = tolower(c);
+      c = static_cast<char>(tolower(c));
     }
     return;
   }
@@ -153,7 +153,7 @@ void toUpperInplace(std::string& str)
 
   if (is_ascii) {
     for (char& c : str) {
-      c = toupper(c);
+      c = static_cast<char>(toupper(c));
     }
     return;
   }
