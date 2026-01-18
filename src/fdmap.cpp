@@ -1,7 +1,7 @@
-#include "usvfs-fuse/fdmap.h"
+#include "fdmap.h"
 
-#include "usvfs-fuse/logger.h"
-#include "usvfs-fuse/utils.h"
+#include "logger.h"
+#include "utils.h"
 
 int FdMap::at(const std::string_view path) const noexcept
 {

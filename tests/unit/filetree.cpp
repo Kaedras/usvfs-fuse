@@ -2,9 +2,9 @@
 #include <gtest/gtest.h>
 #include <ostream>
 
+#include "../../src/virtualfiletreeitem.h"
 #include "usvfs-fuse/logging.h"
 #include "usvfs-fuse/usvfsmanager.h"
-#include "usvfs-fuse/virtualfiletreeitem.h"
 
 using namespace std;
 using filesystem::file_type;

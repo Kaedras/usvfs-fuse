@@ -1,13 +1,13 @@
 #include "usvfs-fuse/usvfsmanager.h"
 
+#include "fdmap.h"
+#include "logger.h"
 #include "loghelpers.h"
-#include "usvfs-fuse/fdmap.h"
-#include "usvfs-fuse/logger.h"
-#include "usvfs-fuse/mountstate.h"
-#include "usvfs-fuse/usvfs.h"
+#include "mountstate.h"
 #include "usvfs-fuse/usvfs_version.h"
-#include "usvfs-fuse/utils.h"
-#include "usvfs-fuse/virtualfiletreeitem.h"
+#include "usvfs.h"
+#include "utils.h"
+#include "virtualfiletreeitem.h"
 
 using namespace std;
 namespace fs = std::filesystem;

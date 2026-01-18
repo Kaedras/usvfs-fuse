@@ -1,7 +1,7 @@
-#include "usvfs-fuse/virtualfiletreeitem.h"
+#include "virtualfiletreeitem.h"
 
-#include "usvfs-fuse/logger.h"
-#include "usvfs-fuse/utils.h"
+#include "logger.h"
+#include "utils.h"
 
 using namespace std;
 namespace fs = std::filesystem;

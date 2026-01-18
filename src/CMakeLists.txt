@@ -18,12 +18,12 @@ target_sources(usvfs-fuse
             virtualfiletreeitem.cpp
             loghelpers.h
             loghelpers.cpp
-            ${PROJECT_SOURCE_DIR}/include/usvfs-fuse/fdmap.h
-            ${PROJECT_SOURCE_DIR}/include/usvfs-fuse/logger.h
-            ${PROJECT_SOURCE_DIR}/include/usvfs-fuse/mountstate.h
-            ${PROJECT_SOURCE_DIR}/include/usvfs-fuse/usvfs.h
-            ${PROJECT_SOURCE_DIR}/include/usvfs-fuse/utils.h
-            ${PROJECT_SOURCE_DIR}/include/usvfs-fuse/virtualfiletreeitem.h
+            fdmap.h
+            logger.h
+            mountstate.h
+            usvfs.h
+            utils.h
+            virtualfiletreeitem.h
         PUBLIC
         FILE_SET HEADERS
         BASE_DIRS ${PROJECT_SOURCE_DIR}/include
