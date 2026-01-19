@@ -4,7 +4,7 @@ find_package(PkgConfig)
 pkg_check_modules(FUSE3 REQUIRED IMPORTED_TARGET fuse3)
 
 find_package(ICU REQUIRED COMPONENTS data uc)
-find_package(spdlog REQUIRED)
+find_package(spdlog CONFIG REQUIRED)
 
 add_library(usvfs-fuse SHARED)
 target_precompile_headers(usvfs-fuse PRIVATE pch.h)
