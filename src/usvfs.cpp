@@ -58,18 +58,24 @@ int usvfs_getattr(const char* path, struct stat* stbuf, fuse_file_info* fi) noex
   }
 
   int res;
+  int fd;
+  string fdPath;
+  string file;
   if (item->isDir()) {
-    const int fd = state->fdMap.at(item->realPath());
-    res          = fstatat(fd, nullptr, stbuf, AT_SYMLINK_NOFOLLOW | AT_EMPTY_PATH);
+    fdPath = item->realPath();
+    fd     = state->fdMap.at(fdPath);
+    res    = fstatat(fd, nullptr, stbuf, AT_SYMLINK_NOFOLLOW | AT_EMPTY_PATH);
   } else {
-    const int fd = state->fdMap.at(getParentPath(item->realPath()));
-    res          = fstatat(fd, item->fileName().c_str(), stbuf, AT_SYMLINK_NOFOLLOW);
+    fdPath = getParentPath(item->realPath());
+    file   = getFileNameFromPath(item->realPath());
+    fd     = state->fdMap.at(fdPath);
+    res    = fstatat(fd, file.c_str(), stbuf, AT_SYMLINK_NOFOLLOW);
   }
 
   if (res == -1) {
     const int e = errno;
-    logger::error("stat error for {} '{}': {}", item->isDir() ? "directory" : "file",
-                  item->realPath(), strerror(e));
+    logger::error("fstatat(fd={}:'{}', file='{}') failed: {}", fd, fdPath, file,
+                  strerror(e));
     return -e;
   }
 
