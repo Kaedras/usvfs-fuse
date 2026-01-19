@@ -17,14 +17,17 @@ enum Type
   unknown
 };
 
-class VirtualFileTreeItem
+class VirtualFileTreeItem : public std::enable_shared_from_this<VirtualFileTreeItem>
 {
 public:
+  static std::shared_ptr<VirtualFileTreeItem>
+  create(std::string path, std::string realPath, Type type,
+         std::weak_ptr<VirtualFileTreeItem> parent = {});
+  static std::shared_ptr<VirtualFileTreeItem>
+  create(std::string path, std::string realPath,
+         std::weak_ptr<VirtualFileTreeItem> parent = {});
+
   VirtualFileTreeItem() = delete;
-  VirtualFileTreeItem(std::string path, std::string realPath, Type type,
-                      VirtualFileTreeItem* parent = nullptr) noexcept(false);
-  VirtualFileTreeItem(std::string path, std::string realPath,
-                      VirtualFileTreeItem* parent = nullptr) noexcept(false);
 
   VirtualFileTreeItem(const VirtualFileTreeItem& other) noexcept;
 
@@ -65,7 +68,7 @@ public:
   /**
    * @brief Get the parent item
    */
-  VirtualFileTreeItem* getParent() const noexcept;
+  std::weak_ptr<VirtualFileTreeItem> getParent() const noexcept;
 
   /**
    * @brief Get the type of the item
@@ -93,8 +96,8 @@ public:
    * @param includeDeleted Whether to include deleted items in the results
    * @return Pointer to the found item, nullptr if nothing was found
    */
-  [[nodiscard]] VirtualFileTreeItem* find(std::string_view path,
-                                          bool includeDeleted = false) noexcept;
+  [[nodiscard]] std::shared_ptr<VirtualFileTreeItem>
+  find(std::string_view path, bool includeDeleted = false) noexcept;
 
   /**
    * @brief Get the file name
@@ -143,28 +146,32 @@ public:
   bool isDir() const noexcept;
   bool isFile() const noexcept;
 
-  [[nodiscard]] std::vector<const VirtualFileTreeItem*>
-  getAllItems(bool includeRoot = true) const noexcept;
   [[nodiscard]] std::vector<std::string>
   getAllItemPaths(bool includeRoot = true) const noexcept;
 
-  friend std::ostream& operator<<(std::ostream& os,
-                                  const VirtualFileTreeItem& item) noexcept;
+  friend std::ostream&
+  operator<<(std::ostream& os,
+             const std::shared_ptr<VirtualFileTreeItem>& item) noexcept;
 
   void dumpTree(std::ostream& os, int level = 0) const noexcept;
 
 private:
+  VirtualFileTreeItem(std::string path, std::string realPath, Type type,
+                      std::weak_ptr<VirtualFileTreeItem> parent = {}) noexcept(false);
+  VirtualFileTreeItem(std::string path, std::string realPath,
+                      std::weak_ptr<VirtualFileTreeItem> parent = {}) noexcept(false);
+
   std::string m_fileName;
   std::string m_realPath;
-  VirtualFileTreeItem* m_parent;
+  std::weak_ptr<VirtualFileTreeItem> m_parent;
   Type m_type;
   bool m_deleted;
   FileMap m_children;
   mutable std::shared_mutex m_mtx;
 
   // find function without locking
-  [[nodiscard]] VirtualFileTreeItem* findInternal(std::string_view path,
-                                                  bool includeDeleted) noexcept;
+  [[nodiscard]] std::shared_ptr<VirtualFileTreeItem>
+  findInternal(std::string_view path, bool includeDeleted) noexcept;
 
   // add function without locking for internal use
   std::shared_ptr<VirtualFileTreeItem>

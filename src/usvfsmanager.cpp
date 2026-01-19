@@ -24,7 +24,7 @@ shared_ptr<VirtualFileTreeItem> createFileTree(const string& path, FdMap& fdMap)
 {
   logger::debug("creating file tree for {}", path);
   error_code ec;
-  auto fileTree = make_shared<VirtualFileTreeItem>("/", path, dir);
+  auto fileTree = VirtualFileTreeItem::create("/", path, dir);
 
   int fd = open(path.c_str(), OPEN_FLAGS);
   if (fd == -1) {
@@ -293,7 +293,7 @@ bool UsvfsManager::usvfsVirtualLinkDirectoryStatic(const std::string& source,
     fdMap[source] = fd;
   }
 
-  VirtualFileTreeItem sourceFileTree("/", source, dir);
+  auto sourceFileTree = VirtualFileTreeItem::create("/", source, dir);
   if (flags & linkFlag::RECURSIVE) {
     // create the file tree
     fs::recursive_directory_iterator iter(source, ec);
@@ -312,7 +312,7 @@ bool UsvfsManager::usvfsVirtualLinkDirectoryStatic(const std::string& source,
       fs::path relative = fs::relative(entry.path(), source);
 
       logger::debug("adding '{}' to file tree", relative.string());
-      auto newItem = sourceFileTree.add(
+      auto newItem = sourceFileTree->add(
           relative.string(), entry.path().string(),
           entry.status().type() == filesystem::file_type::directory ? dir : file);
       if (newItem == nullptr) {
@@ -339,7 +339,7 @@ bool UsvfsManager::usvfsVirtualLinkDirectoryStatic(const std::string& source,
   for (const auto& state : m_pendingMounts) {
     if (state->mountpoint == destination) {
       // destination exists, merge file trees
-      *state->fileTree += sourceFileTree;
+      *state->fileTree += *sourceFileTree;
       for (const auto& [path, fd] : fdMap) {
         state->fdMap[path] = fd;
       }
@@ -351,7 +351,7 @@ bool UsvfsManager::usvfsVirtualLinkDirectoryStatic(const std::string& source,
   shared_ptr<VirtualFileTreeItem> destinationFileTree =
       createFileTree(destination, fdMap);
 
-  *destinationFileTree += sourceFileTree;
+  *destinationFileTree += *sourceFileTree;
 
   // prepare state and add to the pending list (no mounting yet)
   auto state        = make_unique<MountState>();

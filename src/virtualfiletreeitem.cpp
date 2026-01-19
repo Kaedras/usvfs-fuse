@@ -6,11 +6,11 @@
 using namespace std;
 namespace fs = std::filesystem;
 
-VirtualFileTreeItem::VirtualFileTreeItem(std::string path, std::string realPath,
-                                         Type type,
-                                         VirtualFileTreeItem* parent) noexcept(false)
-    : m_fileName(std::move(path)), m_realPath(std::move(realPath)), m_parent(parent),
-      m_type(type), m_deleted(false)
+VirtualFileTreeItem::VirtualFileTreeItem(
+    std::string path, std::string realPath, Type type,
+    std::weak_ptr<VirtualFileTreeItem> parent) noexcept(false)
+    : m_fileName(std::move(path)), m_realPath(std::move(realPath)),
+      m_parent(std::move(parent)), m_type(type), m_deleted(false)
 {
   logger::trace("{}: '{}', '{}'", __FUNCTION__, m_fileName, m_realPath);
   if (m_fileName.empty()) {
@@ -22,10 +22,11 @@ VirtualFileTreeItem::VirtualFileTreeItem(std::string path, std::string realPath,
   }
 }
 
-VirtualFileTreeItem::VirtualFileTreeItem(std::string path, std::string realPath,
-                                         VirtualFileTreeItem* parent) noexcept(false)
-    : m_fileName(std::move(path)), m_realPath(std::move(realPath)), m_parent(parent),
-      m_deleted(false)
+VirtualFileTreeItem::VirtualFileTreeItem(
+    std::string path, std::string realPath,
+    std::weak_ptr<VirtualFileTreeItem> parent) noexcept(false)
+    : m_fileName(std::move(path)), m_realPath(std::move(realPath)),
+      m_parent(std::move(parent)), m_deleted(false)
 {
   if (fs::exists(realPath)) {
     if (fs::status(realPath).type() == fs::file_type::directory) {
@@ -38,6 +39,22 @@ VirtualFileTreeItem::VirtualFileTreeItem(std::string path, std::string realPath,
   }
 }
 
+std::shared_ptr<VirtualFileTreeItem>
+VirtualFileTreeItem::create(std::string path, std::string realPath, Type type,
+                            std::weak_ptr<VirtualFileTreeItem> parent)
+{
+  return std::shared_ptr<VirtualFileTreeItem>(new VirtualFileTreeItem(
+      std::move(path), std::move(realPath), type, std::move(parent)));
+}
+
+std::shared_ptr<VirtualFileTreeItem>
+VirtualFileTreeItem::create(std::string path, std::string realPath,
+                            std::weak_ptr<VirtualFileTreeItem> parent)
+{
+  return std::shared_ptr<VirtualFileTreeItem>(
+      new VirtualFileTreeItem(std::move(path), std::move(realPath), std::move(parent)));
+}
+
 VirtualFileTreeItem::VirtualFileTreeItem(const VirtualFileTreeItem& other) noexcept
     : m_fileName(other.m_fileName), m_realPath(other.m_realPath),
       m_parent(other.m_parent), m_type(other.m_type), m_deleted(other.m_deleted)
@@ -45,7 +62,7 @@ VirtualFileTreeItem::VirtualFileTreeItem(const VirtualFileTreeItem& other) noexc
   shared_lock lock(other.m_mtx);
   for (const auto& [name, item] : other.m_children) {
     auto childClone      = make_shared<VirtualFileTreeItem>(*item);
-    childClone->m_parent = this;
+    childClone->m_parent = weak_from_this();
     m_children.emplace(name, std::move(childClone));
   }
 }
@@ -120,7 +137,7 @@ std::shared_ptr<VirtualFileTreeItem> VirtualFileTreeItem::clone() const noexcept
   }
 }
 
-VirtualFileTreeItem* VirtualFileTreeItem::getParent() const noexcept
+std::weak_ptr<VirtualFileTreeItem> VirtualFileTreeItem::getParent() const noexcept
 {
   shared_lock lock(m_mtx);
   return m_parent;
@@ -156,13 +173,13 @@ bool VirtualFileTreeItem::erase(std::string_view path, bool reallyErase) noexcep
   return eraseInternal(toLower(path), reallyErase);
 }
 
-VirtualFileTreeItem* VirtualFileTreeItem::find(std::string_view path,
-                                               bool includeDeleted) noexcept
+std::shared_ptr<VirtualFileTreeItem>
+VirtualFileTreeItem::find(std::string_view path, bool includeDeleted) noexcept
 {
   shared_lock lock(m_mtx);
 
   if (path == "/" || path.empty()) {
-    return this;
+    return shared_from_this();
   }
 
   if (path[0] == '/') {
@@ -181,11 +198,11 @@ std::string VirtualFileTreeItem::fileName() const noexcept
 std::string VirtualFileTreeItem::filePath() const noexcept
 {
   shared_lock lock(m_mtx);
-  if (m_parent == nullptr) {
+  if (m_parent.expired()) {
     return "";
   }
 
-  string parentFilePath = m_parent->filePath();
+  string parentFilePath = m_parent.lock()->filePath();
   if (!parentFilePath.ends_with('/')) {
     parentFilePath += "/";
   }
@@ -258,23 +275,6 @@ bool VirtualFileTreeItem::isFile() const noexcept
   return m_type == file;
 }
 
-std::vector<const VirtualFileTreeItem*>
-VirtualFileTreeItem::getAllItems(bool includeRoot) const noexcept
-{
-  shared_lock lock(m_mtx);
-  vector<const VirtualFileTreeItem*> result;
-  result.reserve(m_children.size() + 1);
-
-  if (m_parent != nullptr || includeRoot) {
-    result.emplace_back(this);
-  }
-  for (const auto& item : m_children | views::values) {
-    auto allItems = item->getAllItems();
-    result.insert(result.end(), allItems.begin(), allItems.end());
-  }
-  return result;
-}
-
 std::vector<std::string>
 VirtualFileTreeItem::getAllItemPaths(bool includeRoot) const noexcept
 {
@@ -282,7 +282,7 @@ VirtualFileTreeItem::getAllItemPaths(bool includeRoot) const noexcept
   vector<string> result;
   result.reserve(m_children.size() + 1);
 
-  if (m_parent != nullptr || includeRoot) {
+  if (!m_parent.expired() || includeRoot) {
     result.emplace_back(filePath());
   }
   for (const auto& item : m_children | views::values) {
@@ -310,8 +310,8 @@ void VirtualFileTreeItem::dumpTree(std::ostream& os, int level) const noexcept
   }
 }
 
-VirtualFileTreeItem* VirtualFileTreeItem::findInternal(std::string_view path,
-                                                       bool includeDeleted) noexcept
+std::shared_ptr<VirtualFileTreeItem>
+VirtualFileTreeItem::findInternal(std::string_view path, bool includeDeleted) noexcept
 {
   const size_t pos = path.find('/');
   if (pos != string::npos) {
@@ -328,7 +328,7 @@ VirtualFileTreeItem* VirtualFileTreeItem::findInternal(std::string_view path,
     if (nextPos == string_view::npos) {
       // no further subdirectories
       if (!it->second->isDeleted() || includeDeleted) {
-        return it->second.get();
+        return it->second;
       }
       logger::debug("'{}' has been deleted, returning nullptr", path);
       errno = ENOENT;
@@ -346,7 +346,7 @@ VirtualFileTreeItem* VirtualFileTreeItem::findInternal(std::string_view path,
   }
 
   if (!it->second->isDeleted() || includeDeleted) {
-    return it->second.get();
+    return it->second;
   }
   logger::debug("'{}' has been deleted, returning nullptr", path);
   errno = ENOENT;
@@ -396,7 +396,7 @@ VirtualFileTreeItem::addInternal(std::string_view path, std::string_view pathLc,
     return it->second;
   }
 
-  it->second = make_shared<VirtualFileTreeItem>(string(path), realPath, type, this);
+  it->second = create(string(path), realPath, type, weak_from_this());
   return it->second;
 }
 
@@ -447,13 +447,14 @@ bool VirtualFileTreeItem::eraseInternal(std::string_view path,
   return true;
 }
 
-std::ostream& operator<<(std::ostream& os, const VirtualFileTreeItem& item) noexcept
+std::ostream& operator<<(std::ostream& os,
+                         const std::shared_ptr<VirtualFileTreeItem>& item) noexcept
 {
-  shared_lock lock(item.m_mtx);
-  os << "file path: " << quoted(item.filePath())
-     << ", real path: " << quoted(item.m_realPath) << '\n';
-  for (const auto& child : item.m_children | views::values) {
-    os << *child;
+  shared_lock lock(item->m_mtx);
+  os << "file path: " << quoted(item->filePath())
+     << ", real path: " << quoted(item->m_realPath) << '\n';
+  for (const auto& child : item->m_children | views::values) {
+    os << child;
   }
 
   return os;

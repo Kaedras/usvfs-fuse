@@ -8,17 +8,17 @@ using namespace std;
 namespace fs = std::filesystem;
 
 #define CREATE_FILE_TREE_WITH_DEPTH()                                                  \
-  VirtualFileTreeItem root("/", "/tmp", dir);                                          \
+  auto root     = VirtualFileTreeItem::create("/", "/tmp", dir);                       \
   int64_t depth = state.range(0);                                                      \
   string path;                                                                         \
   for (int i = 0; i < depth; ++i) {                                                    \
-    if (root.add(path + "/a", "/tmp" + path + "/a", dir) == nullptr) {                 \
+    if (root->add(path + "/a", "/tmp" + path + "/a", dir) == nullptr) {                \
       state.SkipWithError("error building file tree");                                 \
     }                                                                                  \
-    if (root.add(path + "/b", "/tmp" + path + "/b", dir) == nullptr) {                 \
+    if (root->add(path + "/b", "/tmp" + path + "/b", dir) == nullptr) {                \
       state.SkipWithError("error building file tree");                                 \
     }                                                                                  \
-    if (root.add(path + "/c", "/tmp" + path + "/c", dir) == nullptr) {                 \
+    if (root->add(path + "/c", "/tmp" + path + "/c", dir) == nullptr) {                \
       state.SkipWithError("error building file tree");                                 \
     }                                                                                  \
     path += "/a";                                                                      \
@@ -29,13 +29,13 @@ namespace benchmarks
 static void createFiletree(benchmark::State& state)
 {
   for (auto _ : state) {
-    VirtualFileTreeItem root("/", "/tmp", dir);
+    benchmark::DoNotOptimize(VirtualFileTreeItem::create("/", "/tmp", dir));
   }
 }
 
 static void copyEmptyFiletree(benchmark::State& state)
 {
-  VirtualFileTreeItem root("/", "/tmp", dir);
+  auto root = VirtualFileTreeItem::create("/", "/tmp", dir);
   for (auto _ : state) {
     auto copy = root;
     benchmark::DoNotOptimize(copy);
@@ -54,24 +54,24 @@ static void copyFiletree(benchmark::State& state)
 
 static void addItemToFiletree(benchmark::State& state)
 {
-  const VirtualFileTreeItem root("/", "/tmp", dir);
+  auto root = VirtualFileTreeItem::create("/", "/tmp", dir);
   for (auto _ : state) {
-    auto copy = root;
+    auto copy = root->clone();
     START();
-    copy.add("/a", "/tmp/a", dir);
+    copy->add("/a", "/tmp/a", dir);
     END();
   }
 }
 
 static void addMultipleItemsToFiletree(benchmark::State& state)
 {
-  const VirtualFileTreeItem root("/", "/tmp", dir);
+  auto root = VirtualFileTreeItem::create("/", "/tmp", dir);
   for (auto _ : state) {
-    auto copy = root;
+    auto copy = root->clone();
     START();
-    copy.add("/a", "/tmp/a", dir);
-    copy.add("/a/a", "/tmp/a/a", file);
-    copy.add("/a/a/a", "/tmp/a/a/a", file);
+    copy->add("/a", "/tmp/a", dir);
+    copy->add("/a/a", "/tmp/a/a", file);
+    copy->add("/a/a/a", "/tmp/a/a/a", file);
     END();
   }
 }
@@ -81,7 +81,7 @@ static void findInFiletree(benchmark::State& state)
   CREATE_FILE_TREE_WITH_DEPTH();
 
   for (auto _ : state) {
-    auto result = root.find(path);
+    auto result = root->find(path);
     benchmark::DoNotOptimize(result);
   }
 }
@@ -91,30 +91,31 @@ static void eraseFromFiletree(benchmark::State& state)
   CREATE_FILE_TREE_WITH_DEPTH();
 
   for (auto _ : state) {
-    auto copy = root;
+    auto copy = root->clone();
     START();
-    copy.erase(path);
+    copy->erase(path);
     END();
   }
 }
 
 static void mergeFiletrees(benchmark::State& state)
 {
-  VirtualFileTreeItem a("/", "/tmp", dir);
-  a.add("/a", "/tmp/a", dir);
-  a.add("/b", "/tmp/b", dir);
-  a.add("/c", "/tmp/c", dir);
+  auto a = VirtualFileTreeItem::create("/", "/tmp", dir);
 
-  VirtualFileTreeItem b("/", "/tmp", dir);
-  b.add("/a", "/tmp/a", dir);
-  b.add("/a/a", "/tmp/a/a", dir);
-  b.add("/c", "/tmp/3", dir);
-  b.add("/d", "/tmp/d", dir);
+  a->add("/a", "/tmp/a", dir);
+  a->add("/b", "/tmp/b", dir);
+  a->add("/c", "/tmp/c", dir);
+
+  auto b = VirtualFileTreeItem::create("/", "/tmp", dir);
+  b->add("/a", "/tmp/a", dir);
+  b->add("/a/a", "/tmp/a/a", dir);
+  b->add("/c", "/tmp/3", dir);
+  b->add("/d", "/tmp/d", dir);
 
   for (auto _ : state) {
     auto merged = a;
     START();
-    merged += b;
+    *merged += *b;
     benchmark::DoNotOptimize(merged);
     END();
   }

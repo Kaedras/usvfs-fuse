@@ -15,7 +15,7 @@ namespace fs = std::filesystem;
   }
 
 #define FIND_ITEM()                                                                    \
-  auto* item = state->fileTree->find(path);                                            \
+  auto item = state->fileTree->find(path);                                             \
   if (item == nullptr) {                                                               \
     return -ENOENT;                                                                    \
   }
@@ -51,7 +51,7 @@ int usvfs_getattr(const char* path, struct stat* stbuf, fuse_file_info* fi) noex
     pathToUse.erase(pathToUse.size() - directorySuffixLength);
   }
 
-  const VirtualFileTreeItem* item = state->fileTree->find(pathToUse);
+  const auto item = state->fileTree->find(pathToUse);
 
   if (item == nullptr) {
     return -ENOENT;
@@ -93,7 +93,7 @@ int usvfs_readlink(const char* path, char* buf, size_t size) noexcept
     const string dir = item->realPath();
     res              = readlinkat(state->fdMap.at(dir), "", buf, size);
   } else {
-    const string dir = item->getParent()->realPath();
+    const string dir = item->getParent().lock()->realPath();
     res = readlinkat(state->fdMap.at(dir), item->fileName().c_str(), buf, size);
   }
   if (res == -1) {
@@ -126,7 +126,7 @@ int usvfs_mkdir(const char* path, mode_t mode) noexcept
   }
 
   // get parent item
-  const auto* parentItem = state->fileTree->find(getParentPath(path));
+  const auto parentItem = state->fileTree->find(getParentPath(path));
   if (parentItem == nullptr) {
     return -errno;
   }
@@ -236,7 +236,7 @@ int usvfs_rename(const char* from, const char* to, const unsigned int flags) noe
   GET_STATE()
 
   // get old item
-  const VirtualFileTreeItem* oldItem = state->fileTree->find(from);
+  const auto oldItem = state->fileTree->find(from);
   if (oldItem == nullptr) {
     logger::error("{}: could not find item to rename", __FUNCTION__);
     return -ENOENT;
@@ -250,7 +250,7 @@ int usvfs_rename(const char* from, const char* to, const unsigned int flags) noe
 
   // create paths
   const string newParentPath = getParentPath(to);
-  const auto* newParentItem  = state->fileTree->find(newParentPath);
+  const auto newParentItem   = state->fileTree->find(newParentPath);
   if (newParentItem == nullptr) {
     logger::error("{}: target parent directory '{}' does not exist", __FUNCTION__,
                   newParentPath);
@@ -481,7 +481,7 @@ int usvfs_readdir(const char* path, void* buf, const fuse_fill_dir_t filler,
 
   GET_STATE()
 
-  const auto* tree = state->fileTree->find(path);
+  const auto tree = state->fileTree->find(path);
   if (tree == nullptr) {
     return -ENOENT;
   }
@@ -543,7 +543,7 @@ int usvfs_create(const char* path, mode_t mode, fuse_file_info* fi) noexcept
   const string parentPath = getParentPath(path);
   string absoluteParentPath;
   if (state->upperDir.empty()) {
-    auto* parentItem = state->fileTree->find(parentPath);
+    auto parentItem = state->fileTree->find(parentPath);
     if (parentItem == nullptr) {
       logger::error("{}: target parent directory '{}' does not exist in file tree",
                     __FUNCTION__, parentPath);
@@ -565,7 +565,7 @@ int usvfs_create(const char* path, mode_t mode, fuse_file_info* fi) noexcept
 
   fi->fh = fd;
 
-  auto* item = state->fileTree->find(path);
+  auto item = state->fileTree->find(path);
   if (item == nullptr) {
     const auto newItem =
         state->fileTree->add(path, absoluteParentPath + "/" + fileName, file);
