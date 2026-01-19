@@ -265,10 +265,6 @@ int usvfs_rename(const char* from, const char* to, const unsigned int flags) noe
     logger::error("{}: renameat2({}:'{}', {}, {}:'{}', {}) failed: {}", __FUNCTION__,
                   oldFd, oldRealParentPath, oldItem->fileName(), newFd,
                   newRealParentPath, newFileName, strerror(errno));
-    // remove new item on error
-    if (!state->fileTree->erase(to)) {
-      logger::error("error removing now invalid item after rename error");
-    }
     return -errno;
   }
 
