@@ -33,6 +33,10 @@ target_sources(usvfs-fuse
             ${PROJECT_SOURCE_DIR}/include/usvfs-fuse/usvfsmanager.h
 )
 
-target_compile_options(usvfs-fuse PRIVATE -Wall -Wextra -Wpedantic)
+if(ENABLE_ASAN)
+    target_link_libraries(usvfs-fuse PUBLIC asan)
+    target_compile_options(usvfs-fuse PRIVATE -fno-omit-frame-pointer -fsanitize=address)
+endif()
 
+target_compile_options(usvfs-fuse PRIVATE -Wall -Wextra -Wpedantic)
 target_link_libraries(usvfs-fuse PRIVATE PkgConfig::FUSE3 spdlog::spdlog ICU::data ICU::uc)
