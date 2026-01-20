@@ -65,13 +65,27 @@ static void addItemToFiletree(benchmark::State& state)
 
 static void addMultipleItemsToFiletree(benchmark::State& state)
 {
-  auto root = VirtualFileTreeItem::create("/", "/tmp", dir);
+  int width = state.range(0);
+  int depth = state.range(1);
   for (auto _ : state) {
-    auto copy = root->clone();
+    auto root = VirtualFileTreeItem::create("/", "/tmp", dir);
     START();
-    copy->add("/a", "/tmp/a", dir);
-    copy->add("/a/a", "/tmp/a/a", file);
-    copy->add("/a/a/a", "/tmp/a/a/a", file);
+    function<void(const string&, const string&, int)> addLevel =
+        [&](const string& virtualPath, const string& realPath, int currentDepth) {
+          if (currentDepth > depth) {
+            return;
+          }
+
+          for (int i = 0; i < width; ++i) {
+            string childVirtualPath = virtualPath + "/" + to_string(i);
+            string childRealPath    = realPath + "/" + to_string(i);
+
+            root->add(childVirtualPath, childRealPath, dir);
+            addLevel(childVirtualPath, childRealPath, currentDepth + 1);
+          }
+        };
+
+    addLevel("", "/tmp", 1);
     END();
   }
 }
@@ -125,7 +139,11 @@ BENCHMARK(createFiletree)->Name("filetree/create");
 BENCHMARK(copyEmptyFiletree)->Name("filetree/copyEmpty");
 BENCHMARK(copyFiletree)->Name("filetree/copy")->DenseRange(1, 10);
 BENCHMARK(addItemToFiletree)->Name("filetree/add")->UseManualTime();
-BENCHMARK(addMultipleItemsToFiletree)->Name("filetree/addMultiple")->UseManualTime();
+BENCHMARK(addMultipleItemsToFiletree)
+    ->Name("filetree/addMultiple")
+    ->UseManualTime()
+    ->ArgsProduct({benchmark::CreateDenseRange(1, 5, 1),
+                   benchmark::CreateDenseRange(1, 5, 1)});
 BENCHMARK(findInFiletree)->Name("filetree/find")->DenseRange(1, 10);
 BENCHMARK(eraseFromFiletree)
     ->Name("filetree/erase")
