@@ -198,16 +198,11 @@ std::string VirtualFileTreeItem::fileName() const noexcept
 std::string VirtualFileTreeItem::filePath() const noexcept
 {
   shared_lock lock(m_mtx);
-  if (m_parent.expired()) {
-    return "";
+  if (const auto parent = m_parent.lock()) {
+    return parent->filePath() + "/" + m_fileName;
   }
 
-  string parentFilePath = m_parent.lock()->filePath();
-  if (!parentFilePath.ends_with('/')) {
-    parentFilePath += "/";
-  }
-
-  return parentFilePath + m_fileName;
+  return "";
 }
 
 std::string VirtualFileTreeItem::realPath() const noexcept
