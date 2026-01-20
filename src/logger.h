@@ -5,7 +5,7 @@ namespace logger
 {
 template <typename... Args>
 void log(spdlog::level::level_enum level, spdlog::format_string_t<Args...> fmt,
-         Args&&... args)
+         Args&&... args) noexcept
 {
   auto logger = spdlog::get("usvfs");
   if (logger == nullptr) {
@@ -18,37 +18,37 @@ void log(spdlog::level::level_enum level, spdlog::format_string_t<Args...> fmt,
 }
 
 template <typename... Args>
-void trace(spdlog::format_string_t<Args...> fmt, Args&&... args)
+void trace(spdlog::format_string_t<Args...> fmt, Args&&... args) noexcept
 {
   log(spdlog::level::trace, fmt, std::forward<Args>(args)...);
 }
 
 template <typename... Args>
-void debug(spdlog::format_string_t<Args...> fmt, Args&&... args)
+void debug(spdlog::format_string_t<Args...> fmt, Args&&... args) noexcept
 {
   log(spdlog::level::debug, fmt, std::forward<Args>(args)...);
 }
 
 template <typename... Args>
-void info(spdlog::format_string_t<Args...> fmt, Args&&... args)
+void info(spdlog::format_string_t<Args...> fmt, Args&&... args) noexcept
 {
   log(spdlog::level::info, fmt, std::forward<Args>(args)...);
 }
 
 template <typename... Args>
-void warn(spdlog::format_string_t<Args...> fmt, Args&&... args)
+void warn(spdlog::format_string_t<Args...> fmt, Args&&... args) noexcept
 {
   log(spdlog::level::warn, fmt, std::forward<Args>(args)...);
 }
 
 template <typename... Args>
-void error(spdlog::format_string_t<Args...> fmt, Args&&... args)
+void error(spdlog::format_string_t<Args...> fmt, Args&&... args) noexcept
 {
   log(spdlog::level::err, fmt, std::forward<Args>(args)...);
 }
 
 template <typename... Args>
-void critical(spdlog::format_string_t<Args...> fmt, Args&&... args)
+void critical(spdlog::format_string_t<Args...> fmt, Args&&... args) noexcept
 {
   log(spdlog::level::critical, fmt, std::forward<Args>(args)...);
 }
