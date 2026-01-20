@@ -348,4 +348,6 @@ TEST(usvfs, CreateProcessHooked)
   EXPECT_GE(waitpid(pid, &status, 0), 0) << "error: " << strerror(errno);
   EXPECT_TRUE(WIFEXITED(status));
   EXPECT_EQ(WEXITSTATUS(status), 0);
+
+  EXPECT_TRUE(cleanup());
 }
