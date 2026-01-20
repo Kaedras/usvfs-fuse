@@ -264,7 +264,7 @@ TEST_F(FileTreeTest, CopyTree)
   auto root = VirtualFileTreeItem::create("/", "/tmp", dir);
   addItems(root);
 
-  VirtualFileTreeItem copy = *root;
+  auto copy = root->clone();
 
   // helper function, required because find returns nullptr if the value has not been
   // found
@@ -286,4 +286,22 @@ TEST_F(FileTreeTest, CopyTree)
   EXPECT_EQ(find("/3/1"), "/tmp/c/a");
   EXPECT_EQ(find("/3/2"), "/tmp/c/b");
   EXPECT_EQ(find("/3/2/1"), "/tmp/c/b/a");
+
+  static const string expectedResult =
+      "file path: \"\", real path: \"/tmp\"\n"
+      "file path: \"/1\", real path: \"/tmp/a\"\n"
+      "file path: \"/1/1\", real path: \"/tmp/a/a\"\n"
+      "file path: \"/2\", real path: \"/tmp/b\"\n"
+      "file path: \"/2/1\", real path: \"/tmp/b/a\"\n"
+      "file path: \"/2/2\", real path: \"/tmp/b/b\"\n"
+      "file path: \"/2/2/1\", real path: \"/tmp/b/b/a\"\n"
+      "file path: \"/2/3\", real path: \"/tmp/b/c\"\n"
+      "file path: \"/3\", real path: \"/tmp/c\"\n"
+      "file path: \"/3/1\", real path: \"/tmp/c/a\"\n"
+      "file path: \"/3/2\", real path: \"/tmp/c/b\"\n"
+      "file path: \"/3/2/1\", real path: \"/tmp/c/b/a\"\n";
+
+  stringstream ss;
+  ss << root;
+  EXPECT_EQ(ss.str(), expectedResult);
 }
