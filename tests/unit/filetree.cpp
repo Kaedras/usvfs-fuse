@@ -231,17 +231,23 @@ TEST_F(FileTreeTest, MergeTrees)
   root->add("/1", "/tmp/1", file);
   root->add("/2", "/tmp/2", file);
   root->add("/3", "/tmp/3", dir);
-  root->add("/3/1", "/tmp/3/1", file);
+  root->add("/3/1", "/tmp/3/1", dir);
+  root->add("/3/1/1", "/tmp/3/1/1", dir);
 
-  auto root2 = VirtualFileTreeItem::create("/", "/tmp", dir);
-  root2->add("/1", "/tmp/A", dir);
-  root2->add("/3", "/tmp/3", dir);
-  root2->add("/3/2", "/tmp/3/2", dir);
-  root2->add("/4", "/tmp/4", dir);
-  root2->add("/4/4", "/tmp/4/4", dir);
-  root2->add("/4/4/4", "/tmp/4/4/4", dir);
+  {
+    auto root2 = VirtualFileTreeItem::create("/", "/tmp", dir);
+    root2->add("/1", "/tmp/A", dir);
+    root2->add("/3", "/tmp/3", dir);
+    root2->add("/3/1", "/tmp/3/1", dir);
+    root2->add("/3/1/1", "/tmp/3/1/1", dir);
+    root2->add("/3/1/1/1", "/tmp/3/1/1/1", dir);
+    root2->add("/3/2", "/tmp/3/2", dir);
+    root2->add("/4", "/tmp/4", dir);
+    root2->add("/4/4", "/tmp/4/4", dir);
+    root2->add("/4/4/4", "/tmp/4/4/4", dir);
 
-  *root += *root2;
+    *root += *root2;
+  }
 
   static const string expectedResult =
       "file path: \"\", real path: \"/tmp\"\n"
@@ -249,6 +255,8 @@ TEST_F(FileTreeTest, MergeTrees)
       "file path: \"/2\", real path: \"/tmp/2\"\n"
       "file path: \"/3\", real path: \"/tmp/3\"\n"
       "file path: \"/3/1\", real path: \"/tmp/3/1\"\n"
+      "file path: \"/3/1/1\", real path: \"/tmp/3/1/1\"\n"
+      "file path: \"/3/1/1/1\", real path: \"/tmp/3/1/1/1\"\n"
       "file path: \"/3/2\", real path: \"/tmp/3/2\"\n"
       "file path: \"/4\", real path: \"/tmp/4\"\n"
       "file path: \"/4/4\", real path: \"/tmp/4/4\"\n"
