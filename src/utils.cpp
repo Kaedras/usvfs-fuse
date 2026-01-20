@@ -3,7 +3,7 @@
 using namespace std;
 using namespace icu;
 
-bool iequals(const std::string_view lhs, const std::string_view rhs)
+bool iequals(const std::string_view lhs, const std::string_view rhs) noexcept
 {
   if (lhs.length() != rhs.length()) {
     return false;
@@ -33,7 +33,7 @@ bool iequals(const std::string_view lhs, const std::string_view rhs)
   return a.caseCompare(b, 0) == 0;
 }
 
-bool iendsWith(const std::string_view lhs, const std::string_view rhs)
+bool iendsWith(const std::string_view lhs, const std::string_view rhs) noexcept
 {
   if (rhs.empty()) {
     return true;
@@ -46,7 +46,7 @@ bool iendsWith(const std::string_view lhs, const std::string_view rhs)
   return iequals(suffix, rhs);
 }
 
-bool istartsWith(const std::string_view lhs, const std::string_view rhs)
+bool istartsWith(const std::string_view lhs, const std::string_view rhs) noexcept
 {
   if (rhs.empty()) {
     return true;
@@ -59,7 +59,7 @@ bool istartsWith(const std::string_view lhs, const std::string_view rhs)
   return iequals(prefix, rhs);
 }
 
-std::string toLower(const std::string_view str)
+std::string toLower(const std::string_view str) noexcept
 {
   // try using ASCII first
   bool is_ascii = true;
@@ -87,7 +87,7 @@ std::string toLower(const std::string_view str)
   return result;
 }
 
-void toLowerInplace(std::string& str)
+void toLowerInplace(std::string& str) noexcept
 {
   // try using ASCII first
   bool is_ascii = true;
@@ -112,7 +112,7 @@ void toLowerInplace(std::string& str)
   unicodeStr.toUTF8String(str);
 }
 
-std::string toUpper(const std::string_view str)
+std::string toUpper(const std::string_view str) noexcept
 {
   // try using ASCII first
   bool is_ascii = true;
@@ -140,7 +140,7 @@ std::string toUpper(const std::string_view str)
   return result;
 }
 
-void toUpperInplace(std::string& str)
+void toUpperInplace(std::string& str) noexcept
 {
   // try using ASCII first
   bool is_ascii = true;
@@ -165,7 +165,7 @@ void toUpperInplace(std::string& str)
   unicodeStr.toUTF8String(str);
 }
 
-std::string getFileNameFromPath(const std::string_view path)
+std::string getFileNameFromPath(const std::string_view path) noexcept
 {
   const size_t pos = path.find_last_of('/');
   if (pos == string::npos) {
@@ -174,7 +174,7 @@ std::string getFileNameFromPath(const std::string_view path)
   return string(path.substr(pos + 1));
 }
 
-std::string getParentPath(const std::string_view path)
+std::string getParentPath(const std::string_view path) noexcept
 {
   const size_t pos = path.find_last_of('/');
   if (pos == string::npos) {
