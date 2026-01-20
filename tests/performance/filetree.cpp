@@ -47,7 +47,7 @@ static void copyFiletree(benchmark::State& state)
   CREATE_FILE_TREE_WITH_DEPTH();
 
   for (auto _ : state) {
-    auto copy = root;
+    auto copy = root->clone();
     benchmark::DoNotOptimize(copy);
   }
 }
