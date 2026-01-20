@@ -56,14 +56,19 @@ VirtualFileTreeItem::create(std::string path, std::string realPath,
 }
 
 VirtualFileTreeItem::VirtualFileTreeItem(const VirtualFileTreeItem& other) noexcept
-    : m_fileName(other.m_fileName), m_realPath(other.m_realPath),
-      m_parent(other.m_parent), m_type(other.m_type), m_deleted(other.m_deleted)
+    : m_fileName(other.m_fileName), m_realPath(other.m_realPath), m_type(other.m_type),
+      m_deleted(other.m_deleted)
 {
   shared_lock lock(other.m_mtx);
   for (const auto& [name, item] : other.m_children) {
-    auto childClone      = make_shared<VirtualFileTreeItem>(*item);
-    childClone->m_parent = weak_from_this();
-    m_children.emplace(name, std::move(childClone));
+    auto cloned = make_shared<VirtualFileTreeItem>(*item);
+    // update parent pointers
+    for (const auto& child : cloned->m_children | views::values) {
+      child->m_parent = cloned;
+    }
+    m_children.emplace(name, std::move(cloned));
+    // note: the clone parent pointer has to be updated elsewhere because
+    // std::weak_from_this() cannot be called within ctor
   }
 }
 
@@ -85,6 +90,7 @@ VirtualFileTreeItem::operator+=(const VirtualFileTreeItem& other) noexcept
       // item already exists, merge recursively
       *it->second += *item;
     }
+    it->second->m_parent = weak_from_this();
   }
 
   return *this;
@@ -129,8 +135,14 @@ VirtualFileTreeItem::add(std::string_view path, std::string realPath,
 
 std::shared_ptr<VirtualFileTreeItem> VirtualFileTreeItem::clone() const noexcept
 {
+  shared_lock lock(m_mtx);
   try {
-    return make_shared<VirtualFileTreeItem>(*this);
+    auto cloned = make_shared<VirtualFileTreeItem>(*this);
+    // update parent pointers that could not be updated in the copy constructor
+    for (auto& child : cloned->m_children | views::values) {
+      child->m_parent = cloned;
+    }
+    return cloned;
   } catch (const std::bad_alloc&) {
     errno = ENOMEM;
     return nullptr;
