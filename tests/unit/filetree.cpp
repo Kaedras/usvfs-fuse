@@ -269,15 +269,18 @@ TEST_F(FileTreeTest, MergeTrees)
 
 TEST_F(FileTreeTest, CopyTree)
 {
-  auto root = VirtualFileTreeItem::create("/", "/tmp", dir);
-  addItems(root);
+  shared_ptr<VirtualFileTreeItem> copy;
 
-  auto copy = root->clone();
+  {
+    auto root = VirtualFileTreeItem::create("/", "/tmp", dir);
+    addItems(root);
+    copy = root->clone();
+  }
 
   // helper function, required because find returns nullptr if the value has not been
   // found
   auto find = [&](const char* value) -> string {
-    if (const auto result = root->find(value)) {
+    if (const auto result = copy->find(value)) {
       return result->realPath();
     }
     return "";
@@ -310,6 +313,6 @@ TEST_F(FileTreeTest, CopyTree)
       "file path: \"/3/2/1\", real path: \"/tmp/c/b/a\"\n";
 
   stringstream ss;
-  ss << root;
+  ss << copy;
   EXPECT_EQ(ss.str(), expectedResult);
 }
