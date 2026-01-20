@@ -200,21 +200,15 @@ TEST_F(UsvfsTest, getattr)
 
 TEST_F(UsvfsTest, open)
 {
-  const auto usvfs = UsvfsManager::instance();
-
-  int fd = open((mnt / "0.txt").c_str(), O_RDONLY);
-  EXPECT_NE(fd, -1) << "error: " << strerror(errno);
-  if (fd != -1) {
-    EXPECT_EQ(close(fd), 0) << "error: " << strerror(errno);
+  for (const auto& [a, b] : filesToCheck) {
+    int fd = open(a.c_str(), O_RDONLY);
+    EXPECT_NE(fd, -1) << "error: " << strerror(errno);
+    if (fd != -1) {
+      EXPECT_EQ(close(fd), 0) << "error: " << strerror(errno);
+    }
   }
 
-  fd = open((mnt / "already_existed.txt").c_str(), O_RDONLY);
-  EXPECT_NE(fd, -1) << "error: " << strerror(errno);
-  if (fd != -1) {
-    EXPECT_EQ(close(fd), 0) << "error: " << strerror(errno);
-  }
-
-  fd          = open((mnt / "DOES_NOT_EXIST").c_str(), O_RDONLY);
+  int fd      = open((mnt / "DOES_NOT_EXIST").c_str(), O_RDONLY);
   const int e = errno;
   EXPECT_EQ(fd, -1);
   EXPECT_EQ(e, ENOENT) << "expected ENOENT, got " << strerrorname_np(e);
