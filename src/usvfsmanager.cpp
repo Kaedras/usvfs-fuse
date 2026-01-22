@@ -265,7 +265,7 @@ bool UsvfsManager::usvfsVirtualLinkFile(const std::string& source,
 
   // prepare state and enqueue to the pending list (no mounting yet)
   auto state        = make_unique<MountState>();
-  state->fileTree   = destinationFileTree;
+  state->fileTree   = std::move(destinationFileTree);
   state->mountpoint = dstDir;
   state->fdMap      = fdMap;
   m_pendingMounts.emplace_back(std::move(state));
@@ -355,7 +355,7 @@ bool UsvfsManager::usvfsVirtualLinkDirectoryStatic(const std::string& source,
 
   // prepare state and add to the pending list (no mounting yet)
   auto state        = make_unique<MountState>();
-  state->fileTree   = destinationFileTree;
+  state->fileTree   = std::move(destinationFileTree);
   state->mountpoint = destination;
   state->fdMap      = fdMap;
 
