@@ -154,8 +154,6 @@ protected:
                                             "/tmp/usvfs/mnt2/2.txt", 0));
 
     ASSERT_NO_THROW(usvfs->mount());
-
-    this_thread::sleep_for(100ms);
     // dumpUsvfs();
   }
   void TearDown() override
