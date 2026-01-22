@@ -43,21 +43,19 @@ TEST(utils, toLower)
   EXPECT_EQ(toLower("テスト"), "テスト");
 }
 
-#define TEST_VALUES(testString, result)                                                \
-  str = testString;                                                                    \
-  toLowerInplace(str);                                                                 \
-  EXPECT_EQ(str, result)
-
 TEST(utils, toLowerInplace)
 {
-  string str;
+  auto test = [](const char* testString, const char* result) {
+    string str = testString;
+    toLowerInplace(str);
+    EXPECT_EQ(str, result);
+  };
 
-  TEST_VALUES("aBc", "abc");
-  TEST_VALUES("ÄÜöabC", "äüöabc");
-  TEST_VALUES("TÊŚT", "têśt");
-  TEST_VALUES("テスト", "テスト");
+  test("aBc", "abc");
+  test("ÄÜöabC", "äüöabc");
+  test("TÊŚT", "têśt");
+  test("テスト", "テスト");
 }
-#undef TEST_VALUES
 
 TEST(utils, toUpper)
 {
@@ -67,21 +65,19 @@ TEST(utils, toUpper)
   EXPECT_EQ(toUpper("テスト"), "テスト");
 }
 
-#define TEST_VALUES(testString, result)                                                \
-  str = testString;                                                                    \
-  toUpperInplace(str);                                                                 \
-  EXPECT_EQ(str, result)
-
 TEST(utils, toUpperInplace)
 {
-  string str;
+  auto test = [](const char* testString, const char* result) {
+    string str = testString;
+    toUpperInplace(str);
+    EXPECT_EQ(str, result);
+  };
 
-  TEST_VALUES("aBc", "ABC");
-  TEST_VALUES("äüöabC", "ÄÜÖABC");
-  TEST_VALUES("têśt", "TÊŚT");
-  TEST_VALUES("テスト", "テスト");
+  test("aBc", "ABC");
+  test("äüöabC", "ÄÜÖABC");
+  test("têśt", "TÊŚT");
+  test("テスト", "テスト");
 }
-#undef TEST_VALUES
 
 TEST(utils, getParentPath)
 {
