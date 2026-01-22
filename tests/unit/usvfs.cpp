@@ -193,7 +193,7 @@ TEST_F(UsvfsTest, getattr)
   struct stat st{};
   for (const auto& filePath : pathsToStat) {
     EXPECT_EQ(stat(filePath.c_str(), &st), 0)
-        << "error for '" << filePath << "': " << strerror(errno);
+        << "error for '" << filePath.string() << "': " << strerror(errno);
   }
 
   EXPECT_EQ(stat((mnt / "DOES_NOT_EXIST").c_str(), &st), -1);
