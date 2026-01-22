@@ -292,7 +292,7 @@ TEST_F(UsvfsTest, chmod)
 
 TEST_F(UsvfsTest, create)
 {
-  auto path = mnt / "testfile.txt";
+  auto path = mnt / "new_file.txt";
   int fd    = open(path.c_str(), O_WRONLY | O_CREAT | O_EXCL, mode);
   EXPECT_GT(fd, -1) << "error: " << strerror(errno);
   if (fd >= 0) {
@@ -302,8 +302,8 @@ TEST_F(UsvfsTest, create)
   EXPECT_EQ(open(path.c_str(), O_WRONLY | O_CREAT | O_EXCL, mode), -1);
   EXPECT_EQ(errno, EEXIST) << "expected EEXIST, got " << strerrorname_np(errno);
 
-  EXPECT_EQ(mkdir((mnt / "A").c_str(), mode), 0) << "error: " << strerror(errno);
-  fd = open((mnt / "a/testfile.txt").c_str(), O_WRONLY | O_CREAT | O_EXCL, mode);
+  EXPECT_EQ(mkdir((mnt / "NEW_DIR").c_str(), mode), 0) << "error: " << strerror(errno);
+  fd = open((mnt / "new_dir/testfile.txt").c_str(), O_WRONLY | O_CREAT | O_EXCL, mode);
   EXPECT_GT(fd, -1) << "error: " << strerror(errno);
   if (fd >= 0) {
     EXPECT_EQ(close(fd), 0);
