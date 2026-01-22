@@ -60,5 +60,10 @@ jobs:
           key: usvfs-fuse-build-${{ github.sha }}
           path: build
 
+      - name: Debug environment
+        run: |
+          uname -a
+          g++ -v
+
       - name: Test usvfs-fuse
         run: ctest --test-dir build -C RelWithDebInfo --output-on-failure --extra-verbose
