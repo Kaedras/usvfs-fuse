@@ -37,7 +37,7 @@ static void copyEmptyFiletree(benchmark::State& state)
 {
   auto root = VirtualFileTreeItem::create("/", "/tmp", dir);
   for (auto _ : state) {
-    auto copy = root;
+    auto copy = root->clone();
     benchmark::DoNotOptimize(copy);
   }
 }
@@ -127,7 +127,7 @@ static void mergeFiletrees(benchmark::State& state)
   b->add("/d", "/tmp/d", dir);
 
   for (auto _ : state) {
-    auto merged = a;
+    auto merged = a->clone();
     START();
     *merged += *b;
     benchmark::DoNotOptimize(merged);
