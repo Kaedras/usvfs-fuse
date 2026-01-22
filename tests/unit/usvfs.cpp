@@ -323,6 +323,34 @@ TEST(usvfs, CreateProcessHooked)
 
   auto usvfs = UsvfsManager::instance();
   usvfs->setProcessDelay(10ms);
+
+  ASSERT_TRUE(usvfs->usvfsVirtualLinkDirectoryStatic((src / "0").string(), mnt.string(),
+                                                     linkFlag::RECURSIVE));
+  ASSERT_TRUE(usvfs->usvfsVirtualLinkDirectoryStatic((src / "1").string(), mnt.string(),
+                                                     linkFlag::RECURSIVE));
+  ASSERT_TRUE(
+      usvfs->usvfsVirtualLinkFile("/tmp/usvfs/src/2/2.txt", "/tmp/usvfs/mnt/2.txt", 0));
+
+  pid_t pid = usvfs->usvfsCreateProcessHooked("tree", ".", mnt.string());
+  ASSERT_GE(pid, 0);
+
+  int status;
+  EXPECT_GE(waitpid(pid, &status, 0), 0) << "error: " << strerror(errno);
+  EXPECT_TRUE(WIFEXITED(status));
+  EXPECT_EQ(WEXITSTATUS(status), 0);
+  usvfs->unmount();
+
+  this_thread::sleep_for(10ms);
+  EXPECT_TRUE(cleanup());
+}
+
+TEST(usvfs, CreateProcessHooked_WithMountNamespace)
+{
+  initLogging();
+  ASSERT_TRUE(createTmpDirs());
+
+  auto usvfs = UsvfsManager::instance();
+  usvfs->setProcessDelay(10ms);
   usvfs->setUseMountNamespace(true);
 
   ASSERT_TRUE(usvfs->usvfsVirtualLinkDirectoryStatic((src / "0").string(), mnt.string(),
