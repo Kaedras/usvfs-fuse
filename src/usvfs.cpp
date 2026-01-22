@@ -64,7 +64,7 @@ int usvfs_getattr(const char* path, struct stat* stbuf, fuse_file_info* fi) noex
   if (item->isDir()) {
     fdPath = item->realPath();
     fd     = state->fdMap.at(fdPath);
-    res    = fstatat(fd, nullptr, stbuf, AT_SYMLINK_NOFOLLOW | AT_EMPTY_PATH);
+    res    = fstatat(fd, "", stbuf, AT_SYMLINK_NOFOLLOW | AT_EMPTY_PATH);
   } else {
     fdPath = getParentPath(item->realPath());
     file   = getFileNameFromPath(item->realPath());
