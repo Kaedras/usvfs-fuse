@@ -2,7 +2,7 @@
 
 #include "../../src/utils.h"
 
-using namespace std::string_literals;
+using namespace std;
 
 TEST(utils, iequals)
 {
@@ -43,6 +43,22 @@ TEST(utils, toLower)
   EXPECT_EQ(toLower("テスト"), "テスト");
 }
 
+#define TEST_VALUES(testString, result)                                                \
+  str = testString;                                                                    \
+  toLowerInplace(str);                                                                 \
+  EXPECT_EQ(str, result)
+
+TEST(utils, toLowerInplace)
+{
+  string str;
+
+  TEST_VALUES("aBc", "abc");
+  TEST_VALUES("ÄÜöabC", "äüöabc");
+  TEST_VALUES("TÊŚT", "têśt");
+  TEST_VALUES("テスト", "テスト");
+}
+#undef TEST_VALUES
+
 TEST(utils, toUpper)
 {
   EXPECT_EQ(toUpper("aBc"), "ABC");
@@ -50,6 +66,22 @@ TEST(utils, toUpper)
   EXPECT_EQ(toUpper("têśt"), "TÊŚT");
   EXPECT_EQ(toUpper("テスト"), "テスト");
 }
+
+#define TEST_VALUES(testString, result)                                                \
+  str = testString;                                                                    \
+  toUpperInplace(str);                                                                 \
+  EXPECT_EQ(str, result)
+
+TEST(utils, toUpperInplace)
+{
+  string str;
+
+  TEST_VALUES("aBc", "ABC");
+  TEST_VALUES("äüöabC", "ÄÜÖABC");
+  TEST_VALUES("têśt", "TÊŚT");
+  TEST_VALUES("テスト", "テスト");
+}
+#undef TEST_VALUES
 
 TEST(utils, getParentPath)
 {
