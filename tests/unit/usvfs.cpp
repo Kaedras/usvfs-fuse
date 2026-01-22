@@ -19,7 +19,7 @@ static const fs::path mnt   = base / "mnt";
 static const fs::path mnt2  = base / "mnt2";
 static const fs::path upper = base / "upper";
 
-static const vector filesToCheck = {
+static const vector filesToCheck{
     pair{mnt / "0.txt", "hello 0"},
     pair{mnt / "0/0.txt", "hello 0/0"},
     pair{mnt / "1.txt", "hello 1"},
@@ -45,7 +45,7 @@ static const vector srcDirsToCreate{src / "0",           src / "1",
 
 bool createTmpDirs()
 {
-  std::error_code ec;
+  error_code ec;
   for (const auto& srcDir : srcDirsToCreate) {
     fs::create_directories(srcDir, ec);
     if (ec) {
@@ -102,15 +102,12 @@ bool runCmd(const string& cmd)
 
 void initLogging()
 {
-
   auto usvfs = UsvfsManager::instance();
   usvfs->setLogLevel(logLevel);
 }
 
 string readFile(const fs::path& path)
 {
-  const auto usvfs = UsvfsManager::instance();
-
   const int fd = open(path.string().c_str(), O_RDONLY);
   if (fd == -1) {
     return "open failed: "s + strerror(errno);
@@ -188,8 +185,6 @@ TEST_F(UsvfsTest, getattr)
       mnt / "already_existing_dir/already_existed0.txt",
   };
 
-  const auto usvfs = UsvfsManager::instance();
-
   struct stat st{};
   for (const auto& filePath : pathsToStat) {
     EXPECT_EQ(stat(filePath.c_str(), &st), 0)
@@ -223,8 +218,6 @@ TEST_F(UsvfsTest, readdir)
 
 TEST_F(UsvfsTest, mkdir)
 {
-  const auto usvfs = UsvfsManager::instance();
-
   EXPECT_EQ(mkdir((mnt / "A").c_str(), mode), 0) << "error: " << strerror(errno);
   EXPECT_EQ(mkdir((mnt / "A/b").c_str(), mode), 0) << "error: " << strerror(errno);
   EXPECT_EQ(mkdir((mnt / "a/c").c_str(), mode), 0) << "error: " << strerror(errno);
@@ -245,8 +238,6 @@ TEST_F(UsvfsTest, read)
 
 TEST_F(UsvfsTest, unlink)
 {
-  const auto usvfs = UsvfsManager::instance();
-
   EXPECT_EQ(unlink((mnt / "0.txt").c_str()), 0) << "error: " << strerror(errno);
   EXPECT_EQ(unlink((mnt / "already_existed.txt").c_str()), 0)
       << "error: " << strerror(errno);
