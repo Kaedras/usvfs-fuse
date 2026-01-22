@@ -61,4 +61,4 @@ jobs:
           path: build
 
       - name: Test usvfs-fuse
-        run: ctest --test-dir build -C RelWithDebInfo --output-on-failure
+        run: ctest --test-dir build -C RelWithDebInfo --output-on-failure --extra-verbose

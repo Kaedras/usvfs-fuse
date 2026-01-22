@@ -11,7 +11,7 @@ namespace fs = std::filesystem;
 
 static constexpr mode_t mode          = 0755;
 static LogLevel logLevel              = LogLevel::Trace;
-static constexpr bool enableDebugMode = false;
+static constexpr bool enableDebugMode = true;
 
 static const fs::path base  = fs::temp_directory_path() / "usvfs";
 static const fs::path src   = base / "src";
