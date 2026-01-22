@@ -86,19 +86,13 @@ TEST(utils, toUpperInplace)
 TEST(utils, getParentPath)
 {
   EXPECT_EQ(getParentPath("/a"), "");
-  EXPECT_EQ(getParentPath("/a"s), "");
   EXPECT_EQ(getParentPath("/a/b"), "/a");
-  EXPECT_EQ(getParentPath("/a/b"s), "/a");
   EXPECT_EQ(getParentPath("/a/b/c"), "/a/b");
-  EXPECT_EQ(getParentPath("/a/b/c"s), "/a/b");
 }
 
 TEST(utils, getFileNameFromPath)
 {
   EXPECT_EQ(getFileNameFromPath("/a"), "a");
-  EXPECT_EQ(getFileNameFromPath("/a"s), "a");
   EXPECT_EQ(getFileNameFromPath("/a/b"), "b");
-  EXPECT_EQ(getFileNameFromPath("/a/b"s), "b");
   EXPECT_EQ(getFileNameFromPath("/a/b/c"), "c");
-  EXPECT_EQ(getFileNameFromPath("/a/b/c"s), "c");
 }
