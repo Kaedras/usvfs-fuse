@@ -11,6 +11,7 @@ namespace fs = std::filesystem;
 #define GET_STATE()                                                                    \
   auto* state = getState();                                                            \
   if (state == nullptr) {                                                              \
+    logger::error("error getting state");                                              \
     return -EIO;                                                                       \
   }
 
