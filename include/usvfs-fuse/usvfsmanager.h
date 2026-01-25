@@ -79,14 +79,13 @@ public:
   const std::vector<pid_t>& usvfsGetVFSProcessList() const noexcept;
 
   /**
-   * spawn a new process that can see the virtual file system.
+   * @brief spawn a new process that can see the virtual file system.
+   * @param env Environment variables to add to the process
    */
-  pid_t usvfsCreateProcessHooked(const std::string& file, const std::string& arg,
-                                 const std::string& workDir,
-                                 std::vector<std::string_view> env) noexcept;
-
-  pid_t usvfsCreateProcessHooked(const std::string& file, const std::string& arg,
-                                 const std::string& workDir) noexcept;
+  pid_t usvfsCreateProcessHooked(
+      const std::string& file, const std::string& arg, const std::string& workDir,
+      std::optional<std::reference_wrapper<std::vector<std::string>>> env =
+          std::nullopt) noexcept;
 
   pid_t usvfsCreateProcessHooked(const std::string& file,
                                  const std::string& arg) noexcept;

@@ -370,10 +370,9 @@ const std::vector<pid_t>& UsvfsManager::usvfsGetVFSProcessList() const noexcept
   return m_spawnedProcesses;
 }
 
-pid_t UsvfsManager::usvfsCreateProcessHooked(const std::string& file,
-                                             const std::string& arg,
-                                             const std::string& workDir,
-                                             std::vector<std::string_view> env) noexcept
+pid_t UsvfsManager::usvfsCreateProcessHooked(
+    const std::string& file, const std::string& arg, const std::string& workDir,
+    std::optional<std::reference_wrapper<std::vector<std::string>>> env) noexcept
 {
   scoped_lock lock(m_mtx);
 
@@ -388,31 +387,6 @@ pid_t UsvfsManager::usvfsCreateProcessHooked(const std::string& file,
   if (!m_executableBlacklist.contains(file)) {
     if (!mountInternal()) {
       return -1;
-    }
-  }
-
-  // handle wine dll overrides
-  const bool wine = file.ends_with("wine") || file.ends_with("wine-staging") ||
-                    file.ends_with("wine64") || file.ends_with("wine64-staging");
-  const bool proton = file.ends_with("proton");
-
-  if (wine || proton) {
-    if (!m_forceLoadLibraries.empty()) {
-      const size_t firstSpace = arg.find_first_of(' ');
-      const string processName =
-          wine ? arg.substr(0, firstSpace - 1)
-               : arg.substr(firstSpace, arg.find_first_of(' ') - 1);
-      logger::trace("using process name {}", processName);
-      const vector<string> applicableLibraries = librariesToForceLoad(processName);
-      if (!applicableLibraries.empty()) {
-        string dllOverrides = "WINEDLLOVERRIDES=\"";
-        for (size_t i = 0; i < applicableLibraries.size() - 1; ++i) {
-          dllOverrides += applicableLibraries[i] + "=n,b;";
-        }
-        dllOverrides += applicableLibraries.back() + "=n,b\"";
-        env.emplace_back(dllOverrides);
-        logger::debug("adding '{}' to process", dllOverrides);
-      }
     }
   }
 
@@ -455,19 +429,38 @@ pid_t UsvfsManager::usvfsCreateProcessHooked(const std::string& file,
       logger::error("chdir failed: {}", strerror(errno));
     }
 
-    // create environment
-    char** envp = static_cast<char**>(calloc(env.size() + 1, sizeof(char*)));
-    int i       = 0;
-    for (const auto& v : env) {
-      // ensure null termination
-      vector buf(v.begin(), v.end());
-      buf.push_back('\0');
+    // handle wine dll overrides
+    const bool wine = file.ends_with("wine") || file.ends_with("wine-staging") ||
+                      file.ends_with("wine64") || file.ends_with("wine64-staging");
+    const bool proton = file.ends_with("proton");
 
-      envp[i++] = strdup(buf.data());
+    if (wine || proton) {
+      if (!m_forceLoadLibraries.empty()) {
+        const size_t firstSpace = arg.find_first_of(' ');
+        const string processName =
+            wine ? arg.substr(0, firstSpace - 1)
+                 : arg.substr(firstSpace, arg.find_first_of(' ') - 1);
+        logger::trace("using process name {}", processName);
+        const vector<string> applicableLibraries = librariesToForceLoad(processName);
+        if (!applicableLibraries.empty()) {
+          string dllOverrides = "WINEDLLOVERRIDES=\"";
+          for (size_t i = 0; i < applicableLibraries.size() - 1; ++i) {
+            dllOverrides += applicableLibraries[i] + "=n,b;";
+          }
+          dllOverrides += applicableLibraries.back() + "=n,b\"";
+          putenv(const_cast<char*>(dllOverrides.c_str()));
+          logger::debug("adding '{}' to process", dllOverrides);
+        }
+      }
     }
-    envp[i] = nullptr;
 
-    execle("/bin/sh", "/bin/sh", "-c", cmd.c_str(), nullptr, envp);
+    if (env.has_value()) {
+      for (const auto& entry : env.value().get()) {
+        putenv(const_cast<char*>(entry.c_str()));
+      }
+    }
+
+    execl("/bin/sh", "/bin/sh", "-c", cmd.c_str(), nullptr);
 
     // write error to pipe
     const int error = errno;
@@ -501,19 +494,12 @@ pid_t UsvfsManager::usvfsCreateProcessHooked(const std::string& file,
 }
 
 pid_t UsvfsManager::usvfsCreateProcessHooked(const std::string& file,
-                                             const std::string& arg,
-                                             const std::string& workDir) noexcept
-{
-  return usvfsCreateProcessHooked(file, arg, workDir, createEnv());
-}
-
-pid_t UsvfsManager::usvfsCreateProcessHooked(const std::string& file,
                                              const std::string& arg) noexcept
 {
   char* cwd            = get_current_dir_name();
   const string workDir = cwd;
   free(cwd);
-  return usvfsCreateProcessHooked(file, arg, workDir, createEnv());
+  return usvfsCreateProcessHooked(file, arg, workDir);
 }
 
 std::string UsvfsManager::usvfsCreateVFSDump() const noexcept
