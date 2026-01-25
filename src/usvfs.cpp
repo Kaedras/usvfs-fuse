@@ -141,6 +141,32 @@ int usvfs_mkdir(const char* path, mode_t mode) noexcept
 
   // create the directory on disk
   int parentFd = state->fdMap.at(realParentPath);
+  if (parentFd == -1 && !state->upperDir.empty()) {
+    // parent path does not exist, this should only happen when upperDir is used
+
+    // create parent directory
+    string parentName = getFileNameFromPath(realParentPath);
+    int grandParentFd = state->fdMap.at(getParentPath(realParentPath));
+    logger::trace("creating parent directory {}", getParentPath(realParentPath));
+    if (mkdirat(grandParentFd, parentName.c_str(), mode) == -1) {
+      const int e = errno;
+      logger::error("error creating parent directory, mkdirat failed: {}",
+                    realParentPath, fileName, strerror(e));
+      return -e;
+    }
+
+    // open parent directory
+    parentFd = openat(grandParentFd, parentName.c_str(), OPEN_FLAGS);
+    if (parentFd == -1) {
+      const int e = errno;
+      logger::error("error opening parent directory '{}': {}", realParentPath,
+                    strerror(e));
+    }
+
+    // insert fd into fd map
+    logger::trace("adding fd {} for '{}'", parentFd, realParentPath);
+    state->fdMap[realParentPath] = parentFd;
+  }
 
   if (mkdirat(parentFd, fileName.c_str(), mode) < 0) {
     const int e = errno;
