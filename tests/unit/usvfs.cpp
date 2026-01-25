@@ -20,28 +20,28 @@ static const fs::path mnt2  = base / "mnt2";
 static const fs::path upper = base / "upper";
 
 static const vector filesToCheck{
-    pair{mnt / "0.txt", "hello 0"},
-    pair{mnt / "0/0.txt", "hello 0/0"},
-    pair{mnt / "1.txt", "hello 1"},
-    pair{mnt2 / "2.txt", "hello 2"},
-    pair{mnt / "already_existed.txt", "hello from the other side"},
+    pair{mnt / "a.txt", "test a"},
+    pair{mnt / "a/a.txt", "test a/a"},
+    pair{mnt / "b.txt", "test b"},
+    pair{mnt2 / "c.txt", "test c"},
+    pair{mnt / "already_existed.txt", "test already_existed"},
     pair{mnt / "already_existing_dir/already_existed0.txt",
-         "hello 0 from the other side"},
+         "test already_existing_dir/already_existed0"},
 };
 
 static const vector filesToCreate{
-    pair{src / "0/0.txt", "hello 0"},
-    pair{src / "0/0/0.txt", "hello 0/0"},
-    pair{src / "1/1.txt", "hello 1"},
-    pair{src / "2/2.txt", "hello 2"},
-    pair{mnt / "already_existed.txt", "hello from the other side"},
+    pair{src / "a/a.txt", "test a"},
+    pair{src / "a/a/a.txt", "test a/a"},
+    pair{src / "b/b.txt", "test b"},
+    pair{src / "c/c.txt", "test c"},
+    pair{mnt / "already_existed.txt", "test already_existed"},
     pair{mnt / "already_existing_dir/already_existed0.txt",
-         "hello 0 from the other side"},
+         "test already_existing_dir/already_existed0"},
 };
 
-static const vector srcDirsToCreate{src / "0",           src / "1",
-                                    src / "2",           src / "0/0/",
-                                    src / "0/empty_dir", mnt / "already_existing_dir"};
+static const vector srcDirsToCreate{src / "a",           src / "b",
+                                    src / "c",           src / "a/a/",
+                                    src / "a/empty_dir", mnt / "already_existing_dir"};
 
 bool createTmpDirs()
 {
@@ -147,11 +147,11 @@ protected:
 
     usvfs->setUpperDir(upper);
     ASSERT_TRUE(usvfs->usvfsVirtualLinkDirectoryStatic(
-        (src / "0").string(), mnt.string(), linkFlag::RECURSIVE));
+        (src / "a").string(), mnt.string(), linkFlag::RECURSIVE));
     ASSERT_TRUE(usvfs->usvfsVirtualLinkDirectoryStatic(
-        (src / "1").string(), mnt.string(), linkFlag::RECURSIVE));
-    ASSERT_TRUE(usvfs->usvfsVirtualLinkFile("/tmp/usvfs/src/2/2.txt",
-                                            "/tmp/usvfs/mnt2/2.txt", 0));
+        (src / "b").string(), mnt.string(), linkFlag::RECURSIVE));
+    ASSERT_TRUE(usvfs->usvfsVirtualLinkFile("/tmp/usvfs/src/c/c.txt",
+                                            "/tmp/usvfs/mnt2/c.txt", 0));
 
     ASSERT_NO_THROW(usvfs->mount());
     // dumpUsvfs();
@@ -172,11 +172,11 @@ TEST_F(UsvfsTest, CanMount)
 TEST_F(UsvfsTest, getattr)
 {
   const vector pathsToStat = {
-      mnt / "0",
-      mnt / "0.txt",
-      mnt / "0/0.txt",
-      mnt / "1.txt",
-      mnt2 / "2.txt",
+      mnt / "a",
+      mnt / "a.txt",
+      mnt / "a/a.txt",
+      mnt / "b.txt",
+      mnt2 / "c.txt",
       mnt / "empty_dir",
       mnt / "already_existed.txt",
       mnt / "already_existing_dir",
@@ -216,9 +216,11 @@ TEST_F(UsvfsTest, readdir)
 
 TEST_F(UsvfsTest, mkdir)
 {
-  EXPECT_EQ(mkdir((mnt / "A").c_str(), mode), 0) << "error: " << strerror(errno);
-  EXPECT_EQ(mkdir((mnt / "A/b").c_str(), mode), 0) << "error: " << strerror(errno);
-  EXPECT_EQ(mkdir((mnt / "a/c").c_str(), mode), 0) << "error: " << strerror(errno);
+  EXPECT_EQ(mkdir((mnt / "new_dir").c_str(), mode), 0) << "error: " << strerror(errno);
+  EXPECT_EQ(mkdir((mnt / "new_dir/b").c_str(), mode), 0)
+      << "error: " << strerror(errno);
+  EXPECT_EQ(mkdir((mnt / "new_dir/c").c_str(), mode), 0)
+      << "error: " << strerror(errno);
 
   EXPECT_EQ(mkdir((mnt / "a").c_str(), mode), -1);
   EXPECT_EQ(errno, EEXIST) << "expected EEXIST, got " << strerrorname_np(errno);
@@ -236,11 +238,11 @@ TEST_F(UsvfsTest, read)
 
 TEST_F(UsvfsTest, unlink)
 {
-  EXPECT_EQ(unlink((mnt / "0.txt").c_str()), 0) << "error: " << strerror(errno);
+  EXPECT_EQ(unlink((mnt / "a.txt").c_str()), 0) << "error: " << strerror(errno);
   EXPECT_EQ(unlink((mnt / "already_existed.txt").c_str()), 0)
       << "error: " << strerror(errno);
   // check if the files have been removed
-  EXPECT_EQ(open((mnt / "0.txt").c_str(), O_RDONLY), -1);
+  EXPECT_EQ(open((mnt / "a.txt").c_str(), O_RDONLY), -1);
   EXPECT_EQ(errno, ENOENT) << "expected ENOENT, got " << strerrorname_np(errno);
   EXPECT_EQ(open((mnt / "already_existed.txt").c_str(), O_RDONLY), -1);
   EXPECT_EQ(errno, ENOENT) << "expected ENOENT, got " << strerrorname_np(errno);
@@ -250,27 +252,27 @@ TEST_F(UsvfsTest, unlink)
   EXPECT_EQ(open((mnt / "empty_dir").c_str(), O_RDONLY), -1);
   EXPECT_EQ(errno, ENOENT) << "expected ENOENT, got " << strerrorname_np(errno);
 
-  EXPECT_EQ(unlink((mnt / "0").c_str()), -1);
+  EXPECT_EQ(unlink((mnt / "a").c_str()), -1);
   EXPECT_EQ(errno, EISDIR) << "expected EISDIR, got " << strerrorname_np(errno);
 
-  EXPECT_EQ(rmdir((mnt / "0").c_str()), -1);
+  EXPECT_EQ(rmdir((mnt / "a").c_str()), -1);
   EXPECT_EQ(errno, ENOTEMPTY) << "expected ENOTEMPTY, got " << strerrorname_np(errno);
 
-  EXPECT_TRUE(runCmd("rm -rf "s + mnt.c_str() + "/0"));
+  EXPECT_TRUE(runCmd("rm -rf "s + mnt.c_str() + "/a"));
 }
 
 TEST_F(UsvfsTest, rename)
 {
-  EXPECT_EQ(rename((mnt / "0.txt").c_str(), (mnt / "asdf.txt").c_str()), 0)
+  EXPECT_EQ(rename((mnt / "a.txt").c_str(), (mnt / "asdf.txt").c_str()), 0)
       << "error: " << strerror(errno);
 
-  EXPECT_EQ(readFile(mnt / "asdf.txt"), "hello 0");
-  EXPECT_EQ(open((mnt / "0.txt").c_str(), O_RDONLY), -1);
+  EXPECT_EQ(readFile(mnt / "asdf.txt"), "test a");
+  EXPECT_EQ(open((mnt / "a.txt").c_str(), O_RDONLY), -1);
 }
 
 TEST_F(UsvfsTest, chmod)
 {
-  fs::path file = mnt / "0.txt";
+  fs::path file = mnt / "a.txt";
   struct stat st{};
 
   // get old mode
@@ -324,12 +326,12 @@ TEST(usvfs, CreateProcessHooked)
   auto usvfs = UsvfsManager::instance();
   usvfs->setProcessDelay(10ms);
 
-  ASSERT_TRUE(usvfs->usvfsVirtualLinkDirectoryStatic((src / "0").string(), mnt.string(),
+  ASSERT_TRUE(usvfs->usvfsVirtualLinkDirectoryStatic((src / "a").string(), mnt.string(),
                                                      linkFlag::RECURSIVE));
-  ASSERT_TRUE(usvfs->usvfsVirtualLinkDirectoryStatic((src / "1").string(), mnt.string(),
+  ASSERT_TRUE(usvfs->usvfsVirtualLinkDirectoryStatic((src / "b").string(), mnt.string(),
                                                      linkFlag::RECURSIVE));
   ASSERT_TRUE(
-      usvfs->usvfsVirtualLinkFile("/tmp/usvfs/src/2/2.txt", "/tmp/usvfs/mnt/2.txt", 0));
+      usvfs->usvfsVirtualLinkFile("/tmp/usvfs/src/c/c.txt", "/tmp/usvfs/mnt/c.txt", 0));
 
   pid_t pid = usvfs->usvfsCreateProcessHooked("tree", ".", mnt.string());
   ASSERT_GE(pid, 0);
@@ -353,12 +355,12 @@ TEST(usvfs, CreateProcessHooked_WithMountNamespace)
   usvfs->setProcessDelay(10ms);
   usvfs->setUseMountNamespace(true);
 
-  ASSERT_TRUE(usvfs->usvfsVirtualLinkDirectoryStatic((src / "0").string(), mnt.string(),
+  ASSERT_TRUE(usvfs->usvfsVirtualLinkDirectoryStatic((src / "a").string(), mnt.string(),
                                                      linkFlag::RECURSIVE));
-  ASSERT_TRUE(usvfs->usvfsVirtualLinkDirectoryStatic((src / "1").string(), mnt.string(),
+  ASSERT_TRUE(usvfs->usvfsVirtualLinkDirectoryStatic((src / "b").string(), mnt.string(),
                                                      linkFlag::RECURSIVE));
   ASSERT_TRUE(
-      usvfs->usvfsVirtualLinkFile("/tmp/usvfs/src/2/2.txt", "/tmp/usvfs/mnt/2.txt", 0));
+      usvfs->usvfsVirtualLinkFile("/tmp/usvfs/src/c/c.txt", "/tmp/usvfs/mnt/c.txt", 0));
 
   pid_t pid = usvfs->usvfsCreateProcessHooked("tree", ".", mnt.string());
   ASSERT_GE(pid, 0);
