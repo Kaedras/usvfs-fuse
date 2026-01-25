@@ -2,6 +2,7 @@
 #include <filesystem>
 #include <fstream>
 #include <gtest/gtest.h>
+#include <ranges>
 #include <sys/statvfs.h>
 
 #include "usvfs-fuse/usvfsmanager.h"
@@ -26,6 +27,15 @@ static const vector filesToCheck{
     pair{mnt2 / "c.txt", "test c"},
     pair{mnt / "already_existed.txt", "test already_existed"},
     pair{mnt / "already_existing_dir/already_existed0.txt",
+         "test already_existing_dir/already_existed0"},
+};
+static const vector filesToCheckCaseInsensitive{
+    pair{mnt / "A.txt", "test a"},
+    pair{mnt / "A/A.txt", "test a/a"},
+    pair{mnt / "B.txt", "test b"},
+    pair{mnt2 / "C.txt", "test c"},
+    pair{mnt / "ALREADY_EXISTED.txt", "test already_existed"},
+    pair{mnt / "ALREADY_EXISTING_DIR/ALREADY_EXISTED0.txt",
          "test already_existing_dir/already_existed0"},
 };
 
@@ -141,7 +151,7 @@ protected:
   {
     initLogging();
     ASSERT_TRUE(createTmpDirs());
-    // runCmd("tree "s + base.string());
+    runCmd("tree "s + base.string());
     const auto usvfs = UsvfsManager::instance();
     usvfs->setDebugMode(enableDebugMode);
 
@@ -154,12 +164,14 @@ protected:
                                             "/tmp/usvfs/mnt2/c.txt", 0));
 
     ASSERT_NO_THROW(usvfs->mount());
-    // dumpUsvfs();
+    dumpUsvfs();
   }
   void TearDown() override
   {
     const auto usvfs = UsvfsManager::instance();
+    dumpUsvfs();
     ASSERT_TRUE(usvfs->unmount());
+    runCmd("tree "s + base.string());
     ASSERT_TRUE(cleanup());
   }
 };
@@ -193,10 +205,50 @@ TEST_F(UsvfsTest, getattr)
   EXPECT_EQ(errno, ENOENT) << "expected ENOENT, got " << strerrorname_np(errno);
 }
 
+TEST_F(UsvfsTest, getattrCaseInsensitive)
+{
+  const vector pathsToStat = {
+      mnt / "A",
+      mnt / "A.txt",
+      mnt / "A/A.txt",
+      mnt / "B.txt",
+      mnt2 / "C.txt",
+      mnt / "EMPTY_DIR",
+      mnt / "ALREADY_EXISTED.txt",
+      mnt / "ALREADY_EXISTING_DIR",
+      mnt / "ALREADY_EXISTING_DIR/ALREADY_EXISTED0.txt",
+  };
+
+  struct stat st{};
+  for (const auto& filePath : pathsToStat) {
+    EXPECT_EQ(stat(filePath.c_str(), &st), 0)
+        << "error for '" << filePath.string() << "': " << strerror(errno);
+  }
+
+  EXPECT_EQ(stat((mnt / "DOES_NOT_EXIST").c_str(), &st), -1);
+  EXPECT_EQ(errno, ENOENT) << "expected ENOENT, got " << strerrorname_np(errno);
+}
+
 TEST_F(UsvfsTest, open)
 {
-  for (const auto& [a, b] : filesToCheck) {
-    int fd = open(a.c_str(), O_RDONLY);
+  for (const auto& file : filesToCheck | views::keys) {
+    int fd = open(file.c_str(), O_RDONLY);
+    EXPECT_NE(fd, -1) << "error: " << strerror(errno);
+    if (fd != -1) {
+      EXPECT_EQ(close(fd), 0) << "error: " << strerror(errno);
+    }
+  }
+
+  int fd      = open((mnt / "DOES_NOT_EXIST").c_str(), O_RDONLY);
+  const int e = errno;
+  EXPECT_EQ(fd, -1);
+  EXPECT_EQ(errno, ENOENT) << "expected ENOENT, got " << strerrorname_np(e);
+}
+
+TEST_F(UsvfsTest, openCaseInsensitive)
+{
+  for (const auto& file : filesToCheckCaseInsensitive | views::keys) {
+    int fd = open(file.c_str(), O_RDONLY);
     EXPECT_NE(fd, -1) << "error: " << strerror(errno);
     if (fd != -1) {
       EXPECT_EQ(close(fd), 0) << "error: " << strerror(errno);
@@ -229,9 +281,35 @@ TEST_F(UsvfsTest, mkdir)
   EXPECT_EQ(errno, ENOENT) << "expected ENOENT, got " << strerrorname_np(errno);
 }
 
+TEST_F(UsvfsTest, mkdirCaseInsensitive)
+{
+  EXPECT_EQ(mkdir((mnt / "new_dir").c_str(), mode), 0) << "error: " << strerror(errno);
+  EXPECT_EQ(mkdir((mnt / "NEW_DIR/b").c_str(), mode), 0)
+      << "error: " << strerror(errno);
+  EXPECT_EQ(mkdir((mnt / "NEW_DIR/c").c_str(), mode), 0)
+      << "error: " << strerror(errno);
+  EXPECT_EQ(mkdir((mnt / "A/new_dir").c_str(), mode), 0)
+      << "error: " << strerror(errno);
+  EXPECT_EQ(mkdir((mnt / "empty_DIR/new_dir").c_str(), mode), 0)
+      << "error: " << strerror(errno);
+
+  EXPECT_EQ(mkdir((mnt / "A").c_str(), mode), -1);
+  EXPECT_EQ(errno, EEXIST) << "expected EEXIST, got " << strerrorname_np(errno);
+
+  EXPECT_EQ(mkdir((mnt / "b/c/d/e").c_str(), mode), -1);
+  EXPECT_EQ(errno, ENOENT) << "expected ENOENT, got " << strerrorname_np(errno);
+}
+
 TEST_F(UsvfsTest, read)
 {
   for (const auto& [filePath, content] : filesToCheck) {
+    EXPECT_EQ(readFile(filePath), content);
+  }
+}
+
+TEST_F(UsvfsTest, readCaseInsensitive)
+{
+  for (const auto& [filePath, content] : filesToCheckCaseInsensitive) {
     EXPECT_EQ(readFile(filePath), content);
   }
 }
@@ -261,13 +339,53 @@ TEST_F(UsvfsTest, unlink)
   EXPECT_TRUE(runCmd("rm -rf "s + mnt.c_str() + "/a"));
 }
 
+TEST_F(UsvfsTest, unlinkCaseInsensitive)
+{
+  EXPECT_EQ(unlink((mnt / "A.txt").c_str()), 0) << "error: " << strerror(errno);
+  EXPECT_EQ(unlink((mnt / "already_EXISTED.txt").c_str()), 0)
+      << "error: " << strerror(errno);
+  // check if the files have been removed
+  EXPECT_EQ(open((mnt / "A.txt").c_str(), O_RDONLY), -1);
+  EXPECT_EQ(errno, ENOENT) << "expected ENOENT, got " << strerrorname_np(errno);
+  EXPECT_EQ(open((mnt / "alreaDY_existed.txt").c_str(), O_RDONLY), -1);
+  EXPECT_EQ(errno, ENOENT) << "expected ENOENT, got " << strerrorname_np(errno);
+
+  EXPECT_EQ(rmdir((mnt / "emPTY_dir").c_str()), 0) << "error: " << strerror(errno);
+  // check if the directory has been removed
+  EXPECT_EQ(open((mnt / "empty_dIR").c_str(), O_RDONLY), -1);
+  EXPECT_EQ(errno, ENOENT) << "expected ENOENT, got " << strerrorname_np(errno);
+
+  EXPECT_EQ(unlink((mnt / "A").c_str()), -1);
+  EXPECT_EQ(errno, EISDIR) << "expected EISDIR, got " << strerrorname_np(errno);
+
+  EXPECT_EQ(rmdir((mnt / "A").c_str()), -1);
+  EXPECT_EQ(errno, ENOTEMPTY) << "expected ENOTEMPTY, got " << strerrorname_np(errno);
+
+  EXPECT_TRUE(runCmd("rm -rf "s + mnt.c_str() + "/A"));
+}
+
 TEST_F(UsvfsTest, rename)
 {
   EXPECT_EQ(rename((mnt / "a.txt").c_str(), (mnt / "asdf.txt").c_str()), 0)
       << "error: " << strerror(errno);
 
   EXPECT_EQ(readFile(mnt / "asdf.txt"), "test a");
+
+  // opening the original file should fail with ENOENT
   EXPECT_EQ(open((mnt / "a.txt").c_str(), O_RDONLY), -1);
+  EXPECT_EQ(errno, ENOENT) << "expected ENOENT, got " << strerrorname_np(errno);
+}
+
+TEST_F(UsvfsTest, renameCaseInsensitive)
+{
+  EXPECT_EQ(rename((mnt / "A.txt").c_str(), (mnt / "ASDF.txt").c_str()), 0)
+      << "error: " << strerror(errno);
+
+  EXPECT_EQ(readFile(mnt / "asdf.TXT"), "test a");
+
+  // opening the original file should fail with ENOENT
+  EXPECT_EQ(open((mnt / "A.txt").c_str(), O_RDONLY), -1);
+  EXPECT_EQ(errno, ENOENT) << "expected ENOENT, got " << strerrorname_np(errno);
 }
 
 TEST_F(UsvfsTest, chmod)
@@ -292,20 +410,65 @@ TEST_F(UsvfsTest, chmod)
   EXPECT_NE(newMode, oldMode);
 }
 
+TEST_F(UsvfsTest, chmodCaseInsensitive)
+{
+  fs::path file = mnt / "A.TXT";
+  struct stat st{};
+
+  // get old mode
+  ASSERT_EQ(stat(file.c_str(), &st), 0) << "error: " << strerror(errno);
+  mode_t oldMode = st.st_mode;
+
+  // set mode to 0751
+  chmod(file.c_str(), 0751);
+
+  // get new mode
+  ASSERT_EQ(stat(file.c_str(), &st), 0) << "error: " << strerror(errno);
+  mode_t newMode = st.st_mode;
+
+  EXPECT_EQ(newMode & 0777, 0751);
+
+  // compare modes
+  EXPECT_NE(newMode, oldMode);
+}
+
 TEST_F(UsvfsTest, create)
 {
+  static constexpr int oflags = O_WRONLY | O_CREAT | O_EXCL;
+
   auto path = mnt / "new_file.txt";
-  int fd    = open(path.c_str(), O_WRONLY | O_CREAT | O_EXCL, mode);
+  int fd    = open(path.c_str(), oflags, mode);
   EXPECT_GT(fd, -1) << "error: " << strerror(errno);
   if (fd >= 0) {
     EXPECT_EQ(close(fd), 0);
   }
 
-  EXPECT_EQ(open(path.c_str(), O_WRONLY | O_CREAT | O_EXCL, mode), -1);
+  EXPECT_EQ(open(path.c_str(), oflags, mode), -1);
+  EXPECT_EQ(errno, EEXIST) << "expected EEXIST, got " << strerrorname_np(errno);
+
+  EXPECT_EQ(mkdir((mnt / "new_dir").c_str(), mode), 0) << "error: " << strerror(errno);
+  fd = open((mnt / "new_dir/testfile.txt").c_str(), oflags, mode);
+  EXPECT_GT(fd, -1) << "error: " << strerror(errno);
+  if (fd >= 0) {
+    EXPECT_EQ(close(fd), 0);
+  }
+}
+
+TEST_F(UsvfsTest, createCaseInsensitive)
+{
+  static constexpr int oflags = O_WRONLY | O_CREAT | O_EXCL;
+
+  int fd = open((mnt / "new_file.txt").c_str(), oflags, mode);
+  EXPECT_GT(fd, -1) << "error: " << strerror(errno);
+  if (fd >= 0) {
+    EXPECT_EQ(close(fd), 0);
+  }
+
+  EXPECT_EQ(open((mnt / "NEW_FILE.TXT").c_str(), oflags, mode), -1);
   EXPECT_EQ(errno, EEXIST) << "expected EEXIST, got " << strerrorname_np(errno);
 
   EXPECT_EQ(mkdir((mnt / "NEW_DIR").c_str(), mode), 0) << "error: " << strerror(errno);
-  fd = open((mnt / "new_dir/testfile.txt").c_str(), O_WRONLY | O_CREAT | O_EXCL, mode);
+  fd = open((mnt / "new_dir/testfile.txt").c_str(), oflags, mode);
   EXPECT_GT(fd, -1) << "error: " << strerror(errno);
   if (fd >= 0) {
     EXPECT_EQ(close(fd), 0);
