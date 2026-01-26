@@ -66,4 +66,4 @@ jobs:
           g++ -v
 
       - name: Test usvfs-fuse
-        run: ctest --test-dir build -C RelWithDebInfo --output-on-failure --extra-verbose
+        run: ctest --test-dir build -C RelWithDebInfo --output-on-failure
