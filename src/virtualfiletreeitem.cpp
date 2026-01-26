@@ -14,10 +14,12 @@ VirtualFileTreeItem::VirtualFileTreeItem(
 {
   logger::trace("{}: '{}', '{}'", __FUNCTION__, m_fileName, m_realPath);
   if (m_fileName.empty()) {
+    errno = EINVAL;
     throw runtime_error("filename is empty");
   }
 
   if (m_realPath.empty()) {
+    errno = EINVAL;
     throw runtime_error(format("real path is empty"));
   }
 }
