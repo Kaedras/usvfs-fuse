@@ -65,5 +65,10 @@ jobs:
           uname -a
           g++ -v
 
+      - name: Disable user namespace restriction
+        run: |
+          echo "kernel.apparmor_restrict_unprivileged_userns = 0" | sudo tee /etc/sysctl.d/99-userns.conf
+          sudo sysctl --system
+
       - name: Test usvfs-fuse
         run: ctest --test-dir build -C RelWithDebInfo --output-on-failure
