@@ -10,17 +10,20 @@
 using namespace std;
 namespace fs = std::filesystem;
 
-static constexpr mode_t mode          = 0755;
-static LogLevel logLevel              = LogLevel::Trace;
-static constexpr bool enableDebugMode = true;
+namespace
+{
 
-static const fs::path base  = fs::temp_directory_path() / "usvfs";
-static const fs::path src   = base / "src";
-static const fs::path mnt   = base / "mnt";
-static const fs::path mnt2  = base / "mnt2";
-static const fs::path upper = base / "upper";
+constexpr mode_t mode          = 0755;
+LogLevel logLevel              = LogLevel::Trace;
+constexpr bool enableDebugMode = true;
 
-static const vector filesToCheck{
+const fs::path base  = fs::temp_directory_path() / "usvfs";
+const fs::path src   = base / "src";
+const fs::path mnt   = base / "mnt";
+const fs::path mnt2  = base / "mnt2";
+const fs::path upper = base / "upper";
+
+const vector filesToCheck{
     pair{mnt / "a.txt", "test a"},
     pair{mnt / "a/a.txt", "test a/a"},
     pair{mnt / "b.txt", "test b"},
@@ -29,7 +32,7 @@ static const vector filesToCheck{
     pair{mnt / "already_existing_dir/already_existed0.txt",
          "test already_existing_dir/already_existed0"},
 };
-static const vector filesToCheckCaseInsensitive{
+const vector filesToCheckCaseInsensitive{
     pair{mnt / "A.txt", "test a"},
     pair{mnt / "A/A.txt", "test a/a"},
     pair{mnt / "B.txt", "test b"},
@@ -39,7 +42,7 @@ static const vector filesToCheckCaseInsensitive{
          "test already_existing_dir/already_existed0"},
 };
 
-static const vector filesToCreate{
+const vector filesToCreate{
     pair{src / "a/a.txt", "test a"},
     pair{src / "a/a/a.txt", "test a/a"},
     pair{src / "b/b.txt", "test b"},
@@ -49,9 +52,9 @@ static const vector filesToCreate{
          "test already_existing_dir/already_existed0"},
 };
 
-static const vector srcDirsToCreate{src / "a",           src / "b",
-                                    src / "c",           src / "a/a/",
-                                    src / "a/empty_dir", mnt / "already_existing_dir"};
+const vector srcDirsToCreate{src / "a",           src / "b",
+                             src / "c",           src / "a/a/",
+                             src / "a/empty_dir", mnt / "already_existing_dir"};
 
 bool createTmpDirs()
 {
@@ -143,6 +146,65 @@ void dumpUsvfs()
        << dump << "==========================================" << endl;
 }
 
+void openFile(const string& path)
+{
+  int fd;
+  ASSERT_NE(fd = open(path.c_str(), O_RDONLY), -1) << "error: " << strerror(errno);
+  EXPECT_EQ(close(fd), 0) << "error: " << strerror(errno);
+}
+
+void openFileWithFailure(const string& path, int error)
+{
+  int fd;
+  EXPECT_EQ(fd = open(path.c_str(), O_RDONLY), -1) << "error: " << strerror(errno);
+  EXPECT_EQ(errno, error) << "expected " << strerrorname_np(error) << ", got "
+                          << strerrorname_np(errno);
+  if (fd != -1) {
+    EXPECT_EQ(close(fd), 0) << "error: " << strerror(errno);
+  }
+}
+
+void createDir(const string& path)
+{
+  EXPECT_EQ(mkdir(path.c_str(), mode), 0) << "error: " << strerror(errno);
+}
+
+void createDirWithFailure(const string& path, int error)
+{
+  EXPECT_EQ(mkdir(path.c_str(), mode), -1);
+  EXPECT_EQ(errno, error) << "expected " << strerrorname_np(error) << ", got "
+                          << strerrorname_np(errno);
+}
+
+void unlinkFile(const string& path)
+{
+  ASSERT_EQ(unlink(path.c_str()), 0) << "error: " << strerror(errno);
+
+  openFileWithFailure(path, ENOENT);
+}
+
+void unlinkFileWithFailure(const string& path, int error)
+{
+  EXPECT_EQ(unlink(path.c_str()), -1) << "error: " << strerror(errno);
+  EXPECT_EQ(errno, error) << "expected " << strerrorname_np(error) << ", got "
+                          << strerrorname_np(errno);
+}
+
+void unlinkDir(const string& path)
+{
+  ASSERT_EQ(rmdir(path.c_str()), 0) << "error: " << strerror(errno);
+
+  openFileWithFailure(path, ENOENT);
+}
+void unlinkDirWithFailure(const string& path, int error)
+{
+  EXPECT_EQ(rmdir(path.c_str()), -1) << "error: " << strerror(errno);
+  EXPECT_EQ(errno, error) << "expected " << strerrorname_np(error) << ", got "
+                          << strerrorname_np(errno);
+}
+
+}  // namespace
+
 class UsvfsTest : public testing::Test
 {
 protected:
@@ -232,33 +294,19 @@ TEST_F(UsvfsTest, getattrCaseInsensitive)
 TEST_F(UsvfsTest, open)
 {
   for (const auto& file : filesToCheck | views::keys) {
-    int fd = open(file.c_str(), O_RDONLY);
-    EXPECT_NE(fd, -1) << "error: " << strerror(errno);
-    if (fd != -1) {
-      EXPECT_EQ(close(fd), 0) << "error: " << strerror(errno);
-    }
+    openFile(file.string());
   }
 
-  int fd      = open((mnt / "DOES_NOT_EXIST").c_str(), O_RDONLY);
-  const int e = errno;
-  EXPECT_EQ(fd, -1);
-  EXPECT_EQ(errno, ENOENT) << "expected ENOENT, got " << strerrorname_np(e);
+  openFileWithFailure(mnt / "DOES_NOT_EXIST", ENOENT);
 }
 
 TEST_F(UsvfsTest, openCaseInsensitive)
 {
   for (const auto& file : filesToCheckCaseInsensitive | views::keys) {
-    int fd = open(file.c_str(), O_RDONLY);
-    EXPECT_NE(fd, -1) << "error: " << strerror(errno);
-    if (fd != -1) {
-      EXPECT_EQ(close(fd), 0) << "error: " << strerror(errno);
-    }
+    openFile(file.string());
   }
 
-  int fd      = open((mnt / "DOES_NOT_EXIST").c_str(), O_RDONLY);
-  const int e = errno;
-  EXPECT_EQ(fd, -1);
-  EXPECT_EQ(e, ENOENT) << "expected ENOENT, got " << strerrorname_np(e);
+  openFileWithFailure(mnt / "DOES_NOT_EXIST", ENOENT);
 }
 
 TEST_F(UsvfsTest, readdir)
@@ -268,16 +316,6 @@ TEST_F(UsvfsTest, readdir)
 
 TEST_F(UsvfsTest, mkdir)
 {
-  auto createDir = [](const string& path) {
-    EXPECT_EQ(mkdir(path.c_str(), mode), 0) << "error: " << strerror(errno);
-  };
-
-  auto createDirWithFailure = [](const string& path, int error) {
-    EXPECT_EQ(mkdir(path.c_str(), mode), -1);
-    EXPECT_EQ(errno, error) << "expected " << strerrorname_np(error) << ", got "
-                            << strerrorname_np(errno);
-  };
-
   createDir(mnt / "new_dir");
   createDir(mnt / "new_dir/b");
   createDir(mnt / "new_dir/c");
@@ -288,16 +326,6 @@ TEST_F(UsvfsTest, mkdir)
 
 TEST_F(UsvfsTest, mkdirCaseInsensitive)
 {
-  auto createDir = [](const string& path) {
-    EXPECT_EQ(mkdir(path.c_str(), mode), 0) << "error: " << strerror(errno);
-  };
-
-  auto createDirWithFailure = [](const string& path, int error) {
-    EXPECT_EQ(mkdir(path.c_str(), mode), -1);
-    EXPECT_EQ(errno, error) << "expected " << strerrorname_np(error) << ", got "
-                            << strerrorname_np(errno);
-  };
-
   createDir(mnt / "new_dir");
   createDir(mnt / "NEW_DIR/b");
   createDir(mnt / "NEW_DIR/c");
@@ -324,50 +352,26 @@ TEST_F(UsvfsTest, readCaseInsensitive)
 
 TEST_F(UsvfsTest, unlink)
 {
-  EXPECT_EQ(unlink((mnt / "a.txt").c_str()), 0) << "error: " << strerror(errno);
-  EXPECT_EQ(unlink((mnt / "already_existed.txt").c_str()), 0)
-      << "error: " << strerror(errno);
-  // check if the files have been removed
-  EXPECT_EQ(open((mnt / "a.txt").c_str(), O_RDONLY), -1);
-  EXPECT_EQ(errno, ENOENT) << "expected ENOENT, got " << strerrorname_np(errno);
-  EXPECT_EQ(open((mnt / "already_existed.txt").c_str(), O_RDONLY), -1);
-  EXPECT_EQ(errno, ENOENT) << "expected ENOENT, got " << strerrorname_np(errno);
+  unlinkFile(mnt / "a.txt");
+  unlinkFile(mnt / "already_existed.txt");
 
-  EXPECT_EQ(rmdir((mnt / "empty_dir").c_str()), 0) << "error: " << strerror(errno);
-  // check if the directory has been removed
-  EXPECT_EQ(open((mnt / "empty_dir").c_str(), O_RDONLY), -1);
-  EXPECT_EQ(errno, ENOENT) << "expected ENOENT, got " << strerrorname_np(errno);
+  unlinkDir(mnt / "empty_dir");
 
-  EXPECT_EQ(unlink((mnt / "a").c_str()), -1);
-  EXPECT_EQ(errno, EISDIR) << "expected EISDIR, got " << strerrorname_np(errno);
-
-  EXPECT_EQ(rmdir((mnt / "a").c_str()), -1);
-  EXPECT_EQ(errno, ENOTEMPTY) << "expected ENOTEMPTY, got " << strerrorname_np(errno);
+  unlinkFileWithFailure(mnt / "a", EISDIR);
+  unlinkDirWithFailure(mnt / "a", ENOTEMPTY);
 
   EXPECT_TRUE(runCmd("rm -rf "s + mnt.c_str() + "/a"));
 }
 
 TEST_F(UsvfsTest, unlinkCaseInsensitive)
 {
-  EXPECT_EQ(unlink((mnt / "A.txt").c_str()), 0) << "error: " << strerror(errno);
-  EXPECT_EQ(unlink((mnt / "already_EXISTED.txt").c_str()), 0)
-      << "error: " << strerror(errno);
-  // check if the files have been removed
-  EXPECT_EQ(open((mnt / "A.txt").c_str(), O_RDONLY), -1);
-  EXPECT_EQ(errno, ENOENT) << "expected ENOENT, got " << strerrorname_np(errno);
-  EXPECT_EQ(open((mnt / "alreaDY_existed.txt").c_str(), O_RDONLY), -1);
-  EXPECT_EQ(errno, ENOENT) << "expected ENOENT, got " << strerrorname_np(errno);
+  unlinkFile(mnt / "A.tXT");
+  unlinkFile(mnt / "already_EXISTED.txt");
 
-  EXPECT_EQ(rmdir((mnt / "emPTY_dir").c_str()), 0) << "error: " << strerror(errno);
-  // check if the directory has been removed
-  EXPECT_EQ(open((mnt / "empty_dIR").c_str(), O_RDONLY), -1);
-  EXPECT_EQ(errno, ENOENT) << "expected ENOENT, got " << strerrorname_np(errno);
+  unlinkDir(mnt / "emPTY_dir");
 
-  EXPECT_EQ(unlink((mnt / "A").c_str()), -1);
-  EXPECT_EQ(errno, EISDIR) << "expected EISDIR, got " << strerrorname_np(errno);
-
-  EXPECT_EQ(rmdir((mnt / "A").c_str()), -1);
-  EXPECT_EQ(errno, ENOTEMPTY) << "expected ENOTEMPTY, got " << strerrorname_np(errno);
+  unlinkFileWithFailure(mnt / "A", EISDIR);
+  unlinkDirWithFailure(mnt / "A", ENOTEMPTY);
 
   EXPECT_TRUE(runCmd("rm -rf "s + mnt.c_str() + "/A"));
 }
