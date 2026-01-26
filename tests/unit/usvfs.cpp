@@ -436,43 +436,48 @@ TEST_F(UsvfsTest, create)
 {
   static constexpr int oflags = O_WRONLY | O_CREAT | O_EXCL;
 
-  auto path = mnt / "new_file.txt";
-  int fd    = open(path.c_str(), oflags, mode);
-  EXPECT_GT(fd, -1) << "error: " << strerror(errno);
-  if (fd >= 0) {
+  auto createFile = [](const string& path) {
+    int fd;
+    ASSERT_GT(fd = open(path.c_str(), oflags, mode), -1)
+        << "opening " << path << " failed: " << strerror(errno);
     EXPECT_EQ(close(fd), 0);
-  }
 
-  EXPECT_EQ(open(path.c_str(), oflags, mode), -1);
-  EXPECT_EQ(errno, EEXIST) << "expected EEXIST, got " << strerrorname_np(errno);
+    EXPECT_EQ(open(path.c_str(), oflags, mode), -1);
+    EXPECT_EQ(errno, EEXIST) << "expected EEXIST, got " << strerrorname_np(errno);
+  };
 
-  EXPECT_EQ(mkdir((mnt / "new_dir").c_str(), mode), 0) << "error: " << strerror(errno);
-  fd = open((mnt / "new_dir/testfile.txt").c_str(), oflags, mode);
-  EXPECT_GT(fd, -1) << "error: " << strerror(errno);
-  if (fd >= 0) {
-    EXPECT_EQ(close(fd), 0);
-  }
+  createFile(mnt / "new_file.txt");
+  createFile(mnt / "a/new_file.txt");
+
+  ASSERT_EQ(mkdir((mnt / "new_dir").c_str(), mode), 0) << "error: " << strerror(errno);
+  int fd;
+  ASSERT_GT(fd = open((mnt / "new_dir/testfile.txt").c_str(), oflags, mode), -1)
+      << "error: " << strerror(errno);
+  EXPECT_EQ(close(fd), 0);
 }
 
 TEST_F(UsvfsTest, createCaseInsensitive)
 {
   static constexpr int oflags = O_WRONLY | O_CREAT | O_EXCL;
 
-  int fd = open((mnt / "new_file.txt").c_str(), oflags, mode);
-  EXPECT_GT(fd, -1) << "error: " << strerror(errno);
-  if (fd >= 0) {
+  auto createFile = [](const string& path, const string& pathCI) {
+    int fd;
+    ASSERT_GT(fd = open(path.c_str(), oflags, mode), -1)
+        << "opening " << path << " failed: " << strerror(errno);
     EXPECT_EQ(close(fd), 0);
-  }
 
-  EXPECT_EQ(open((mnt / "NEW_FILE.TXT").c_str(), oflags, mode), -1);
-  EXPECT_EQ(errno, EEXIST) << "expected EEXIST, got " << strerrorname_np(errno);
+    EXPECT_EQ(open(pathCI.c_str(), oflags, mode), -1);
+    EXPECT_EQ(errno, EEXIST) << "expected EEXIST, got " << strerrorname_np(errno);
+  };
 
-  EXPECT_EQ(mkdir((mnt / "NEW_DIR").c_str(), mode), 0) << "error: " << strerror(errno);
-  fd = open((mnt / "new_dir/testfile.txt").c_str(), oflags, mode);
-  EXPECT_GT(fd, -1) << "error: " << strerror(errno);
-  if (fd >= 0) {
-    EXPECT_EQ(close(fd), 0);
-  }
+  createFile(mnt / "new_file.txt", mnt / "NEW_FILE.TXT");
+  createFile(mnt / "a/new_file.txt", mnt / "A/NEW_FILE.TXT");
+
+  ASSERT_EQ(mkdir((mnt / "NEW_DIR").c_str(), mode), 0) << "error: " << strerror(errno);
+  int fd;
+  ASSERT_GT(fd = open((mnt / "new_dir/testfile.txt").c_str(), oflags, mode), -1)
+      << "error: " << strerror(errno);
+  EXPECT_EQ(close(fd), 0);
 }
 
 TEST_F(UsvfsTest, statfs)
