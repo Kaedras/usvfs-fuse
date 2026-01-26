@@ -114,6 +114,9 @@ fuse_operations createOperations() noexcept
 void writeToFile(const string& filename, string_view content) noexcept(false)
 {
   ofstream ofs(filename);
+  if (!ofs) {
+    logger::error("failed to open file '{}': {}", filename, strerror(errno));
+  }
   ofs.exceptions(std::ifstream::failbit | std::ifstream::badbit);
   ofs << content;
 }
