@@ -21,11 +21,44 @@ namespace fs = std::filesystem;
     return -ENOENT;                                                                    \
   }
 
+namespace
+{
 MountState* getState()
 {
   const auto* context = fuse_get_context();
   return static_cast<MountState*>(context ? context->private_data : nullptr);
 }
+
+int createParentDir(MountState* state, string_view realParentPath, string_view fileName,
+                    mode_t mode)
+{
+  // create parent directory
+  string parentName = getFileNameFromPath(realParentPath);
+  int grandParentFd = state->fdMap.at(getParentPath(realParentPath));
+  logger::trace("creating parent directory {}", getParentPath(realParentPath));
+  if (mkdirat(grandParentFd, parentName.c_str(), mode) == -1) {
+    const int e = errno;
+    logger::error("error creating parent directory, mkdirat failed: {}", realParentPath,
+                  fileName, strerror(e));
+    return -e;
+  }
+
+  // open parent directory
+  int parentFd = openat(grandParentFd, parentName.c_str(), OPEN_FLAGS);
+  if (parentFd == -1) {
+    const int e = errno;
+    logger::error("error opening parent directory '{}': {}", realParentPath,
+                  strerror(e));
+    return -e;
+  }
+
+  // insert fd into fd map
+  logger::trace("adding fd {} for '{}'", parentFd, realParentPath);
+  state->fdMap[realParentPath] = parentFd;
+
+  return parentFd;
+}
+}  // namespace
 
 int usvfs_getattr(const char* path, struct stat* stbuf, fuse_file_info* fi) noexcept
 {
@@ -144,29 +177,10 @@ int usvfs_mkdir(const char* path, mode_t mode) noexcept
   int parentFd = state->fdMap.at(realParentPath);
   if (parentFd == -1 && !state->upperDir.empty()) {
     // parent path does not exist, this should only happen when upperDir is used
-
-    // create parent directory
-    string parentName = getFileNameFromPath(realParentPath);
-    int grandParentFd = state->fdMap.at(getParentPath(realParentPath));
-    logger::trace("creating parent directory {}", getParentPath(realParentPath));
-    if (mkdirat(grandParentFd, parentName.c_str(), mode) == -1) {
-      const int e = errno;
-      logger::error("error creating parent directory, mkdirat failed: {}",
-                    realParentPath, fileName, strerror(e));
-      return -e;
+    parentFd = createParentDir(state, realParentPath, fileName, mode);
+    if (parentFd < 0) {
+      return parentFd;
     }
-
-    // open parent directory
-    parentFd = openat(grandParentFd, parentName.c_str(), OPEN_FLAGS);
-    if (parentFd == -1) {
-      const int e = errno;
-      logger::error("error opening parent directory '{}': {}", realParentPath,
-                    strerror(e));
-    }
-
-    // insert fd into fd map
-    logger::trace("adding fd {} for '{}'", parentFd, realParentPath);
-    state->fdMap[realParentPath] = parentFd;
   }
 
   if (mkdirat(parentFd, fileName.c_str(), mode) < 0) {
@@ -568,7 +582,7 @@ int usvfs_create(const char* path, mode_t mode, fuse_file_info* fi) noexcept
 
   const string fileName   = getFileNameFromPath(path);
   const string parentPath = getParentPath(path);
-  string absoluteParentPath;
+  string realParentPath;
   if (state->upperDir.empty()) {
     auto parentItem = state->fileTree->find(parentPath);
     if (parentItem == nullptr) {
@@ -576,17 +590,24 @@ int usvfs_create(const char* path, mode_t mode, fuse_file_info* fi) noexcept
                     __FUNCTION__, parentPath);
       return -ENOENT;
     }
-    absoluteParentPath = parentItem->realPath();
+    realParentPath = parentItem->realPath();
   } else {
-    absoluteParentPath = state->upperDir + parentPath;
+    realParentPath = state->upperDir + parentPath;
   }
-  const int parentFd = state->fdMap.at(absoluteParentPath);
+  int parentFd = state->fdMap.at(realParentPath);
+  if (parentFd == -1 && !state->upperDir.empty()) {
+    // parent path does not exist, this should only happen when upperDir is used
+    parentFd = createParentDir(state, realParentPath, fileName, mode);
+    if (parentFd < 0) {
+      return parentFd;
+    }
+  }
 
   const int fd = openat(parentFd, fileName.c_str(), fi->flags, mode);
   if (fd < 0) {
     const int e = errno;
-    logger::error("openat({}:'{}', {}) failed: {}", parentFd, absoluteParentPath,
-                  fileName, strerror(e));
+    logger::error("openat({}:'{}', {}) failed: {}", parentFd, realParentPath, fileName,
+                  strerror(e));
     return -e;
   }
 
@@ -595,7 +616,7 @@ int usvfs_create(const char* path, mode_t mode, fuse_file_info* fi) noexcept
   auto item = state->fileTree->find(path);
   if (item == nullptr) {
     const auto newItem =
-        state->fileTree->add(path, absoluteParentPath + "/" + fileName, file);
+        state->fileTree->add(path, realParentPath + "/" + fileName, file);
     if (newItem == nullptr) {
       logger::error("error adding new file to file tree");
       return -errno;
