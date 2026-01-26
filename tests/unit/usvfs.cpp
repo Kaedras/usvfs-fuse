@@ -268,36 +268,44 @@ TEST_F(UsvfsTest, readdir)
 
 TEST_F(UsvfsTest, mkdir)
 {
-  EXPECT_EQ(mkdir((mnt / "new_dir").c_str(), mode), 0) << "error: " << strerror(errno);
-  EXPECT_EQ(mkdir((mnt / "new_dir/b").c_str(), mode), 0)
-      << "error: " << strerror(errno);
-  EXPECT_EQ(mkdir((mnt / "new_dir/c").c_str(), mode), 0)
-      << "error: " << strerror(errno);
+  auto createDir = [](const string& path) {
+    EXPECT_EQ(mkdir(path.c_str(), mode), 0) << "error: " << strerror(errno);
+  };
 
-  EXPECT_EQ(mkdir((mnt / "a").c_str(), mode), -1);
-  EXPECT_EQ(errno, EEXIST) << "expected EEXIST, got " << strerrorname_np(errno);
+  auto createDirWithFailure = [](const string& path, int error) {
+    EXPECT_EQ(mkdir(path.c_str(), mode), -1);
+    EXPECT_EQ(errno, error) << "expected " << strerrorname_np(error) << ", got "
+                            << strerrorname_np(errno);
+  };
 
-  EXPECT_EQ(mkdir((mnt / "b/c/d/e").c_str(), mode), -1);
-  EXPECT_EQ(errno, ENOENT) << "expected ENOENT, got " << strerrorname_np(errno);
+  createDir(mnt / "new_dir");
+  createDir(mnt / "new_dir/b");
+  createDir(mnt / "new_dir/c");
+
+  createDirWithFailure(mnt / "a", EEXIST);
+  createDirWithFailure(mnt / "b/c/d/e", ENOENT);
 }
 
 TEST_F(UsvfsTest, mkdirCaseInsensitive)
 {
-  EXPECT_EQ(mkdir((mnt / "new_dir").c_str(), mode), 0) << "error: " << strerror(errno);
-  EXPECT_EQ(mkdir((mnt / "NEW_DIR/b").c_str(), mode), 0)
-      << "error: " << strerror(errno);
-  EXPECT_EQ(mkdir((mnt / "NEW_DIR/c").c_str(), mode), 0)
-      << "error: " << strerror(errno);
-  EXPECT_EQ(mkdir((mnt / "A/new_dir").c_str(), mode), 0)
-      << "error: " << strerror(errno);
-  EXPECT_EQ(mkdir((mnt / "empty_DIR/new_dir").c_str(), mode), 0)
-      << "error: " << strerror(errno);
+  auto createDir = [](const string& path) {
+    EXPECT_EQ(mkdir(path.c_str(), mode), 0) << "error: " << strerror(errno);
+  };
 
-  EXPECT_EQ(mkdir((mnt / "A").c_str(), mode), -1);
-  EXPECT_EQ(errno, EEXIST) << "expected EEXIST, got " << strerrorname_np(errno);
+  auto createDirWithFailure = [](const string& path, int error) {
+    EXPECT_EQ(mkdir(path.c_str(), mode), -1);
+    EXPECT_EQ(errno, error) << "expected " << strerrorname_np(error) << ", got "
+                            << strerrorname_np(errno);
+  };
 
-  EXPECT_EQ(mkdir((mnt / "b/c/d/e").c_str(), mode), -1);
-  EXPECT_EQ(errno, ENOENT) << "expected ENOENT, got " << strerrorname_np(errno);
+  createDir(mnt / "new_dir");
+  createDir(mnt / "NEW_DIR/b");
+  createDir(mnt / "NEW_DIR/c");
+  createDir(mnt / "A/new_dir");
+  createDir(mnt / "empty_DIR/new_dir");
+
+  createDirWithFailure(mnt / "A", EEXIST);
+  createDirWithFailure(mnt / "b/c/d/e", ENOENT);
 }
 
 TEST_F(UsvfsTest, read)
