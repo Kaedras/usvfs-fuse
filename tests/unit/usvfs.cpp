@@ -42,15 +42,14 @@ const vector filesToCheckCaseInsensitive{
          "test already_existing_dir/already_existed0"},
 };
 
-const vector filesToCreate{
-    pair{src / "a/a.txt", "test a"},
-    pair{src / "a/a/a.txt", "test a/a"},
-    pair{src / "b/b.txt", "test b"},
-    pair{src / "c/c.txt", "test c"},
-    pair{mnt / "already_existed.txt", "test already_existed"},
-    pair{mnt / "already_existing_dir/already_existed0.txt",
-         "test already_existing_dir/already_existed0"},
-};
+const vector filesToCreate{pair{src / "a/a.txt", "test a"},
+                           pair{src / "a/a/a.txt", "test a/a"},
+                           pair{src / "b/b.txt", "test b"},
+                           pair{src / "c/c.txt", "test c"},
+                           pair{mnt / "already_existed.txt", "test already_existed"},
+                           pair{mnt / "already_existing_dir/already_existed0.txt",
+                                "test already_existing_dir/already_existed0"},
+                           pair{mnt / "A.txt", "TEST A"}};
 
 const vector srcDirsToCreate{src / "a",           src / "b",
                              src / "c",           src / "a/a/",
