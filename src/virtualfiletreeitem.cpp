@@ -81,6 +81,7 @@ VirtualFileTreeItem::operator+=(const VirtualFileTreeItem& other) noexcept
   shared_lock lock_other(other.m_mtx);
 
   m_realPath = other.m_realPath;
+  m_fileName = other.m_fileName;
 
   for (const auto& [name, item] : other.m_children) {
     // try to insert a nullptr
