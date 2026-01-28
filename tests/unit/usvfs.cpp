@@ -119,25 +119,6 @@ void initLogging()
   usvfs->setLogLevel(logLevel);
 }
 
-string readFile(const fs::path& path)
-{
-  const int fd = open(path.string().c_str(), O_RDONLY);
-  if (fd == -1) {
-    return "open failed: "s + strerror(errno);
-  }
-
-  array<char, 4096> buf{};
-  const ssize_t readBytes = read(fd, buf.data(), buf.size());
-  int closeResult         = close(fd);
-  if (readBytes == -1) {
-    return "read failed: "s + strerror(errno);
-  }
-  if (closeResult != 0) {
-    return "close failed: "s + strerror(errno);
-  }
-  return string(buf.data(), readBytes);
-}
-
 void dumpUsvfs()
 {
   const auto usvfs = UsvfsManager::instance();
@@ -149,18 +130,21 @@ void dumpUsvfs()
 void openFile(const string& path)
 {
   int fd;
-  ASSERT_NE(fd = open(path.c_str(), O_RDONLY), -1) << "error: " << strerror(errno);
-  EXPECT_EQ(close(fd), 0) << "error: " << strerror(errno);
+  ASSERT_NE(fd = open(path.c_str(), O_RDONLY), -1)
+      << "error opening file '" << path << "': " << strerror(errno);
+  EXPECT_EQ(close(fd), 0) << "error closing file '" << path << "': " << strerror(errno);
 }
 
 void openFileWithFailure(const string& path, int error)
 {
   int fd;
-  EXPECT_EQ(fd = open(path.c_str(), O_RDONLY), -1) << "error: " << strerror(errno);
+  EXPECT_EQ(fd = open(path.c_str(), O_RDONLY), -1)
+      << "error opening file '" << path << "': " << strerror(errno);
   EXPECT_EQ(errno, error) << "expected " << strerrorname_np(error) << ", got "
                           << strerrorname_np(errno);
   if (fd != -1) {
-    EXPECT_EQ(close(fd), 0) << "error: " << strerror(errno);
+    EXPECT_EQ(close(fd), 0) << "error closing file '" << path
+                            << "': " << strerror(errno);
   }
 }
 
@@ -178,7 +162,8 @@ void createDirWithFailure(const string& path, int error)
 
 void unlinkFile(const string& path)
 {
-  ASSERT_EQ(unlink(path.c_str()), 0) << "error: " << strerror(errno);
+  ASSERT_EQ(unlink(path.c_str()), 0)
+      << "error unlinking file '" << path << "': " << strerror(errno);
 
   openFileWithFailure(path, ENOENT);
 }
@@ -196,11 +181,43 @@ void unlinkDir(const string& path)
 
   openFileWithFailure(path, ENOENT);
 }
+
 void unlinkDirWithFailure(const string& path, int error)
 {
   EXPECT_EQ(rmdir(path.c_str()), -1) << "error: " << strerror(errno);
   EXPECT_EQ(errno, error) << "expected " << strerrorname_np(error) << ", got "
                           << strerrorname_np(errno);
+}
+
+void statPath(const string& path)
+{
+  struct stat st{};
+  EXPECT_EQ(stat(path.c_str(), &st), 0) << "error: " << strerror(errno);
+}
+
+void statPathWithFailure(const string& path, int error)
+{
+  struct stat st{};
+  EXPECT_EQ(stat(path.c_str(), &st), -1);
+  EXPECT_EQ(errno, error) << "expected " << strerrorname_np(error) << ", got "
+                          << strerrorname_np(errno);
+}
+
+void readFile(const string& path, const string& expectedContent)
+{
+  int fd;
+  ASSERT_NE(fd = open(path.c_str(), O_RDONLY), -1) << "error: " << strerror(errno);
+
+  array<char, 4096> buf{};
+  const ssize_t readBytes = read(fd, buf.data(), buf.size());
+  int closeResult         = close(fd);
+  EXPECT_NE(readBytes, -1) << "read error in file '" << path
+                           << "': " << strerror(errno);
+
+  EXPECT_EQ(closeResult, 0) << "error closing file '" << path
+                            << "': " << strerror(errno);
+
+  EXPECT_EQ(string(buf.data(), readBytes), expectedContent);
 }
 
 }  // namespace
@@ -257,14 +274,11 @@ TEST_F(UsvfsTest, getattr)
       mnt / "already_existing_dir/already_existed0.txt",
   };
 
-  struct stat st{};
   for (const auto& filePath : pathsToStat) {
-    EXPECT_EQ(stat(filePath.c_str(), &st), 0)
-        << "error for '" << filePath.string() << "': " << strerror(errno);
+    statPath(filePath);
   }
 
-  EXPECT_EQ(stat((mnt / "DOES_NOT_EXIST").c_str(), &st), -1);
-  EXPECT_EQ(errno, ENOENT) << "expected ENOENT, got " << strerrorname_np(errno);
+  statPathWithFailure(mnt / "DOES_NOT_EXIST", ENOENT);
 }
 
 TEST_F(UsvfsTest, getattrCaseInsensitive)
@@ -281,14 +295,11 @@ TEST_F(UsvfsTest, getattrCaseInsensitive)
       mnt / "ALREADY_EXISTING_DIR/ALREADY_EXISTED0.txt",
   };
 
-  struct stat st{};
   for (const auto& filePath : pathsToStat) {
-    EXPECT_EQ(stat(filePath.c_str(), &st), 0)
-        << "error for '" << filePath.string() << "': " << strerror(errno);
+    statPath(filePath);
   }
 
-  EXPECT_EQ(stat((mnt / "DOES_NOT_EXIST").c_str(), &st), -1);
-  EXPECT_EQ(errno, ENOENT) << "expected ENOENT, got " << strerrorname_np(errno);
+  statPathWithFailure(mnt / "DOES_NOT_EXIST", ENOENT);
 }
 
 TEST_F(UsvfsTest, open)
@@ -339,14 +350,14 @@ TEST_F(UsvfsTest, mkdirCaseInsensitive)
 TEST_F(UsvfsTest, read)
 {
   for (const auto& [filePath, content] : filesToCheck) {
-    EXPECT_EQ(readFile(filePath), content);
+    readFile(filePath, content);
   }
 }
 
 TEST_F(UsvfsTest, readCaseInsensitive)
 {
   for (const auto& [filePath, content] : filesToCheckCaseInsensitive) {
-    EXPECT_EQ(readFile(filePath), content);
+    readFile(filePath, content);
   }
 }
 
@@ -381,11 +392,10 @@ TEST_F(UsvfsTest, rename)
   EXPECT_EQ(rename((mnt / "a.txt").c_str(), (mnt / "asdf.txt").c_str()), 0)
       << "error: " << strerror(errno);
 
-  EXPECT_EQ(readFile(mnt / "asdf.txt"), "test a");
+  readFile(mnt / "asdf.txt", "test a");
 
   // opening the original file should fail with ENOENT
-  EXPECT_EQ(open((mnt / "a.txt").c_str(), O_RDONLY), -1);
-  EXPECT_EQ(errno, ENOENT) << "expected ENOENT, got " << strerrorname_np(errno);
+  openFileWithFailure(mnt / "a.txt", ENOENT);
 }
 
 TEST_F(UsvfsTest, renameCaseInsensitive)
@@ -393,11 +403,10 @@ TEST_F(UsvfsTest, renameCaseInsensitive)
   EXPECT_EQ(rename((mnt / "A.txt").c_str(), (mnt / "ASDF.txt").c_str()), 0)
       << "error: " << strerror(errno);
 
-  EXPECT_EQ(readFile(mnt / "asdf.TXT"), "test a");
+  readFile(mnt / "asdf.TXT", "test a");
 
   // opening the original file should fail with ENOENT
-  EXPECT_EQ(open((mnt / "A.txt").c_str(), O_RDONLY), -1);
-  EXPECT_EQ(errno, ENOENT) << "expected ENOENT, got " << strerrorname_np(errno);
+  openFileWithFailure(mnt / "A.txT", ENOENT);
 }
 
 TEST_F(UsvfsTest, chmod)
