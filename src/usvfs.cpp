@@ -21,6 +21,11 @@ namespace fs = std::filesystem;
     return -ENOENT;                                                                    \
   }
 
+#define GET_PATHS()                                                                    \
+  const string realPath   = item->realPath();                                          \
+  const string parentPath = getParentPath(realPath);                                   \
+  const string fileName   = getFileNameFromPath(realPath);
+
 namespace
 {
 MountState* getState()
@@ -215,14 +220,13 @@ int usvfs_unlink(const char* path) noexcept
   logger::trace("usvfs_unlink(path='{}')", path);
   GET_STATE()
   FIND_ITEM()
+  GET_PATHS()
 
-  const string realParentPath = getParentPath(item->realPath());
+  logger::trace("unlinkat {}, path: {}", parentPath, fileName);
 
-  logger::trace("unlinkat {}, path: {}", realParentPath, item->fileName());
-
-  if (unlinkat(state->fdMap.at(realParentPath), item->fileName().c_str(), 0) == -1) {
+  if (unlinkat(state->fdMap.at(parentPath), fileName.c_str(), 0) == -1) {
     const int e = errno;
-    logger::error("unlink failed for '{}': {}", item->realPath(), strerror(e));
+    logger::error("unlink failed for '{}': {}", realPath, strerror(e));
     return -e;
   }
 
@@ -249,13 +253,11 @@ int usvfs_rmdir(const char* path) noexcept
     return -ENOTEMPTY;
   }
 
-  string realParentPath = getParentPath(item->realPath());
+  GET_PATHS()
 
-  if (unlinkat(state->fdMap.at(realParentPath), item->fileName().c_str(),
-               AT_REMOVEDIR) == -1) {
+  if (unlinkat(state->fdMap.at(parentPath), fileName.c_str(), AT_REMOVEDIR) == -1) {
     const int e = errno;
-    logger::error("usvfs_rmdir: unlink failed for '{}': {}", item->realPath(),
-                  strerror(e));
+    logger::error("usvfs_rmdir: unlink failed for '{}': {}", realPath, strerror(e));
     return -e;
   }
 
@@ -355,10 +357,10 @@ int usvfs_chmod(const char* path, mode_t mode, fuse_file_info* fi) noexcept
 
   GET_STATE()
   FIND_ITEM()
+  GET_PATHS()
 
-  const string parentPath = getParentPath(item->realPath());
-  int fd                  = state->fdMap.at(parentPath);
-  if (fchmodat(fd, item->fileName().c_str(), mode, 0) == -1) {
+  int fd = state->fdMap.at(parentPath);
+  if (fchmodat(fd, fileName.c_str(), mode, 0) == -1) {
     const int e = errno;
     logger::error("usvfs_chmod: fchmodat failed: {}", strerror(e));
     return -e;
@@ -382,10 +384,9 @@ int usvfs_chown(const char* path, uid_t uid, gid_t gid, fuse_file_info* fi) noex
 
   GET_STATE()
   FIND_ITEM()
+  GET_PATHS()
 
-  const string parentPath = getParentPath(item->realPath());
-  if (fchownat(state->fdMap.at(parentPath), item->fileName().c_str(), uid, gid, 0) ==
-      -1) {
+  if (fchownat(state->fdMap.at(parentPath), fileName.c_str(), uid, gid, 0) == -1) {
     const int e = errno;
     logger::error("usvfs_chown: fchownat failed: {}", strerror(e));
     return -e;
@@ -409,15 +410,14 @@ int usvfs_truncate(const char* path, off_t size, fuse_file_info* fi) noexcept
 
   GET_STATE()
   FIND_ITEM()
-
-  const string parentPath = getParentPath(item->realPath());
+  GET_PATHS()
 
   const int parentFd = state->fdMap.at(parentPath);
-  const int fd       = openat(parentFd, item->fileName().c_str(), O_WRONLY);
+  const int fd       = openat(parentFd, fileName.c_str(), O_WRONLY);
   if (fd == -1) {
     const int e = errno;
     logger::error("usvfs_truncate: openat({}:'{}', {}, O_WRONLY) failed: {}", parentFd,
-                  parentPath, item->fileName(), strerror(e));
+                  parentPath, fileName, strerror(e));
     return -e;
   }
 
@@ -436,9 +436,9 @@ int usvfs_open(const char* path, fuse_file_info* fi) noexcept
   logger::trace("usvfs_open(path='{}', flags={})", path, fi->flags);
   GET_STATE()
   FIND_ITEM()
+  GET_PATHS()
 
-  const int result = openat(state->fdMap.at(getParentPath(item->realPath())),
-                            item->fileName().c_str(), fi->flags);
+  const int result = openat(state->fdMap.at(parentPath), fileName.c_str(), fi->flags);
   if (result == -1) {
     return -errno;
   }
@@ -542,19 +542,18 @@ int usvfs_readdir(const char* path, void* buf, const fuse_fill_dir_t filler,
   filler(buf, "..", nullptr, 0, fill_flags);
 
   for (const auto& [itemName, item] : tree->getChildren()) {
-    const string realPath       = item->realPath();
-    const string realParentPath = getParentPath(realPath);
+    GET_PATHS()
 
     struct stat stbuf;
-    int fd = state->fdMap.at(realParentPath);
-    if (fstatat(fd, item->fileName().c_str(), &stbuf, 0) == -1) {
+    int fd = state->fdMap.at(parentPath);
+    if (fstatat(fd, fileName.c_str(), &stbuf, 0) == -1) {
       const int e = errno;
       logger::error("usvfs_readdir: fstatat({}:'{}', '{}'), itemName: '{}' failed: {}",
-                    fd, realParentPath, item->fileName(), itemName, strerror(e));
+                    fd, parentPath, fileName, itemName, strerror(e));
       return -e;
     }
 
-    if (filler(buf, itemName.c_str(), &stbuf, 0, fill_flags) != 0) {
+    if (filler(buf, item->fileName().c_str(), &stbuf, 0, fill_flags) != 0) {
       logger::error("usvfs_readdir: filler function returned error");
       break;
     }
