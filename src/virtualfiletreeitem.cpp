@@ -30,8 +30,8 @@ VirtualFileTreeItem::VirtualFileTreeItem(
     : m_fileName(std::move(path)), m_realPath(std::move(realPath)),
       m_parent(std::move(parent)), m_deleted(false)
 {
-  if (fs::exists(realPath)) {
-    if (fs::status(realPath).type() == fs::file_type::directory) {
+  if (fs::exists(m_realPath)) {
+    if (fs::status(m_realPath).type() == fs::file_type::directory) {
       m_type = dir;
     } else {
       m_type = file;
