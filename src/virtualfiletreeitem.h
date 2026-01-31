@@ -27,17 +27,17 @@ class VirtualFileTreeItem : public std::enable_shared_from_this<VirtualFileTreeI
 public:
   static std::shared_ptr<VirtualFileTreeItem>
   create(std::string path, std::string realPath, Type type,
-         std::weak_ptr<VirtualFileTreeItem> parent = {});
+         std::weak_ptr<VirtualFileTreeItem> parent = {}) noexcept;
 
   static std::shared_ptr<VirtualFileTreeItem>
   create(std::string path, std::string realPath,
-         std::weak_ptr<VirtualFileTreeItem> parent = {});
+         std::weak_ptr<VirtualFileTreeItem> parent = {}) noexcept;
 
   // ctors for use with std::make_shared
   VirtualFileTreeItem(Passkey, std::string path, std::string realPath, Type type,
-                      std::weak_ptr<VirtualFileTreeItem> parent) noexcept;
+                      std::weak_ptr<VirtualFileTreeItem> parent) noexcept(false);
   VirtualFileTreeItem(Passkey, std::string path, std::string realPath,
-                      std::weak_ptr<VirtualFileTreeItem> parent) noexcept;
+                      std::weak_ptr<VirtualFileTreeItem> parent) noexcept(false);
 
   VirtualFileTreeItem() = delete;
 

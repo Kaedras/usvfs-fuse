@@ -43,29 +43,39 @@ VirtualFileTreeItem::VirtualFileTreeItem(
 
 std::shared_ptr<VirtualFileTreeItem>
 VirtualFileTreeItem::create(std::string path, std::string realPath, Type type,
-                            std::weak_ptr<VirtualFileTreeItem> parent)
+                            std::weak_ptr<VirtualFileTreeItem> parent) noexcept
 {
-  return make_shared<VirtualFileTreeItem>(Passkey{}, std::move(path),
-                                          std::move(realPath), type, std::move(parent));
+  try {
+    return make_shared<VirtualFileTreeItem>(
+        Passkey{}, std::move(path), std::move(realPath), type, std::move(parent));
+  } catch (const exception& ex) {
+    logger::error("error creating file tree item: {}", ex.what());
+    return nullptr;
+  }
 }
 
 std::shared_ptr<VirtualFileTreeItem>
 VirtualFileTreeItem::create(std::string path, std::string realPath,
-                            std::weak_ptr<VirtualFileTreeItem> parent)
+                            std::weak_ptr<VirtualFileTreeItem> parent) noexcept
 {
-  return make_shared<VirtualFileTreeItem>(Passkey{}, std::move(path),
-                                          std::move(realPath), std::move(parent));
+  try {
+    return make_shared<VirtualFileTreeItem>(Passkey{}, std::move(path),
+                                            std::move(realPath), std::move(parent));
+  } catch (const exception& ex) {
+    logger::error("error creating file tree item: {}", ex.what());
+    return nullptr;
+  }
 }
 
 VirtualFileTreeItem::VirtualFileTreeItem(
     Passkey, std::string path, std::string realPath, Type type,
-    std::weak_ptr<VirtualFileTreeItem> parent) noexcept
+    std::weak_ptr<VirtualFileTreeItem> parent) noexcept(false)
     : VirtualFileTreeItem(std::move(path), std::move(realPath), type, std::move(parent))
 {}
 
 VirtualFileTreeItem::VirtualFileTreeItem(
     Passkey, std::string path, std::string realPath,
-    std::weak_ptr<VirtualFileTreeItem> parent) noexcept
+    std::weak_ptr<VirtualFileTreeItem> parent) noexcept(false)
     : VirtualFileTreeItem(std::move(path), std::move(realPath), std::move(parent))
 {}
 
