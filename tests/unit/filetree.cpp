@@ -1,4 +1,5 @@
 #include <filesystem>
+#include <fstream>
 #include <gtest/gtest.h>
 #include <ostream>
 
@@ -64,19 +65,62 @@ protected:
 TEST_F(FileTreeTest, Add)
 {
   addItems();
-
-  // adding an existing path should fail with EEXIST
-  ASSERT_FALSE(fileTree->add("/3", "/tmp/c", file));
-  EXPECT_EQ(errno, EEXIST);
 }
 
 TEST_F(FileTreeTest, AddNonASCII)
 {
   addItemsNonASCII();
+}
 
-  // adding an existing path should fail with EEXIST
-  ASSERT_FALSE(fileTree->add("/こんいちわ", "/tmp/テスト", file));
+TEST_F(FileTreeTest, AddFailsOnEmptyPath)
+{
+  EXPECT_EQ(fileTree->add("", "/tmp/a", dir), nullptr);
+  EXPECT_EQ(errno, EINVAL);
+
+  errno = 0;
+  EXPECT_EQ(fileTree->add("/1", "", dir), nullptr);
+  EXPECT_EQ(errno, EINVAL);
+}
+
+TEST_F(FileTreeTest, AddFailsOnMissingParent)
+{
+  EXPECT_EQ(fileTree->add("/missing/child", "/tmp/missing", dir), nullptr);
+  EXPECT_EQ(errno, ENOENT);
+}
+
+TEST_F(FileTreeTest, AddFailsOnExisting)
+{
+  addItems();
+
+  EXPECT_EQ(fileTree->add("/1", "/tmp/test", dir), nullptr);
   EXPECT_EQ(errno, EEXIST);
+}
+
+TEST_F(FileTreeTest, AddCanDetectType)
+{
+  auto tmpBase = filesystem::temp_directory_path() / "usvfsFiletreeTest";
+  filesystem::remove_all(tmpBase);
+  cout << "creating tmp dir " << tmpBase << endl;
+  ASSERT_TRUE(filesystem::create_directories(tmpBase));
+
+  auto tmpDir = tmpBase / "dir";
+  ASSERT_TRUE(filesystem::create_directories(tmpDir));
+
+  auto tmpFile = tmpBase / "file.txt";
+  ofstream out(tmpFile);
+  ASSERT_TRUE(out.good());
+  out << "test";
+  out.close();
+
+  ASSERT_TRUE(fileTree->add("/dir", tmpDir));
+  ASSERT_TRUE(fileTree->add("/file", tmpFile));
+  ASSERT_TRUE(fileTree->add("/missing", tmpBase / "missing"));
+
+  EXPECT_TRUE(fileTree->find("/dir")->isDir());
+  EXPECT_TRUE(fileTree->find("/file")->isFile());
+  EXPECT_EQ(fileTree->find("/missing")->getType(), unknown);
+
+  filesystem::remove_all(tmpBase);
 }
 
 // this not only tests printing the tree, but also whether the elements were added
@@ -176,6 +220,21 @@ TEST_F(FileTreeTest, FindNonASCII)
 
   EXPECT_EQ(find("/Ä"), "/tmp/Ö");
   EXPECT_EQ(find("こんいちわ"), "/tmp/テスト");
+}
+
+TEST_F(FileTreeTest, FindCaseInsensitive)
+{
+  ASSERT_TRUE(fileTree->add("/Test", "/tmp/teST", dir));
+
+  auto item = fileTree->find("/test");
+  ASSERT_NE(item, nullptr);
+  EXPECT_EQ(item->fileName(), "Test");
+  EXPECT_EQ(item->realPath(), "/tmp/teST");
+
+  item = fileTree->find("/TEST");
+  ASSERT_NE(item, nullptr);
+  EXPECT_EQ(item->fileName(), "Test");
+  EXPECT_EQ(item->realPath(), "/tmp/teST");
 }
 
 TEST_F(FileTreeTest, OverwriteEntries)
