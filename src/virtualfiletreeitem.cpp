@@ -12,7 +12,8 @@ VirtualFileTreeItem::VirtualFileTreeItem(
     : m_fileName(std::move(path)), m_realPath(std::move(realPath)),
       m_parent(std::move(parent)), m_type(type), m_deleted(false)
 {
-  logger::trace("{}: '{}', '{}'", __FUNCTION__, m_fileName, m_realPath);
+  logger::trace("VirtualFileTreeItem(path='{}', realPath= '{}')", m_fileName,
+                m_realPath);
   if (m_fileName.empty()) {
     errno = EINVAL;
     throw runtime_error("filename is empty");
@@ -20,7 +21,7 @@ VirtualFileTreeItem::VirtualFileTreeItem(
 
   if (m_realPath.empty()) {
     errno = EINVAL;
-    throw runtime_error(format("real path is empty"));
+    throw runtime_error("real path is empty");
   }
 }
 
@@ -183,7 +184,7 @@ bool VirtualFileTreeItem::erase(std::string_view path, bool reallyErase) noexcep
   unique_lock lock(m_mtx);
 
   if (path.empty()) {
-    logger::error("attempted to call {} with an empty path", __FUNCTION__);
+    logger::error("erase: path must not be empty");
     errno = EINVAL;
     return false;
   }
@@ -237,7 +238,7 @@ std::string VirtualFileTreeItem::realPath() const noexcept
 void VirtualFileTreeItem::setName(std::string name) noexcept
 {
   if (name.empty()) {
-    logger::error("attempted to call {} with an empty parameter", __FUNCTION__);
+    logger::error("setName: name must not be empty");
     errno = EINVAL;
     return;
   }
