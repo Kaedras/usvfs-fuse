@@ -122,6 +122,12 @@ VirtualFileTreeItem::add(std::string_view path, std::string realPath, Type type,
     return nullptr;
   }
 
+  if (path == "/") {
+    logger::error("attempted to add an entry with path '/'");
+    errno = EINVAL;
+    return nullptr;
+  }
+
   if (path[0] == '/') {
     path.remove_prefix(1);
   }
