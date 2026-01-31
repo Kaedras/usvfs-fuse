@@ -326,7 +326,42 @@ TEST_F(FileTreeTest, CanEraseItem)
   ASSERT_EQ(root->find("/1/1"), nullptr);
   ASSERT_NE(root->find("/1/1", true), nullptr);
 
-  ASSERT_TRUE(root->erase("/2/2", true));
-  ASSERT_EQ(root->find("/2/2"), nullptr);
-  ASSERT_EQ(root->find("/2/2", true), nullptr);
+  // mark "/2" as deleted
+  ASSERT_TRUE(root->erase("/2", false));
+
+  // check if "/2" is marked as deleted
+  ASSERT_EQ(root->find("/2"), nullptr);
+  ASSERT_NE(root->find("/2", true), nullptr);
+
+  // check if children are also marked as deleted
+  ASSERT_EQ(root->find("/2/1"), nullptr);
+  ASSERT_NE(root->find("/2/1", true), nullptr);
+
+  // delete "/2"
+  ASSERT_TRUE(root->erase("/2", true));
+  // check if children have been deleted
+  ASSERT_EQ(root->find("/2/3", true), nullptr);
+}
+
+TEST_F(FileTreeTest, CanInsertAfterErase)
+{
+  auto root = VirtualFileTreeItem::create("/", "/tmp", dir);
+  addItems(root);
+
+  // helper function, required because find returns nullptr if the value has not been
+  // found
+  auto find = [&](const char* value) -> string {
+    if (const auto result = root->find(value)) {
+      return result->realPath();
+    }
+    return "";
+  };
+
+  ASSERT_TRUE(root->erase("/1/1", true));
+  ASSERT_NE(root->add("/1/1", "/tmp/1/1"), nullptr);
+  ASSERT_EQ(find("/1/1"), "/tmp/1/1");
+
+  ASSERT_TRUE(root->erase("/1/1", false));
+  ASSERT_NE(root->add("/1/1", "/tmp/A/A"), nullptr);
+  ASSERT_EQ(find("/1/1"), "/tmp/A/A");
 }
