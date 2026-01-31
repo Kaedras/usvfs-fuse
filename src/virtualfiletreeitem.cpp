@@ -45,23 +45,28 @@ std::shared_ptr<VirtualFileTreeItem>
 VirtualFileTreeItem::create(std::string path, std::string realPath, Type type,
                             std::weak_ptr<VirtualFileTreeItem> parent)
 {
-  return std::shared_ptr<VirtualFileTreeItem>(new VirtualFileTreeItem(
-      std::move(path), std::move(realPath), type, std::move(parent)));
+  return make_shared<VirtualFileTreeItem>(Passkey{}, std::move(path),
+                                          std::move(realPath), type, std::move(parent));
 }
 
 std::shared_ptr<VirtualFileTreeItem>
 VirtualFileTreeItem::create(std::string path, std::string realPath,
                             std::weak_ptr<VirtualFileTreeItem> parent)
 {
-  return std::shared_ptr<VirtualFileTreeItem>(
-      new VirtualFileTreeItem(std::move(path), std::move(realPath), std::move(parent)));
+  return make_shared<VirtualFileTreeItem>(Passkey{}, std::move(path),
+                                          std::move(realPath), std::move(parent));
 }
 
 VirtualFileTreeItem::VirtualFileTreeItem(
     Passkey, std::string path, std::string realPath, Type type,
     std::weak_ptr<VirtualFileTreeItem> parent) noexcept
-    : m_fileName(std::move(path)), m_realPath(std::move(realPath)),
-      m_parent(std::move(parent)), m_type(type), m_deleted(false)
+    : VirtualFileTreeItem(std::move(path), std::move(realPath), type, std::move(parent))
+{}
+
+VirtualFileTreeItem::VirtualFileTreeItem(
+    Passkey, std::string path, std::string realPath,
+    std::weak_ptr<VirtualFileTreeItem> parent) noexcept
+    : VirtualFileTreeItem(std::move(path), std::move(realPath), std::move(parent))
 {}
 
 VirtualFileTreeItem::VirtualFileTreeItem(const VirtualFileTreeItem& other) noexcept

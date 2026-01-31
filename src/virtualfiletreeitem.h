@@ -33,8 +33,10 @@ public:
   create(std::string path, std::string realPath,
          std::weak_ptr<VirtualFileTreeItem> parent = {});
 
-  // ctor for use with std::make_shared
+  // ctors for use with std::make_shared
   VirtualFileTreeItem(Passkey, std::string path, std::string realPath, Type type,
+                      std::weak_ptr<VirtualFileTreeItem> parent) noexcept;
+  VirtualFileTreeItem(Passkey, std::string path, std::string realPath,
                       std::weak_ptr<VirtualFileTreeItem> parent) noexcept;
 
   VirtualFileTreeItem() = delete;
