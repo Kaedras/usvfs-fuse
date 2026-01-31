@@ -395,6 +395,14 @@ VirtualFileTreeItem::addInternal(std::string_view path, std::string_view pathLc,
 
   auto [it, wasInserted] = m_children.try_emplace(string(pathLc), nullptr);
   if (!wasInserted) {
+    if (it->second->isDeleted()) {
+      logger::debug("marking item '{}' as not deleted, updating real path to '{}'",
+                    path, realPath);
+      it->second->setDeleted(false);
+      it->second->m_realPath = realPath;
+
+      return it->second;
+    }
     if (!updateExisting) {
       logger::error("item '{}' already exists and should not be updated", path);
       errno = EEXIST;
