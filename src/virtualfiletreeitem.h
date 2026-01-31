@@ -174,11 +174,12 @@ private:
   findInternal(std::string_view path, bool includeDeleted) noexcept;
 
   // add function without locking for internal use
-  std::shared_ptr<VirtualFileTreeItem>
-  addInternal(std::string_view path, std::string_view pathLc, std::string realPath,
-              Type type, bool updateExisting = false) noexcept;
+  std::shared_ptr<VirtualFileTreeItem> addInternal(std::string_view path,
+                                                   std::string_view pathLc,
+                                                   std::string realPath, Type type,
+                                                   bool updateExisting) noexcept;
 
   // isEmpty function without locking
   bool isEmptyInternal() const noexcept;
-  bool eraseInternal(std::string_view path, bool reallyErase = true) noexcept;
+  bool eraseInternal(std::string_view path, bool reallyErase) noexcept;
 };

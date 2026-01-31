@@ -431,7 +431,7 @@ bool VirtualFileTreeItem::eraseInternal(std::string_view path,
       return false;
     }
 
-    return it->second->eraseInternal(path.substr(pos + 1));
+    return it->second->eraseInternal(path.substr(pos + 1), reallyErase);
   }
 
   const auto it = m_children.find(path);
