@@ -453,8 +453,18 @@ bool VirtualFileTreeItem::eraseInternal(std::string_view path,
     m_children.erase(it);
     return true;
   }
+
   it->second->setDeleted(true);
+  it->second->markAllChildrenAsDeleted();
   return true;
+}
+
+void VirtualFileTreeItem::markAllChildrenAsDeleted() noexcept
+{
+  for (const auto& it : m_children | views::values) {
+    it->m_deleted = true;
+    it->markAllChildrenAsDeleted();
+  }
 }
 
 std::ostream& operator<<(std::ostream& os,
