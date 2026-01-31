@@ -238,8 +238,7 @@ protected:
         (src / "a").string(), mnt.string(), linkFlag::RECURSIVE));
     ASSERT_TRUE(usvfs->usvfsVirtualLinkDirectoryStatic(
         (src / "b").string(), mnt.string(), linkFlag::RECURSIVE));
-    ASSERT_TRUE(usvfs->usvfsVirtualLinkFile("/tmp/usvfs/src/c/c.txt",
-                                            "/tmp/usvfs/mnt2/c.txt", 0));
+    ASSERT_TRUE(usvfs->usvfsVirtualLinkFile(src / "c/c.txt", mnt2 / "c.txt", 0));
 
     ASSERT_NO_THROW(usvfs->mount());
     dumpUsvfs();
