@@ -15,7 +15,11 @@ class FileTreeTest : public testing::Test
 {
 protected:
   FileTreeTest() = default;
-  void SetUp() override { initLogging(); }
+  void SetUp() override
+  {
+    initLogging();
+    fileTree = VirtualFileTreeItem::create("/", "/tmp", dir);
+  }
   void TearDown() override {}
 
   static void initLogging()
@@ -23,53 +27,63 @@ protected:
     auto usvfs = UsvfsManager::instance();
     usvfs->setLogLevel(logLevel);
   }
-  static void addItems(shared_ptr<VirtualFileTreeItem>& root)
+  static void addItems(shared_ptr<VirtualFileTreeItem>& tree)
   {
-    ASSERT_TRUE(root->add("/1", "/tmp/a", dir));
-    ASSERT_TRUE(root->add("/1/1", "/tmp/a/a", dir));
-    ASSERT_TRUE(root->add("/2", "/tmp/b", dir));
-    ASSERT_TRUE(root->add("/2/1", "/tmp/b/a", dir));
-    ASSERT_TRUE(root->add("/2/2", "/tmp/b/b", dir));
-    ASSERT_TRUE(root->add("/2/2/1", "/tmp/b/b/a", dir));
-    ASSERT_TRUE(root->add("/2/3", "/tmp/b/c", dir));
-    ASSERT_TRUE(root->add("/3", "/tmp/c", dir));
-    ASSERT_TRUE(root->add("/3/1", "/tmp/c/a", dir));
-    ASSERT_TRUE(root->add("/3/2", "/tmp/c/b", dir));
-    ASSERT_TRUE(root->add("/3/2/1", "/tmp/c/b/a", dir));
+    ASSERT_TRUE(tree->add("/1", "/tmp/a", dir));
+    ASSERT_TRUE(tree->add("/1/1", "/tmp/a/a", dir));
+    ASSERT_TRUE(tree->add("/2", "/tmp/b", dir));
+    ASSERT_TRUE(tree->add("/2/1", "/tmp/b/a", dir));
+    ASSERT_TRUE(tree->add("/2/2", "/tmp/b/b", dir));
+    ASSERT_TRUE(tree->add("/2/2/1", "/tmp/b/b/a", dir));
+    ASSERT_TRUE(tree->add("/2/3", "/tmp/b/c", dir));
+    ASSERT_TRUE(tree->add("/3", "/tmp/c", dir));
+    ASSERT_TRUE(tree->add("/3/1", "/tmp/c/a", dir));
+    ASSERT_TRUE(tree->add("/3/2", "/tmp/c/b", dir));
+    ASSERT_TRUE(tree->add("/3/2/1", "/tmp/c/b/a", dir));
   }
-  static void addItemsNonASCII(shared_ptr<VirtualFileTreeItem>& root)
+  static void addItemsNonASCII(shared_ptr<VirtualFileTreeItem>& tree)
   {
-    ASSERT_TRUE(root->add("Ä", "/tmp/Ö", dir));
-    ASSERT_TRUE(root->add("こんいちわ", "/tmp/テスト", dir));
+    ASSERT_TRUE(tree->add("Ä", "/tmp/Ö", dir));
+    ASSERT_TRUE(tree->add("こんいちわ", "/tmp/テスト", dir));
   }
+  static string find(shared_ptr<VirtualFileTreeItem>& tree, string_view value)
+  {
+    if (const auto result = tree->find(value)) {
+      return result->realPath();
+    }
+    return "";
+  }
+
+  void addItems() { addItems(fileTree); }
+  void addItemsNonASCII() { addItemsNonASCII(fileTree); }
+  string find(string_view value) { return find(fileTree, value); }
+
+  shared_ptr<VirtualFileTreeItem> fileTree;
 };
 
 TEST_F(FileTreeTest, CanInsert)
 {
-  auto root = VirtualFileTreeItem::create("/", "/tmp", dir);
-  EXPECT_TRUE(root->add("/1", "/tmp/a", dir));
-  EXPECT_TRUE(root->add("/1/1", "/tmp/a/a", file));
-  EXPECT_TRUE(root->add("/2", "/tmp/b", dir));
-  EXPECT_TRUE(root->add("/2/1", "/tmp/b/a", file));
-  EXPECT_TRUE(root->add("/2/2", "/tmp/b/b", dir));
-  EXPECT_TRUE(root->add("/2/2/1", "/tmp/b/b/a", file));
-  EXPECT_TRUE(root->add("/2/3", "/tmp/b/c", file));
+  addItems();
+
+  // inserting an existing path should fail with EEXIST
+  ASSERT_FALSE(fileTree->add("/3", "/tmp/c", file));
+  EXPECT_EQ(errno, EEXIST);
 }
 
 TEST_F(FileTreeTest, CanInsertNonASCII)
 {
-  auto root = VirtualFileTreeItem::create("/", "/tmp", dir);
+  addItemsNonASCII();
 
-  EXPECT_TRUE(root->add("Ä", "/tmp/Ö", file));
-  EXPECT_TRUE(root->add("こんいちわ", "/tmp/テスト", file));
+  // inserting an existing path should fail with EEXIST
+  ASSERT_FALSE(fileTree->add("/こんいちわ", "/tmp/テスト", file));
+  EXPECT_EQ(errno, EEXIST);
 }
 
 // this not only tests printing the tree, but also whether the elements were added
 // correctly
 TEST_F(FileTreeTest, PrintTree)
 {
-  auto root = VirtualFileTreeItem::create("/", "/tmp", dir);
-  addItems(root);
+  addItems();
 
   static const string expectedResult =
       "file path: \"\", real path: \"/tmp\"\n"
@@ -86,14 +100,13 @@ TEST_F(FileTreeTest, PrintTree)
       "file path: \"/3/2/1\", real path: \"/tmp/c/b/a\"\n";
 
   stringstream s;
-  s << root;
+  s << fileTree;
   EXPECT_EQ(s.str(), expectedResult);
 }
 
 TEST_F(FileTreeTest, PrintTreeNonASCII)
 {
-  auto root = VirtualFileTreeItem::create("/", "/tmp", dir);
-  addItemsNonASCII(root);
+  addItemsNonASCII();
 
   static const string expectedResult =
       "file path: \"\", real path: \"/tmp\"\n"
@@ -101,14 +114,13 @@ TEST_F(FileTreeTest, PrintTreeNonASCII)
       "file path: \"/こんいちわ\", real path: \"/tmp/テスト\"\n";
 
   stringstream s;
-  s << root;
+  s << fileTree;
   EXPECT_EQ(s.str(), expectedResult);
 }
 
 TEST_F(FileTreeTest, DumpTree)
 {
-  auto root = VirtualFileTreeItem::create("/", "/tmp", dir);
-  addItems(root);
+  addItems();
 
   static const string expectedResult = "/ -> /tmp\n"
                                        " 1/ -> /tmp/a\n"
@@ -124,38 +136,26 @@ TEST_F(FileTreeTest, DumpTree)
                                        "   1/ -> /tmp/c/b/a\n";
 
   stringstream s;
-  root->dumpTree(s);
+  fileTree->dumpTree(s);
   EXPECT_EQ(s.str(), expectedResult);
 }
 
 TEST_F(FileTreeTest, DumpTreeNonASCII)
 {
-  auto root = VirtualFileTreeItem::create("/", "/tmp", dir);
-  addItemsNonASCII(root);
+  addItemsNonASCII();
 
   static const string expectedResult = "/ -> /tmp\n"
                                        " Ä/ -> /tmp/Ö\n"
                                        " こんいちわ/ -> /tmp/テスト\n";
 
   stringstream s;
-  root->dumpTree(s);
+  fileTree->dumpTree(s);
   EXPECT_EQ(s.str(), expectedResult);
 }
 
 TEST_F(FileTreeTest, CanFindInsertedItems)
 {
-  auto root = VirtualFileTreeItem::create("/", "/tmp", dir);
-  addItems(root);
-
-  // helper function, required because find returns nullptr if the value has not been
-  // found
-  auto find = [&](const char* value) -> string {
-    auto result = root->find(value);
-    if (result == nullptr) {
-      return "";
-    }
-    return result->realPath();
-  };
+  addItems();
 
   EXPECT_EQ(find("/1"), "/tmp/a");
   EXPECT_EQ(find("/1/1"), "/tmp/a/a");
@@ -172,17 +172,7 @@ TEST_F(FileTreeTest, CanFindInsertedItems)
 
 TEST_F(FileTreeTest, CanFindInsertedItemsNonASCII)
 {
-  auto root = VirtualFileTreeItem::create("/", "/tmp", dir);
-  addItemsNonASCII(root);
-
-  // helper function, required because find returns nullptr if the value has not been
-  // found
-  auto find = [&root](const char* value) -> string {
-    if (const auto result = root->find(value)) {
-      return result->realPath();
-    }
-    return "";
-  };
+  addItemsNonASCII();
 
   EXPECT_EQ(find("/Ä"), "/tmp/Ö");
   EXPECT_EQ(find("こんいちわ"), "/tmp/テスト");
@@ -190,28 +180,18 @@ TEST_F(FileTreeTest, CanFindInsertedItemsNonASCII)
 
 TEST_F(FileTreeTest, CanOverwriteEntries)
 {
-  auto root = VirtualFileTreeItem::create("/", "/tmp", dir);
-  addItems(root);
+  addItems();
 
   // overwrite items
-  EXPECT_TRUE(root->add("/1", "/tmp/A", dir, true));
-  EXPECT_TRUE(root->add("/1/1", "/tmp/A/A", dir, true));
-  EXPECT_TRUE(root->add("/2", "/tmp/B", dir, true));
-  EXPECT_TRUE(root->add("/2/1", "/tmp/B/A", file, true));
-  EXPECT_TRUE(root->add("/2/2", "/tmp/B/B", dir, true));
-  EXPECT_TRUE(root->add("/2/2/1", "/tmp/B/B/A", file, true));
-  EXPECT_TRUE(root->add("/2/2/1", "/tmp/b/b/abc", file, true));
-  EXPECT_TRUE(root->add("/2/3", "/tmp/B/C", file, true));
-  EXPECT_TRUE(root->add("/3", "/tmp/C", dir, true));
-
-  // helper function, required because find returns nullptr if the value has not been
-  // found
-  auto find = [&](const char* value) -> string {
-    if (const auto result = root->find(value)) {
-      return result->realPath();
-    }
-    return "";
-  };
+  EXPECT_TRUE(fileTree->add("/1", "/tmp/A", dir, true));
+  EXPECT_TRUE(fileTree->add("/1/1", "/tmp/A/A", dir, true));
+  EXPECT_TRUE(fileTree->add("/2", "/tmp/B", dir, true));
+  EXPECT_TRUE(fileTree->add("/2/1", "/tmp/B/A", file, true));
+  EXPECT_TRUE(fileTree->add("/2/2", "/tmp/B/B", dir, true));
+  EXPECT_TRUE(fileTree->add("/2/2/1", "/tmp/B/B/A", file, true));
+  EXPECT_TRUE(fileTree->add("/2/2/1", "/tmp/b/b/abc", file, true));
+  EXPECT_TRUE(fileTree->add("/2/3", "/tmp/B/C", file, true));
+  EXPECT_TRUE(fileTree->add("/3", "/tmp/C", dir, true));
 
   EXPECT_EQ(find("/1"), "/tmp/A");
   EXPECT_EQ(find("/1/1"), "/tmp/A/A");
@@ -227,26 +207,25 @@ TEST_F(FileTreeTest, CanOverwriteEntries)
 
 TEST_F(FileTreeTest, MergeTrees)
 {
-  auto root = VirtualFileTreeItem::create("/", "/tmp", dir);
-  root->add("/1", "/tmp/1", file);
-  root->add("/2", "/tmp/2", file);
-  root->add("/3", "/tmp/3", dir);
-  root->add("/3/1", "/tmp/3/1", dir);
-  root->add("/3/1/1", "/tmp/3/1/1", dir);
+  fileTree->add("/1", "/tmp/1", file);
+  fileTree->add("/2", "/tmp/2", file);
+  fileTree->add("/3", "/tmp/3", dir);
+  fileTree->add("/3/1", "/tmp/3/1", dir);
+  fileTree->add("/3/1/1", "/tmp/3/1/1", dir);
 
   {
-    auto root2 = VirtualFileTreeItem::create("/", "/tmp", dir);
-    root2->add("/1", "/tmp/A", dir);
-    root2->add("/3", "/tmp/3", dir);
-    root2->add("/3/1", "/tmp/3/1", dir);
-    root2->add("/3/1/1", "/tmp/3/1/1", dir);
-    root2->add("/3/1/1/1", "/tmp/3/1/1/1", dir);
-    root2->add("/3/2", "/tmp/3/2", dir);
-    root2->add("/4", "/tmp/4", dir);
-    root2->add("/4/4", "/tmp/4/4", dir);
-    root2->add("/4/4/4", "/tmp/4/4/4", dir);
+    auto newFileTree = VirtualFileTreeItem::create("/", "/tmp", dir);
+    newFileTree->add("/1", "/tmp/A", dir);
+    newFileTree->add("/3", "/tmp/3", dir);
+    newFileTree->add("/3/1", "/tmp/3/1", dir);
+    newFileTree->add("/3/1/1", "/tmp/3/1/1", dir);
+    newFileTree->add("/3/1/1/1", "/tmp/3/1/1/1", dir);
+    newFileTree->add("/3/2", "/tmp/3/2", dir);
+    newFileTree->add("/4", "/tmp/4", dir);
+    newFileTree->add("/4/4", "/tmp/4/4", dir);
+    newFileTree->add("/4/4/4", "/tmp/4/4/4", dir);
 
-    *root += *root2;
+    *fileTree += *newFileTree;
   }
 
   static const string expectedResult =
@@ -263,40 +242,27 @@ TEST_F(FileTreeTest, MergeTrees)
       "file path: \"/4/4/4\", real path: \"/tmp/4/4/4\"\n";
 
   stringstream ss;
-  ss << root;
+  ss << fileTree;
   EXPECT_EQ(ss.str(), expectedResult);
 }
 
 TEST_F(FileTreeTest, CopyTree)
 {
-  shared_ptr<VirtualFileTreeItem> copy;
+  addItems();
+  shared_ptr<VirtualFileTreeItem> copy = fileTree->clone();
+  fileTree.reset();
 
-  {
-    auto root = VirtualFileTreeItem::create("/", "/tmp", dir);
-    addItems(root);
-    copy = root->clone();
-  }
-
-  // helper function, required because find returns nullptr if the value has not been
-  // found
-  auto find = [&](const char* value) -> string {
-    if (const auto result = copy->find(value)) {
-      return result->realPath();
-    }
-    return "";
-  };
-
-  EXPECT_EQ(find("/1"), "/tmp/a");
-  EXPECT_EQ(find("/1/1"), "/tmp/a/a");
-  EXPECT_EQ(find("/2"), "/tmp/b");
-  EXPECT_EQ(find("/2/1"), "/tmp/b/a");
-  EXPECT_EQ(find("/2/2"), "/tmp/b/b");
-  EXPECT_EQ(find("/2/2/1"), "/tmp/b/b/a");
-  EXPECT_EQ(find("/2/3"), "/tmp/b/c");
-  EXPECT_EQ(find("/3"), "/tmp/c");
-  EXPECT_EQ(find("/3/1"), "/tmp/c/a");
-  EXPECT_EQ(find("/3/2"), "/tmp/c/b");
-  EXPECT_EQ(find("/3/2/1"), "/tmp/c/b/a");
+  EXPECT_EQ(find(copy, "/1"), "/tmp/a");
+  EXPECT_EQ(find(copy, "/1/1"), "/tmp/a/a");
+  EXPECT_EQ(find(copy, "/2"), "/tmp/b");
+  EXPECT_EQ(find(copy, "/2/1"), "/tmp/b/a");
+  EXPECT_EQ(find(copy, "/2/2"), "/tmp/b/b");
+  EXPECT_EQ(find(copy, "/2/2/1"), "/tmp/b/b/a");
+  EXPECT_EQ(find(copy, "/2/3"), "/tmp/b/c");
+  EXPECT_EQ(find(copy, "/3"), "/tmp/c");
+  EXPECT_EQ(find(copy, "/3/1"), "/tmp/c/a");
+  EXPECT_EQ(find(copy, "/3/2"), "/tmp/c/b");
+  EXPECT_EQ(find(copy, "/3/2/1"), "/tmp/c/b/a");
 
   static const string expectedResult =
       "file path: \"\", real path: \"/tmp\"\n"
@@ -319,49 +285,38 @@ TEST_F(FileTreeTest, CopyTree)
 
 TEST_F(FileTreeTest, CanEraseItem)
 {
-  auto root = VirtualFileTreeItem::create("/", "/tmp", dir);
-  addItems(root);
+  addItems();
 
-  ASSERT_TRUE(root->erase("/1/1", false));
-  ASSERT_EQ(root->find("/1/1"), nullptr);
-  ASSERT_NE(root->find("/1/1", true), nullptr);
+  ASSERT_TRUE(fileTree->erase("/1/1", false));
+  ASSERT_EQ(fileTree->find("/1/1"), nullptr);
+  ASSERT_NE(fileTree->find("/1/1", true), nullptr);
 
   // mark "/2" as deleted
-  ASSERT_TRUE(root->erase("/2", false));
+  ASSERT_TRUE(fileTree->erase("/2", false));
 
   // check if "/2" is marked as deleted
-  ASSERT_EQ(root->find("/2"), nullptr);
-  ASSERT_NE(root->find("/2", true), nullptr);
+  ASSERT_EQ(fileTree->find("/2"), nullptr);
+  ASSERT_NE(fileTree->find("/2", true), nullptr);
 
   // check if children are also marked as deleted
-  ASSERT_EQ(root->find("/2/1"), nullptr);
-  ASSERT_NE(root->find("/2/1", true), nullptr);
+  ASSERT_EQ(fileTree->find("/2/1"), nullptr);
+  ASSERT_NE(fileTree->find("/2/1", true), nullptr);
 
   // delete "/2"
-  ASSERT_TRUE(root->erase("/2", true));
+  ASSERT_TRUE(fileTree->erase("/2", true));
   // check if children have been deleted
-  ASSERT_EQ(root->find("/2/3", true), nullptr);
+  ASSERT_EQ(fileTree->find("/2/3", true), nullptr);
 }
 
 TEST_F(FileTreeTest, CanInsertAfterErase)
 {
-  auto root = VirtualFileTreeItem::create("/", "/tmp", dir);
-  addItems(root);
+  addItems();
 
-  // helper function, required because find returns nullptr if the value has not been
-  // found
-  auto find = [&](const char* value) -> string {
-    if (const auto result = root->find(value)) {
-      return result->realPath();
-    }
-    return "";
-  };
-
-  ASSERT_TRUE(root->erase("/1/1", true));
-  ASSERT_NE(root->add("/1/1", "/tmp/1/1"), nullptr);
+  ASSERT_TRUE(fileTree->erase("/1/1", true));
+  ASSERT_NE(fileTree->add("/1/1", "/tmp/1/1"), nullptr);
   ASSERT_EQ(find("/1/1"), "/tmp/1/1");
 
-  ASSERT_TRUE(root->erase("/1/1", false));
-  ASSERT_NE(root->add("/1/1", "/tmp/A/A"), nullptr);
+  ASSERT_TRUE(fileTree->erase("/1/1", false));
+  ASSERT_NE(fileTree->add("/1/1", "/tmp/A/A"), nullptr);
   ASSERT_EQ(find("/1/1"), "/tmp/A/A");
 }
