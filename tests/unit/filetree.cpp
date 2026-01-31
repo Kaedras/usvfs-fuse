@@ -25,22 +25,22 @@ protected:
   }
   static void addItems(shared_ptr<VirtualFileTreeItem>& root)
   {
-    root->add("/1", "/tmp/a", dir);
-    root->add("/1/1", "/tmp/a/a", dir);
-    root->add("/2", "/tmp/b", dir);
-    root->add("/2/1", "/tmp/b/a", dir);
-    root->add("/2/2", "/tmp/b/b", dir);
-    root->add("/2/2/1", "/tmp/b/b/a", dir);
-    root->add("/2/3", "/tmp/b/c", dir);
-    root->add("/3", "/tmp/c", dir);
-    root->add("/3/1", "/tmp/c/a", dir);
-    root->add("/3/2", "/tmp/c/b", dir);
-    root->add("/3/2/1", "/tmp/c/b/a", dir);
+    ASSERT_TRUE(root->add("/1", "/tmp/a", dir));
+    ASSERT_TRUE(root->add("/1/1", "/tmp/a/a", dir));
+    ASSERT_TRUE(root->add("/2", "/tmp/b", dir));
+    ASSERT_TRUE(root->add("/2/1", "/tmp/b/a", dir));
+    ASSERT_TRUE(root->add("/2/2", "/tmp/b/b", dir));
+    ASSERT_TRUE(root->add("/2/2/1", "/tmp/b/b/a", dir));
+    ASSERT_TRUE(root->add("/2/3", "/tmp/b/c", dir));
+    ASSERT_TRUE(root->add("/3", "/tmp/c", dir));
+    ASSERT_TRUE(root->add("/3/1", "/tmp/c/a", dir));
+    ASSERT_TRUE(root->add("/3/2", "/tmp/c/b", dir));
+    ASSERT_TRUE(root->add("/3/2/1", "/tmp/c/b/a", dir));
   }
   static void addItemsNonASCII(shared_ptr<VirtualFileTreeItem>& root)
   {
-    root->add("Ä", "/tmp/Ö", dir);
-    root->add("こんいちわ", "/tmp/テスト", dir);
+    ASSERT_TRUE(root->add("Ä", "/tmp/Ö", dir));
+    ASSERT_TRUE(root->add("こんいちわ", "/tmp/テスト", dir));
   }
 };
 
