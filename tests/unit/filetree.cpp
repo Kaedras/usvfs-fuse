@@ -316,3 +316,17 @@ TEST_F(FileTreeTest, CopyTree)
   ss << copy;
   EXPECT_EQ(ss.str(), expectedResult);
 }
+
+TEST_F(FileTreeTest, CanEraseItem)
+{
+  auto root = VirtualFileTreeItem::create("/", "/tmp", dir);
+  addItems(root);
+
+  ASSERT_TRUE(root->erase("/1/1", false));
+  ASSERT_EQ(root->find("/1/1"), nullptr);
+  ASSERT_NE(root->find("/1/1", true), nullptr);
+
+  ASSERT_TRUE(root->erase("/2/2", true));
+  ASSERT_EQ(root->find("/2/2"), nullptr);
+  ASSERT_EQ(root->find("/2/2", true), nullptr);
+}
