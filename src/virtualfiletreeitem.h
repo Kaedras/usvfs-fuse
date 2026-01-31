@@ -19,17 +19,25 @@ enum Type
 
 class VirtualFileTreeItem : public std::enable_shared_from_this<VirtualFileTreeItem>
 {
+  struct Passkey
+  {
+    explicit Passkey() = default;
+  };
+
 public:
   static std::shared_ptr<VirtualFileTreeItem>
   create(std::string path, std::string realPath, Type type,
          std::weak_ptr<VirtualFileTreeItem> parent = {});
+
   static std::shared_ptr<VirtualFileTreeItem>
   create(std::string path, std::string realPath,
          std::weak_ptr<VirtualFileTreeItem> parent = {});
 
-  VirtualFileTreeItem() = delete;
+  // ctor for use with std::make_shared
+  VirtualFileTreeItem(Passkey, std::string path, std::string realPath, Type type,
+                      std::weak_ptr<VirtualFileTreeItem> parent) noexcept;
 
-  VirtualFileTreeItem(const VirtualFileTreeItem& other) noexcept;
+  VirtualFileTreeItem() = delete;
 
   ~VirtualFileTreeItem() = default;
 
@@ -160,6 +168,8 @@ private:
                       std::weak_ptr<VirtualFileTreeItem> parent = {}) noexcept(false);
   VirtualFileTreeItem(std::string path, std::string realPath,
                       std::weak_ptr<VirtualFileTreeItem> parent = {}) noexcept(false);
+
+  VirtualFileTreeItem(const VirtualFileTreeItem& other) noexcept;
 
   std::string m_fileName;
   std::string m_realPath;
