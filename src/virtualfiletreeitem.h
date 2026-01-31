@@ -183,4 +183,5 @@ private:
   bool isEmptyInternal() const noexcept;
   bool eraseInternal(std::string_view path, bool reallyErase) noexcept;
   void markAllChildrenAsDeleted() noexcept;
+  void cloneChildrenFrom(const VirtualFileTreeItem& other) noexcept;
 };

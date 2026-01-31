@@ -467,6 +467,19 @@ void VirtualFileTreeItem::markAllChildrenAsDeleted() noexcept
   }
 }
 
+void VirtualFileTreeItem::cloneChildrenFrom(const VirtualFileTreeItem& other) noexcept
+{
+  for (const auto& [name, item] : other.m_children) {
+    auto clonedChild = std::make_shared<VirtualFileTreeItem>(
+        Passkey{}, item->m_fileName, item->m_realPath, item->m_type, weak_from_this());
+
+    clonedChild->m_deleted = item->m_deleted;
+    clonedChild->cloneChildrenFrom(*item);
+
+    m_children.emplace(name, std::move(clonedChild));
+  }
+}
+
 std::ostream& operator<<(std::ostream& os,
                          const std::shared_ptr<VirtualFileTreeItem>& item) noexcept
 {
