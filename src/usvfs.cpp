@@ -73,7 +73,7 @@ int usvfs_getattr(const char* path, struct stat* stbuf, fuse_file_info* fi) noex
   if (fi != nullptr && fi->fh > 0) {
     if (fstat(static_cast<int>(fi->fh), stbuf) == -1) {
       const int e = errno;
-      logger::error("fstat failed: {}", strerror(e));
+      logger::error("usvfs_getattr(path='{}'): fstat failed: {}", path, strerror(e));
       return -e;
     }
     return 0;
@@ -113,8 +113,8 @@ int usvfs_getattr(const char* path, struct stat* stbuf, fuse_file_info* fi) noex
 
   if (res == -1) {
     const int e = errno;
-    logger::error("usvfs_getattr: fstatat(fd={}:'{}', file='{}') failed: {}", fd,
-                  fdPath, file, strerror(e));
+    logger::error("usvfs_getattr(path='{}'): fstatat(fd={}:'{}', file='{}') failed: {}",
+                  path, fd, fdPath, file, strerror(e));
     return -e;
   }
 
@@ -137,7 +137,9 @@ int usvfs_readlink(const char* path, char* buf, size_t size) noexcept
     res = readlinkat(state->fdMap.at(dir), item->fileName().c_str(), buf, size);
   }
   if (res == -1) {
-    return -errno;
+    const int e = errno;
+    logger::error("usvfs_readlink(path='{}') failed: {}", path, strerror(e));
+    return -e;
   }
   buf[res] = '\0';
   return 0;
@@ -190,8 +192,7 @@ int usvfs_mkdir(const char* path, mode_t mode) noexcept
 
   if (mkdirat(parentFd, fileName.c_str(), mode) < 0) {
     const int e = errno;
-    logger::error("usvfs_mkdir: mkdirat failed: {}", realParentPath, fileName,
-                  strerror(e));
+    logger::error("usvfs_mkdir(path='{}'): mkdirat failed: {}", path, strerror(e));
     return -e;
   }
 
@@ -199,8 +200,7 @@ int usvfs_mkdir(const char* path, mode_t mode) noexcept
   int fd = openat(parentFd, fileName.c_str(), OPEN_FLAGS);
   if (fd < 0) {
     const int e = errno;
-    logger::error("usvfs_mkdir: openat failed: {}", parentFd, realParentPath, fileName,
-                  strerror(e));
+    logger::error("usvfs_mkdir(path='{}'): openat failed: {}", path, strerror(e));
     return -e;
   }
   logger::trace("adding fd {} for {}", fd, realPath);
@@ -226,7 +226,8 @@ int usvfs_unlink(const char* path) noexcept
 
   if (unlinkat(state->fdMap.at(parentPath), fileName.c_str(), 0) == -1) {
     const int e = errno;
-    logger::error("unlink failed for '{}': {}", realPath, strerror(e));
+    logger::error("usvfs_unlink(path='{}'): unlink failed for '{}': {}", path, realPath,
+                  strerror(e));
     return -e;
   }
 
@@ -257,7 +258,8 @@ int usvfs_rmdir(const char* path) noexcept
 
   if (unlinkat(state->fdMap.at(parentPath), fileName.c_str(), AT_REMOVEDIR) == -1) {
     const int e = errno;
-    logger::error("usvfs_rmdir: unlink failed for '{}': {}", realPath, strerror(e));
+    logger::error("usvfs_rmdir(path='{}'): unlink failed for '{}': {}", path, realPath,
+                  strerror(e));
     return -e;
   }
 
@@ -282,13 +284,14 @@ int usvfs_rename(const char* from, const char* to, const unsigned int flags) noe
   // get old item
   const auto oldItem = state->fileTree->find(from);
   if (oldItem == nullptr) {
-    logger::error("usvfs_rename: could not find item to rename");
+    logger::error("usvfs_rename(from='{}',to='{}'): could not find item to rename",
+                  from, to);
     return -ENOENT;
   }
 
   // look for existing item
   if (state->fileTree->find(to) != nullptr && flags & RENAME_NOREPLACE) {
-    logger::error("usvfs_rename: target path exists");
+    logger::error("usvfs_rename(from='{}',to='{}'): target path exists", from, to);
     return -EEXIST;
   }
 
@@ -296,8 +299,9 @@ int usvfs_rename(const char* from, const char* to, const unsigned int flags) noe
   const string newParentPath = getParentPath(to);
   const auto newParentItem   = state->fileTree->find(newParentPath);
   if (newParentItem == nullptr) {
-    logger::error("usvfs_rename: target parent directory '{}' does not exist",
-                  newParentPath);
+    logger::error(
+        "usvfs_rename(from='{}',to='{}'): target parent directory '{}' does not exist",
+        from, to, newParentPath);
     return -ENOENT;
   }
   const string newRealParentPath = state->upperDir.empty()
@@ -312,9 +316,10 @@ int usvfs_rename(const char* from, const char* to, const unsigned int flags) noe
 
   if (renameat2(oldFd, oldItem->fileName().c_str(), newFd, newFileName.c_str(),
                 flags & RENAME_EXCHANGE ? RENAME_EXCHANGE : 0) != 0) {
-    logger::error("usvfs_rename: renameat2({}:'{}', {}, {}:'{}', {}) failed: {}", oldFd,
-                  oldRealParentPath, oldItem->fileName(), newFd, newRealParentPath,
-                  newFileName, strerror(errno));
+    logger::error("usvfs_rename(from='{}',to='{}'): renameat2({}:'{}', {}, {}:'{}', "
+                  "{}) failed: {}",
+                  from, to, oldFd, oldRealParentPath, oldItem->fileName(), newFd,
+                  newRealParentPath, newFileName, strerror(errno));
     return -errno;
   }
 
@@ -322,13 +327,16 @@ int usvfs_rename(const char* from, const char* to, const unsigned int flags) noe
   const auto newItem =
       state->fileTree->add(to, newRealParentPath + to, oldItem->getType());
   if (newItem == nullptr) {
-    logger::error("usvfs_rename: error inserting new path to file tree");
+    logger::error(
+        "usvfs_rename(from='{}',to='{}'): error inserting new path to file tree", from,
+        to);
     return -errno;
   }
 
   // remove old item
   if (!state->fileTree->erase(from)) {
-    logger::error("usvfs_rename: error removing '{}' from file tree", from);
+    logger::error("usvfs_rename(from='{}',to='{}'): error removing '{}' from file tree",
+                  from, to, from);
     return -errno;
   }
 
@@ -349,7 +357,7 @@ int usvfs_chmod(const char* path, mode_t mode, fuse_file_info* fi) noexcept
   if (fi != nullptr && fi->fh != 0) {
     if (fchmod(static_cast<int>(fi->fh), mode) != 0) {
       const int e = errno;
-      logger::error("usvfs_chmod: fchmod failed: {}", strerror(e));
+      logger::error("usvfs_chmod(path='{}'): fchmod failed: {}", path, strerror(e));
       return -e;
     }
     return 0;
@@ -362,7 +370,7 @@ int usvfs_chmod(const char* path, mode_t mode, fuse_file_info* fi) noexcept
   int fd = state->fdMap.at(parentPath);
   if (fchmodat(fd, fileName.c_str(), mode, 0) == -1) {
     const int e = errno;
-    logger::error("usvfs_chmod: fchmodat failed: {}", strerror(e));
+    logger::error("usvfs_chmod(path='{}'): fchmodat failed: {}", path, strerror(e));
     return -e;
   }
   return 0;
@@ -376,7 +384,7 @@ int usvfs_chown(const char* path, uid_t uid, gid_t gid, fuse_file_info* fi) noex
   if (fi != nullptr && fi->fh > 0) {
     if (fchown(static_cast<int>(fi->fh), uid, gid) == -1) {
       const int e = errno;
-      logger::error("usvfs_chown: fchown failed: {}", strerror(e));
+      logger::error("usvfs_chown(path='{}'): fchown failed: {}", path, strerror(e));
       return -e;
     }
     return 0;
@@ -388,7 +396,7 @@ int usvfs_chown(const char* path, uid_t uid, gid_t gid, fuse_file_info* fi) noex
 
   if (fchownat(state->fdMap.at(parentPath), fileName.c_str(), uid, gid, 0) == -1) {
     const int e = errno;
-    logger::error("usvfs_chown: fchownat failed: {}", strerror(e));
+    logger::error("usvfs_chown(path='{}'): fchownat failed: {}", path, strerror(e));
     return -e;
   }
   return 0;
@@ -416,15 +424,14 @@ int usvfs_truncate(const char* path, off_t size, fuse_file_info* fi) noexcept
   const int fd       = openat(parentFd, fileName.c_str(), O_WRONLY);
   if (fd == -1) {
     const int e = errno;
-    logger::error("usvfs_truncate: openat({}:'{}', {}, O_WRONLY) failed: {}", parentFd,
-                  parentPath, fileName, strerror(e));
+    logger::error("usvfs_truncate(path='{}'): openat({}:'{}', {}, O_WRONLY) failed: {}",
+                  path, parentFd, parentPath, fileName, strerror(e));
     return -e;
   }
 
   if (ftruncate(fd, size) < 0) {
     const int e = errno;
-    logger::error("usvfs_truncate: ftruncate({}:'{}') failed: {}", fd, path,
-                  strerror(e));
+    logger::error("usvfs_truncate(path='{}'): ftruncate failed: {}", path, strerror(e));
     return -e;
   }
 
@@ -440,7 +447,9 @@ int usvfs_open(const char* path, fuse_file_info* fi) noexcept
 
   const int result = openat(state->fdMap.at(parentPath), fileName.c_str(), fi->flags);
   if (result == -1) {
-    return -errno;
+    const int e = errno;
+    logger::error("usvfs_open(path='{}'): openat failed: {}", path, strerror(e));
+    return -e;
   }
 
   fi->fh = result;
@@ -457,7 +466,7 @@ int usvfs_read(const char* path, char* buf, const size_t size, const off_t offse
   const ssize_t res = pread(fd, buf, size, offset);
   if (res == -1) {
     const int e = errno;
-    logger::error("usvfs_read: pread failed: {}", strerror(e));
+    logger::error("usvfs_read(path='{}'): pread failed: {}", path, strerror(e));
     return -e;
   }
   return static_cast<int>(res);
@@ -481,7 +490,7 @@ int usvfs_write(const char* path, const char* buf, const size_t size,
   const ssize_t result = pwrite(static_cast<int>(fi->fh), buf, size, offset);
   if (result == -1) {
     const int e = errno;
-    logger::error("usvfs_write: pwrite failed: {}", strerror(e));
+    logger::error("usvfs_write(path='{}'): pwrite failed: {}", path, strerror(e));
     return -e;
   }
   return static_cast<int>(result);
@@ -495,8 +504,8 @@ int usvfs_statfs(const char* path, struct statvfs* stbuf) noexcept
   const int fd = state->fdMap.at(state->mountpoint);
   if (fstatvfs(fd, stbuf) < 0) {
     const int e = errno;
-    logger::error("usvfs_statfs: fstatvfs({}:'{}') failed: {}", fd, state->mountpoint,
-                  strerror(e));
+    logger::error("usvfs_statfs(path='{}'): fstatvfs({}:'{}') failed: {}", path, fd,
+                  state->mountpoint, strerror(e));
     return -e;
   }
 
@@ -548,13 +557,14 @@ int usvfs_readdir(const char* path, void* buf, const fuse_fill_dir_t filler,
     int fd = state->fdMap.at(parentPath);
     if (fstatat(fd, fileName.c_str(), &stbuf, 0) == -1) {
       const int e = errno;
-      logger::error("usvfs_readdir: fstatat({}:'{}', '{}'), itemName: '{}' failed: {}",
-                    fd, parentPath, fileName, itemName, strerror(e));
+      logger::error(
+          "usvfs_readdir(path='{}'): fstatat({}:'{}', '{}'), itemName: '{}' failed: {}",
+          path, fd, parentPath, fileName, itemName, strerror(e));
       return -e;
     }
 
     if (filler(buf, item->fileName().c_str(), &stbuf, 0, fill_flags) != 0) {
-      logger::error("usvfs_readdir: filler function returned error");
+      logger::error("usvfs_readdir(path='{}'): filler function returned error", path);
       break;
     }
   }
@@ -591,9 +601,9 @@ int usvfs_create(const char* path, mode_t mode, fuse_file_info* fi) noexcept
   if (state->upperDir.empty()) {
     auto parentItem = state->fileTree->find(parentPath);
     if (parentItem == nullptr) {
-      logger::error(
-          "usvfs_create: target parent directory '{}' does not exist in file tree",
-          parentPath);
+      logger::error("usvfs_create(path='{}'): target parent directory '{}' does not "
+                    "exist in file tree",
+                    path, parentPath);
       return -ENOENT;
     }
     realParentPath = parentItem->realPath();
@@ -612,8 +622,8 @@ int usvfs_create(const char* path, mode_t mode, fuse_file_info* fi) noexcept
   const int fd = openat(parentFd, fileName.c_str(), fi->flags, mode);
   if (fd < 0) {
     const int e = errno;
-    logger::error("usvfs_create: openat({}:'{}', {}) failed: {}", parentFd,
-                  realParentPath, fileName, strerror(e));
+    logger::error("usvfs_create(path='{}'): openat({}:'{}', {}) failed: {}", path,
+                  parentFd, realParentPath, fileName, strerror(e));
     return -e;
   }
 
@@ -625,8 +635,8 @@ int usvfs_create(const char* path, mode_t mode, fuse_file_info* fi) noexcept
         state->fileTree->add(path, realParentPath + "/" + fileName, file);
     if (newItem == nullptr) {
       const int e = errno;
-      logger::error("usvfs_create: error adding new file to file tree: {}",
-                    strerror(e));
+      logger::error("usvfs_create(path='{}'): error adding new file to file tree: {}",
+                    path, strerror(e));
       return -e;
     }
   }
