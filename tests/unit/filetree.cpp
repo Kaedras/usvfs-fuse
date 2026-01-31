@@ -61,20 +61,20 @@ protected:
   shared_ptr<VirtualFileTreeItem> fileTree;
 };
 
-TEST_F(FileTreeTest, CanInsert)
+TEST_F(FileTreeTest, Add)
 {
   addItems();
 
-  // inserting an existing path should fail with EEXIST
+  // adding an existing path should fail with EEXIST
   ASSERT_FALSE(fileTree->add("/3", "/tmp/c", file));
   EXPECT_EQ(errno, EEXIST);
 }
 
-TEST_F(FileTreeTest, CanInsertNonASCII)
+TEST_F(FileTreeTest, AddNonASCII)
 {
   addItemsNonASCII();
 
-  // inserting an existing path should fail with EEXIST
+  // adding an existing path should fail with EEXIST
   ASSERT_FALSE(fileTree->add("/こんいちわ", "/tmp/テスト", file));
   EXPECT_EQ(errno, EEXIST);
 }
@@ -153,7 +153,7 @@ TEST_F(FileTreeTest, DumpTreeNonASCII)
   EXPECT_EQ(s.str(), expectedResult);
 }
 
-TEST_F(FileTreeTest, CanFindInsertedItems)
+TEST_F(FileTreeTest, Find)
 {
   addItems();
 
@@ -170,7 +170,7 @@ TEST_F(FileTreeTest, CanFindInsertedItems)
   EXPECT_EQ(find("/3/2/1"), "/tmp/c/b/a");
 }
 
-TEST_F(FileTreeTest, CanFindInsertedItemsNonASCII)
+TEST_F(FileTreeTest, FindNonASCII)
 {
   addItemsNonASCII();
 
@@ -178,7 +178,7 @@ TEST_F(FileTreeTest, CanFindInsertedItemsNonASCII)
   EXPECT_EQ(find("こんいちわ"), "/tmp/テスト");
 }
 
-TEST_F(FileTreeTest, CanOverwriteEntries)
+TEST_F(FileTreeTest, OverwriteEntries)
 {
   addItems();
 
@@ -283,7 +283,7 @@ TEST_F(FileTreeTest, CopyTree)
   EXPECT_EQ(ss.str(), expectedResult);
 }
 
-TEST_F(FileTreeTest, CanEraseItem)
+TEST_F(FileTreeTest, Erase)
 {
   addItems();
 
@@ -308,7 +308,7 @@ TEST_F(FileTreeTest, CanEraseItem)
   ASSERT_EQ(fileTree->find("/2/3", true), nullptr);
 }
 
-TEST_F(FileTreeTest, CanInsertAfterErase)
+TEST_F(FileTreeTest, InsertAfterErase)
 {
   addItems();
 
