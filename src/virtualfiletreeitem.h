@@ -50,7 +50,7 @@ public:
    * @param type The type of the new item
    * @param updateExisting Indicates whether to update the real path of an existing item
    * if it already exists. If false, the method will not overwrite existing items
-   * @return True if the item was successfully added or updated, false otherwise
+   * @return Pointer to the new or updated item, nullptr on error
    */
   std::shared_ptr<VirtualFileTreeItem> add(std::string_view path, std::string realPath,
                                            Type type,
@@ -63,7 +63,7 @@ public:
    * @param realPath The full real path corresponding to the item in the filesystem
    * @param updateExisting Indicates whether to update the real path of an existing item
    * if it already exists. If false, the method will not overwrite existing items
-   * @return True if the item was successfully added or updated, false otherwise
+   * @return Pointer to the new or updated item, nullptr on error
    */
   std::shared_ptr<VirtualFileTreeItem> add(std::string_view path, std::string realPath,
                                            bool updateExisting = false) noexcept;
