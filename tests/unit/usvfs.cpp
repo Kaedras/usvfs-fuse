@@ -220,6 +220,21 @@ void readFile(const string& path, const string& expectedContent)
   EXPECT_EQ(string(buf.data(), readBytes), expectedContent);
 }
 
+bool createFile(const string& path, const string& content)
+{
+  try {
+    ofstream ofs(path);
+    ofs.exceptions(std::ios_base::failbit | std::ios_base::badbit);
+    ofs << content;
+    ofs.close();
+    return true;
+  } catch (const exception& ex) {
+    cerr << "error creating file '" << path << "': " << ex.what()
+         << ", errno: " << strerrorname_np(errno);
+    return false;
+  }
+}
+
 }  // namespace
 
 class UsvfsTest : public testing::Test
