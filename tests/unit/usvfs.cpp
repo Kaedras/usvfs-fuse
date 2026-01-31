@@ -205,7 +205,8 @@ void statPathWithFailure(const string& path, int error)
 void readFile(const string& path, const string& expectedContent)
 {
   int fd;
-  ASSERT_NE(fd = open(path.c_str(), O_RDONLY), -1) << "error: " << strerror(errno);
+  ASSERT_NE(fd = open(path.c_str(), O_RDONLY), -1)
+      << "error opening file '" << path << "': " << strerror(errno);
 
   array<char, 4096> buf{};
   const ssize_t readBytes = read(fd, buf.data(), buf.size());
