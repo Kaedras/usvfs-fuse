@@ -33,8 +33,6 @@ static constexpr unsigned int CREATE_TARGET =
 // the previous create target.
 // If there different create-target have been set for an element and
 // one of its ancestors, the inner-most create-target is used
-static constexpr unsigned int RECURSIVE =
-    0x00000008;  // if set, directories are linked recursively
 }  // namespace linkFlag
 
 class __attribute__((visibility("default"))) UsvfsManager

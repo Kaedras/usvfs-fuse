@@ -297,45 +297,40 @@ bool UsvfsManager::usvfsVirtualLinkDirectoryStatic(const std::string& source,
   }
 
   auto sourceFileTree = VirtualFileTreeItem::create("/", source, dir);
-  if (flags & linkFlag::RECURSIVE) {
-    // create the file tree
-    fs::recursive_directory_iterator iter(source, ec);
-    if (ec) {
-      logger::error("error creating recursive_directory_iterator: {}", ec.message());
+  // create the file tree
+  fs::recursive_directory_iterator iter(source, ec);
+  if (ec) {
+    logger::error("error creating recursive_directory_iterator: {}", ec.message());
+    return false;
+  }
+  for (const fs::directory_entry& entry : iter) {
+    // check if the directory should be skipped
+    string fileName = entry.path().filename().string();
+    if ((entry.is_directory() && fileNameInSkipDirectories(fileName)) ||
+        (!entry.is_directory() && fileNameInSkipSuffixes(fileName))) {
+      continue;
+    }
+
+    fs::path relative = fs::relative(entry.path(), source);
+
+    logger::debug("adding '{}' to file tree", relative.string());
+    auto newItem = sourceFileTree->add(
+        relative.string(), entry.path().string(),
+        entry.status().type() == filesystem::file_type::directory ? dir : file);
+    if (newItem == nullptr) {
+      logger::error("error adding '{}' to file tree", relative.string());
       return false;
     }
-    for (const fs::directory_entry& entry : iter) {
-      // check if the directory should be skipped
-      string fileName = entry.path().filename().string();
-      if ((entry.is_directory() && fileNameInSkipDirectories(fileName)) ||
-          (!entry.is_directory() && fileNameInSkipSuffixes(fileName))) {
-        continue;
-      }
-
-      fs::path relative = fs::relative(entry.path(), source);
-
-      logger::debug("adding '{}' to file tree", relative.string());
-      auto newItem = sourceFileTree->add(
-          relative.string(), entry.path().string(),
-          entry.status().type() == filesystem::file_type::directory ? dir : file);
-      if (newItem == nullptr) {
-        logger::error("error adding '{}' to file tree", relative.string());
+    if (entry.is_directory()) {
+      int fd = open(entry.path().string().c_str(), OPEN_FLAGS);
+      if (fd == -1) {
+        logger::error("open('{}') failed: {}", entry.path().string(), strerror(errno));
         return false;
       }
-      if (entry.is_directory()) {
-        int fd = open(entry.path().string().c_str(), OPEN_FLAGS);
-        if (fd == -1) {
-          logger::error("open('{}') failed: {}", entry.path().string(),
-                        strerror(errno));
-          return false;
-        }
-        fdMap[entry.path().string()] = fd;
-        logger::trace("adding fd {} for {}, real path: {}", fd, fileName,
-                      newItem->realPath());
-      }
+      fdMap[entry.path().string()] = fd;
+      logger::trace("adding fd {} for {}, real path: {}", fd, fileName,
+                    newItem->realPath());
     }
-  } else {
-    // TODO: check what upstream usvfs really does in this case
   }
 
   // check if destination exists in pending mounts
