@@ -50,12 +50,12 @@ public:
   ~UsvfsManager() noexcept;
 
   /**
-   * removes all virtual mappings
+   * @brief remove all virtual mappings
    */
   void usvfsClearVirtualMappings() noexcept;
 
   /**
-   * link a file virtually
+   * @brief link a file virtually
    * @note: the directory the destination file resides in has to exist - at least
    * virtually.
    */
@@ -63,14 +63,14 @@ public:
                             const std::string& destination) noexcept;
 
   /**
-   * link a directory virtually
+   * @brief link a directory virtually
    */
   bool usvfsVirtualLinkDirectoryStatic(const std::string& source,
                                        const std::string& destination,
                                        unsigned int flags = 0) noexcept;
 
   /**
-   * retrieve a list of all processes connected to the vfs
+   * @brief retrieve a list of all processes connected to the vfs
    */
   const std::vector<pid_t>& usvfsGetVFSProcessList() const noexcept;
 
@@ -95,24 +95,24 @@ public:
   //                                           bool blocking = false);
 
   /**
-   * retrieves a readable representation of the vfs tree
+   * @brief retrieve a readable representation of the vfs tree
    */
   [[nodiscard]] std::string usvfsCreateVFSDump() const noexcept;
 
   /**
-   * adds an executable to the blacklist so it doesn't get exposed to the virtual
-   * file system
+   * @brief adds an executable to the blacklist, so it doesn't get exposed to the
+   * virtual file system
    * @param executableName  name of the executable
    */
   void usvfsBlacklistExecutable(const std::string& executableName) noexcept;
 
   /**
-   * clears the executable blacklist
+   * @brief clear the executable blacklist
    */
   void usvfsClearExecutableBlacklist() noexcept;
 
   /**
-   * adds a file suffix to a list to skip during file linking
+   * @brief add a file suffix to a list to skip during file linking
    * .txt and some_file.txt are both valid file suffixes,
    * not to be confused with file extensions
    * @param fileSuffix  a valid file suffix
@@ -120,12 +120,12 @@ public:
   void usvfsAddSkipFileSuffix(const std::string& fileSuffix) noexcept;
 
   /**
-   * clears the file suffix skip-list
+   * @brief clear the file suffix skip-list
    */
   void usvfsClearSkipFileSuffixes() noexcept;
 
   /**
-   * adds a directory name that will be skipped during directory linking.
+   * add a directory name that will be skipped during directory linking.
    * Not a path. Any directory matching the name will be skipped,
    * regardless of its path, for example if .git is added,
    * any sub-path or root-path containing a .git directory
@@ -135,25 +135,25 @@ public:
   void usvfsAddSkipDirectory(const std::string& directory) noexcept;
 
   /**
-   * clears the directory skip-list
+   * @brief clear the directory skip-list
    */
   void usvfsClearSkipDirectories() noexcept;
 
   /**
-   * adds a library to be force loaded when the given process is injected
+   * @brief add a library to be force loaded when the given process is injected
    * @param
    */
   void usvfsForceLoadLibrary(const std::string& processName,
                              const std::string& libraryPath) noexcept;
 
   /**
-   * clears all previous calls to ForceLoadLibrary
+   * @brief clear all previous calls to ForceLoadLibrary
    */
   void usvfsClearLibraryForceLoads() noexcept;
 
   /**
-   * print debugging info about the vfs. The format is currently not fixed and may
-   * change between usvfs versions
+   * @brief print debugging info about the vfs. The format is currently not fixed and
+   * may change between usvfs versions
    */
   void usvfsPrintDebugInfo() noexcept;
 
@@ -203,6 +203,9 @@ private:
   [[nodiscard]] std::vector<std::string>
   librariesToForceLoad(const std::string& processName) const noexcept;
 
+  /**
+   * @brief check if any process in m_spawnedProcesses is still running
+   */
   bool anyProcessRunning() const noexcept;
 
   // mount function without locking for internal use
