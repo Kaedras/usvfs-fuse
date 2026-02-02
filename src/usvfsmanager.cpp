@@ -341,6 +341,10 @@ bool UsvfsManager::usvfsVirtualLinkDirectoryStatic(const std::string& source,
       for (const auto& [path, fd] : fdMap) {
         state->fdMap[path] = fd;
       }
+
+      if (flags & linkFlag::CREATE_TARGET) {
+        state->upperDir = source;
+      }
       return true;
     }
   }
@@ -356,6 +360,10 @@ bool UsvfsManager::usvfsVirtualLinkDirectoryStatic(const std::string& source,
   state->fileTree   = std::move(destinationFileTree);
   state->mountpoint = destination;
   state->fdMap      = fdMap;
+
+  if (flags & linkFlag::CREATE_TARGET) {
+    state->upperDir = source;
+  }
 
   m_pendingMounts.emplace_back(std::move(state));
 
