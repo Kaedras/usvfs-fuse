@@ -59,17 +59,15 @@ public:
    * @note: the directory the destination file resides in has to exist - at least
    * virtually.
    */
-  bool usvfsVirtualLinkFile(const std::string& source, const std::string& destination,
-                            unsigned int flags) noexcept;
+  bool usvfsVirtualLinkFile(const std::string& source,
+                            const std::string& destination) noexcept;
 
   /**
-   * link a directory virtually. This static variant recursively links all files
-   * individually, change notifications are used to update the information.
-   * (virtually or physically)
+   * link a directory virtually
    */
   bool usvfsVirtualLinkDirectoryStatic(const std::string& source,
                                        const std::string& destination,
-                                       unsigned int flags) noexcept;
+                                       unsigned int flags = 0) noexcept;
 
   /**
    * retrieve a list of all processes connected to the vfs

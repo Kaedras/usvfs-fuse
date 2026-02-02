@@ -196,8 +196,7 @@ void UsvfsManager::usvfsClearVirtualMappings() noexcept
 }
 
 bool UsvfsManager::usvfsVirtualLinkFile(const std::string& source,
-                                        const std::string& destination,
-                                        unsigned int) noexcept
+                                        const std::string& destination) noexcept
 {
   scoped_lock lock(m_mtx);
 

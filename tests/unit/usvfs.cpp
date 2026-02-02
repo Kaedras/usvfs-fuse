@@ -250,13 +250,13 @@ protected:
     usvfs->setDebugMode(enableDebugMode);
 
     ASSERT_TRUE(
-        usvfs->usvfsVirtualLinkDirectoryStatic((src / "a").string(), mnt.string(), 0));
+        usvfs->usvfsVirtualLinkDirectoryStatic((src / "a").string(), mnt.string()));
     ASSERT_TRUE(
-        usvfs->usvfsVirtualLinkDirectoryStatic((src / "b").string(), mnt.string(), 0));
+        usvfs->usvfsVirtualLinkDirectoryStatic((src / "b").string(), mnt.string()));
     ASSERT_TRUE(usvfs->usvfsVirtualLinkDirectoryStatic(upper, mnt.string(),
                                                        linkFlag::CREATE_TARGET));
 
-    ASSERT_TRUE(usvfs->usvfsVirtualLinkFile(src / "c/c.txt", mnt2 / "c.txt", 0));
+    ASSERT_TRUE(usvfs->usvfsVirtualLinkFile(src / "c/c.txt", mnt2 / "c.txt"));
 
     ASSERT_NO_THROW(usvfs->mount());
     dumpUsvfs();
@@ -532,11 +532,10 @@ TEST(usvfs, CreateProcessHooked)
   usvfs->setProcessDelay(10ms);
 
   ASSERT_TRUE(
-      usvfs->usvfsVirtualLinkDirectoryStatic((src / "a").string(), mnt.string(), 0));
+      usvfs->usvfsVirtualLinkDirectoryStatic((src / "a").string(), mnt.string()));
   ASSERT_TRUE(
-      usvfs->usvfsVirtualLinkDirectoryStatic((src / "b").string(), mnt.string(), 0));
-  ASSERT_TRUE(
-      usvfs->usvfsVirtualLinkFile("/tmp/usvfs/src/c/c.txt", "/tmp/usvfs/mnt/c.txt", 0));
+      usvfs->usvfsVirtualLinkDirectoryStatic((src / "b").string(), mnt.string()));
+  ASSERT_TRUE(usvfs->usvfsVirtualLinkFile(src / "c/c.txt", mnt / "c.txt"));
 
   pid_t pid = usvfs->usvfsCreateProcessHooked("tree", ".", mnt.string());
   ASSERT_GE(pid, 0);
@@ -564,8 +563,7 @@ TEST(usvfs, CreateProcessHooked_WithMountNamespace)
       usvfs->usvfsVirtualLinkDirectoryStatic((src / "a").string(), mnt.string(), 0));
   ASSERT_TRUE(
       usvfs->usvfsVirtualLinkDirectoryStatic((src / "b").string(), mnt.string(), 0));
-  ASSERT_TRUE(
-      usvfs->usvfsVirtualLinkFile("/tmp/usvfs/src/c/c.txt", "/tmp/usvfs/mnt/c.txt", 0));
+  ASSERT_TRUE(usvfs->usvfsVirtualLinkFile(src / "c/c.txt", mnt / "c.txt"));
 
   pid_t pid = usvfs->usvfsCreateProcessHooked("tree", ".", mnt.string());
   ASSERT_GE(pid, 0);
