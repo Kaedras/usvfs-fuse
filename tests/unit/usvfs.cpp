@@ -249,11 +249,13 @@ protected:
     const auto usvfs = UsvfsManager::instance();
     usvfs->setDebugMode(enableDebugMode);
 
-    usvfs->setUpperDir(upper);
-    ASSERT_TRUE(usvfs->usvfsVirtualLinkDirectoryStatic(
-        (src / "a").string(), mnt.string(), linkFlag::RECURSIVE));
-    ASSERT_TRUE(usvfs->usvfsVirtualLinkDirectoryStatic(
-        (src / "b").string(), mnt.string(), linkFlag::RECURSIVE));
+    ASSERT_TRUE(
+        usvfs->usvfsVirtualLinkDirectoryStatic((src / "a").string(), mnt.string(), 0));
+    ASSERT_TRUE(
+        usvfs->usvfsVirtualLinkDirectoryStatic((src / "b").string(), mnt.string(), 0));
+    ASSERT_TRUE(usvfs->usvfsVirtualLinkDirectoryStatic(upper, mnt.string(),
+                                                       linkFlag::CREATE_TARGET));
+
     ASSERT_TRUE(usvfs->usvfsVirtualLinkFile(src / "c/c.txt", mnt2 / "c.txt", 0));
 
     ASSERT_NO_THROW(usvfs->mount());
@@ -506,7 +508,7 @@ TEST_F(UsvfsTest, createCaseInsensitive)
   };
 
   createFile(mnt / "new_file.txt", mnt / "NEW_FILE.TXT");
-  createFile(mnt / "a/new_file.txt", mnt / "A/NEW_FILE.TXT");
+  createFile(mnt / "A/new_file.txt", mnt / "A/NEW_FILE.TXT");
 
   ASSERT_EQ(mkdir((mnt / "NEW_DIR").c_str(), mode), 0) << "error: " << strerror(errno);
   int fd;
@@ -529,10 +531,10 @@ TEST(usvfs, CreateProcessHooked)
   auto usvfs = UsvfsManager::instance();
   usvfs->setProcessDelay(10ms);
 
-  ASSERT_TRUE(usvfs->usvfsVirtualLinkDirectoryStatic((src / "a").string(), mnt.string(),
-                                                     linkFlag::RECURSIVE));
-  ASSERT_TRUE(usvfs->usvfsVirtualLinkDirectoryStatic((src / "b").string(), mnt.string(),
-                                                     linkFlag::RECURSIVE));
+  ASSERT_TRUE(
+      usvfs->usvfsVirtualLinkDirectoryStatic((src / "a").string(), mnt.string(), 0));
+  ASSERT_TRUE(
+      usvfs->usvfsVirtualLinkDirectoryStatic((src / "b").string(), mnt.string(), 0));
   ASSERT_TRUE(
       usvfs->usvfsVirtualLinkFile("/tmp/usvfs/src/c/c.txt", "/tmp/usvfs/mnt/c.txt", 0));
 
@@ -558,10 +560,10 @@ TEST(usvfs, CreateProcessHooked_WithMountNamespace)
   usvfs->setProcessDelay(10ms);
   usvfs->setUseMountNamespace(true);
 
-  ASSERT_TRUE(usvfs->usvfsVirtualLinkDirectoryStatic((src / "a").string(), mnt.string(),
-                                                     linkFlag::RECURSIVE));
-  ASSERT_TRUE(usvfs->usvfsVirtualLinkDirectoryStatic((src / "b").string(), mnt.string(),
-                                                     linkFlag::RECURSIVE));
+  ASSERT_TRUE(
+      usvfs->usvfsVirtualLinkDirectoryStatic((src / "a").string(), mnt.string(), 0));
+  ASSERT_TRUE(
+      usvfs->usvfsVirtualLinkDirectoryStatic((src / "b").string(), mnt.string(), 0));
   ASSERT_TRUE(
       usvfs->usvfsVirtualLinkFile("/tmp/usvfs/src/c/c.txt", "/tmp/usvfs/mnt/c.txt", 0));
 

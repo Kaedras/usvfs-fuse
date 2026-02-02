@@ -26,8 +26,7 @@ static void DoSetup_usvfs(const benchmark::State&)
 
   auto usvfs = UsvfsManager::instance();
   usvfs->setLogLevel(LogLevel::Warning);
-  usvfs->usvfsVirtualLinkDirectoryStatic((src / "0").c_str(), mnt.c_str(),
-                                         linkFlag::RECURSIVE);
+  usvfs->usvfsVirtualLinkDirectoryStatic((src / "0").c_str(), mnt.c_str(), 0);
   usvfs->mount();
   this_thread::sleep_for(10ms);
 }
