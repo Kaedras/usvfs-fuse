@@ -717,12 +717,6 @@ bool UsvfsManager::isMounted() const noexcept
   return m_mounts.empty();
 }
 
-void UsvfsManager::setUpperDir(std::string upperDir) noexcept
-{
-  scoped_lock lock(m_mtx);
-  m_upperDir = std::move(upperDir);
-}
-
 void UsvfsManager::setUseMountNamespace(bool value) noexcept
 {
   scoped_lock lock(m_mtx);
@@ -852,23 +846,8 @@ bool UsvfsManager::mountInternal() noexcept
   vector<unique_ptr<MountState>> toMount;
   toMount.swap(m_pendingMounts);
 
-  int fd;
-  if (!m_upperDir.empty()) {
-    fd = open(m_upperDir.c_str(), OPEN_FLAGS);
-    if (fd == -1) {
-      logger::error("failed to open upper directory '{}': {}", m_upperDir,
-                    strerror(errno));
-      return false;
-    }
-  }
-
   // start a thread or process for each pending mount
   for (auto& state : toMount) {
-    if (!m_upperDir.empty()) {
-      state->upperDir = m_upperDir;
-      logger::trace("adding fd {} for {}", fd, m_upperDir);
-      state->fdMap[m_upperDir] = fd;
-    }
     if (m_useMountNamespace) {
       // allocate memory to be used for the stack of the child.
       state->stack =

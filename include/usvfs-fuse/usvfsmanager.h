@@ -178,8 +178,6 @@ public:
 
   bool isMounted() const noexcept;
 
-  void setUpperDir(std::string upperDir) noexcept;
-
   // set whether to create mounts in a new user mount namespace
   void setUseMountNamespace(bool value) noexcept;
 
@@ -212,9 +210,8 @@ private:
   // mount function without locking for internal use
   bool mountInternal() noexcept;
 
-  bool m_debugMode         = false;
-  bool m_useMountNamespace = false;
-  std::string m_upperDir;
+  bool m_debugMode                         = false;
+  bool m_useMountNamespace                 = false;
   std::chrono::milliseconds m_processDelay = std::chrono::milliseconds::zero();
   std::set<std::string> m_skipFileSuffixes;
   std::set<std::string> m_skipDirectories;
