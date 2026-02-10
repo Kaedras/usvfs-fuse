@@ -682,6 +682,8 @@ bool UsvfsManager::unmount() noexcept
 
   for (std::unique_ptr<MountState>& mount : m_mounts) {
     logger::debug("unmounting {}", mount->mountpoint);
+
+    // unmount fuse
     if (m_useMountNamespace) {
       if (mount->pidFd == -1) {
         logger::warn("mount pidFd is -1");
@@ -702,6 +704,11 @@ bool UsvfsManager::unmount() noexcept
     } else {
       fuse_unmount(mount->fusePtr);
       fuse_destroy(mount->fusePtr);
+    }
+
+    // close file descriptors
+    for (const int fd : mount->fdMap | views::values) {
+      close(fd);
     }
   }
   m_mounts.clear();
