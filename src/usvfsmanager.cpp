@@ -15,10 +15,9 @@ namespace fs = std::filesystem;
 namespace
 {
 
-constexpr size_t stackSize =
-    1024 * 1024;  // stack size for cloned child. todo: figure out required size
-constexpr size_t maxLogFileSize  = 1024 * 1024 * 10;  // 10 MiB
-constexpr size_t maxLogFileCount = 10;
+constexpr size_t defaultStackSize = 1024 * 1024 * 8;   // stack size for cloned child.
+constexpr size_t maxLogFileSize   = 1024 * 1024 * 10;  // 10 MiB
+constexpr size_t maxLogFileCount  = 10;
 
 shared_ptr<VirtualFileTreeItem> createFileTree(const string& path, FdMap& fdMap)
 {
@@ -909,6 +908,17 @@ bool UsvfsManager::mountInternal() noexcept
     raw->debugMode = m_debugMode;
 
     if (m_useMountNamespace) {
+      size_t stackSize;
+      rlimit limit;
+      if (getrlimit(RLIMIT_STACK, &limit) == 0) {
+        stackSize = min(limit.rlim_cur, defaultStackSize);
+        logger::trace("setting stack size to {}", stackSize);
+      } else {
+        stackSize = defaultStackSize;
+        logger::trace("error getting stack size limit: {}\nusing 8 MiB",
+                      strerror(errno));
+      }
+
       // allocate memory to be used for the stack of the child.
       state->stack =
           static_cast<char*>(mmap(nullptr, stackSize, PROT_READ | PROT_WRITE,
