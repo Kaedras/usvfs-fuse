@@ -523,6 +523,62 @@ TEST_F(UsvfsTest, statfs)
   EXPECT_GT(statvfs(mnt.c_str(), &buf), -1) << "error: " << strerror(errno);
 }
 
+TEST(UsvfsTest, MergeModDirectories)
+{
+  initLogging();
+
+  ASSERT_TRUE(fs::create_directories(src / "mod0"));
+  ASSERT_TRUE(fs::create_directories(src / "mod0/data"));
+  ASSERT_TRUE(fs::create_directories(src / "mod1"));
+  ASSERT_TRUE(fs::create_directories(src / "mod1/DATA"));
+  ASSERT_TRUE(fs::create_directories(src / "mod2"));
+  ASSERT_TRUE(fs::create_directories(src / "mod3"));
+  ASSERT_TRUE(fs::create_directories(src / "mod4"));
+  ASSERT_TRUE(fs::create_directories(src / "profile"));
+
+  ASSERT_TRUE(fs::create_directories(mnt));
+  ASSERT_TRUE(fs::create_directories(mnt2));
+
+  ASSERT_TRUE(createFile(src / "mod0/a.txt", "mod0 a"));
+  ASSERT_TRUE(createFile(src / "mod1/A.txt", "mod1 a"));
+
+  ASSERT_TRUE(createFile(src / "profile/Plugins.txt", "mod0.esp\nmod1.esp"));
+  ASSERT_TRUE(createFile(mnt2 / "profile/plugins.txt", ""));
+
+  auto usvfs = UsvfsManager::instance();
+  usvfs->setProcessDelay(10ms);
+  ASSERT_TRUE(
+      usvfs->usvfsVirtualLinkDirectoryStatic((src / "mod0").string(), mnt.string()));
+  ASSERT_TRUE(
+      usvfs->usvfsVirtualLinkDirectoryStatic((src / "mod1").string(), mnt.string()));
+  ASSERT_TRUE(
+      usvfs->usvfsVirtualLinkDirectoryStatic((src / "mod2").string(), mnt.string()));
+  ASSERT_TRUE(
+      usvfs->usvfsVirtualLinkDirectoryStatic((src / "mod3").string(), mnt.string()));
+  ASSERT_TRUE(
+      usvfs->usvfsVirtualLinkDirectoryStatic((src / "mod4").string(), mnt.string()));
+
+  ASSERT_TRUE(usvfs->usvfsVirtualLinkFile((src / "profile/Plugins.txt").string(),
+                                          (mnt2 / "plugins.txt").string()));
+
+  ASSERT_TRUE(usvfs->mount());
+
+  cout << usvfs->usvfsCreateVFSDump();
+
+  readFile(mnt / "a.txt", "mod1 a");
+  readFile(mnt / "A.txt", "mod1 a");
+  ASSERT_TRUE(createFile(mnt / "daTA/TEST", "test"));
+  readFile(mnt / "data/TEst", "test");
+
+  readFile(mnt2 / "plugins.txt", "mod0.esp\nmod1.esp");
+  readFile(mnt2 / "Plugins.txt", "mod0.esp\nmod1.esp");
+
+  EXPECT_TRUE(runCmd("tree "s + mnt.string()));
+  EXPECT_TRUE(runCmd("tree "s + mnt2.string()));
+  EXPECT_TRUE(usvfs->unmount());
+  EXPECT_TRUE(cleanup());
+}
+
 TEST(usvfs, CreateProcessHooked)
 {
   initLogging();
