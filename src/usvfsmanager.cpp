@@ -15,8 +15,8 @@ namespace fs = std::filesystem;
 namespace
 {
 
-constexpr int pollTimeout        = 10;
-constexpr size_t stackSize       = 1024 * 1024;       // stack size for cloned child
+constexpr size_t stackSize =
+    1024 * 1024;  // stack size for cloned child. todo: figure out required size
 constexpr size_t maxLogFileSize  = 1024 * 1024 * 10;  // 10 MiB
 constexpr size_t maxLogFileCount = 10;
 
@@ -125,6 +125,14 @@ int childFunc(void* arg) noexcept
 {
   auto* state = static_cast<MountState*>(arg);
 
+  auto fail = [&]() {
+    {
+      scoped_lock lock(state->statusData->mtx);
+      state->statusData->status = MountState::failure;
+    }
+    state->statusData->cv.notify_all();
+  };
+
   try {
     // remap uid
     writeToFile("/proc/self/uid_map", format("0 {} 1", state->uid));
@@ -134,6 +142,7 @@ int childFunc(void* arg) noexcept
     writeToFile("/proc/self/gid_map", format("0 {} 1", state->gid));
   } catch (const exception& e) {
     logger::error("failed to set up namespace, {}", e.what());
+    fail();
     return -1;
   }
 
@@ -143,11 +152,14 @@ int childFunc(void* arg) noexcept
     int result = setns(state->nsFd, CLONE_NEWUSER | CLONE_NEWNS);
     if (result == -1) {
       logger::error("setns() failed: {}", strerror(errno));
+      fail();
       return -1;
     }
   }
 
-  const char* argv[] = {"usvfs_fuse", "-o", "default_permissions"};
+  const char* opts =
+      state->debugMode ? "default_permissions,debug" : "default_permissions";
+  const char* argv[] = {"usvfs_fuse", "-o", opts};
   int argc           = 3;
   fuse_args args     = FUSE_ARGS_INIT(argc, const_cast<char**>(argv));
 
@@ -158,6 +170,7 @@ int childFunc(void* arg) noexcept
   if (state->fusePtr == nullptr) {
     // Couldn't create FUSE handle; drop the mount
     logger::error("fuse_new() failed");
+    fail();
     return -1;
   }
   if (fuse_mount(state->fusePtr, state->mountpoint.c_str()) == -1) {
@@ -165,12 +178,20 @@ int childFunc(void* arg) noexcept
     state->fusePtr = nullptr;
     logger::error("fuse_mount() failed for mountpoint {}: {}", state->mountpoint,
                   strerror(errno));
+    fail();
     return -1;
   }
 
   // set signal handlers
   fuse_session* session = fuse_get_session(state->fusePtr);
   fuse_set_signal_handlers(session);
+
+  logger::trace("mount success, notifying parent");
+  {
+    scoped_lock lock(state->statusData->mtx);
+    state->statusData->status = MountState::success;
+  }
+  state->statusData->cv.notify_all();
 
   // enter loop; this blocks until unmounted or interrupted by the signal handler
   fuse_loop(state->fusePtr);
@@ -735,7 +756,6 @@ UsvfsManager::UsvfsManager() noexcept
 
 void UsvfsManager::run_fuse(std::unique_ptr<MountState> state)
 {
-  unique_lock lock(state->mtx);
   const char* opts = m_debugMode ? "default_permissions,debug" : "default_permissions";
   const char* argv[] = {"usvfs_fuse", "-o", opts};
   int argc           = 3;
@@ -744,30 +764,37 @@ void UsvfsManager::run_fuse(std::unique_ptr<MountState> state)
   fuse_operations ops = createOperations();
 
   MountState* raw = state.get();
-  raw->fusePtr    = fuse_new(&args, &ops, sizeof(fuse_operations), raw);
+
+  auto fail = [&]() {
+    {
+      scoped_lock lock(state->statusData->mtx);
+      raw->statusData->status = MountState::failure;
+    }
+    raw->statusData->cv.notify_all();
+  };
+
+  raw->fusePtr = fuse_new(&args, &ops, sizeof(fuse_operations), raw);
   fuse_opt_free_args(&args);
   if (!raw->fusePtr) {
     logger::error("fuse_new() failed for mountpoint {}", raw->mountpoint);
-    raw->status = MountState::failure;
-    lock.unlock();
-    raw->cv.notify_all();
+    fail();
     return;
   }
   if (fuse_mount(raw->fusePtr, raw->mountpoint.c_str()) == -1) {
     fuse_destroy(raw->fusePtr);
     raw->fusePtr = nullptr;
     logger::error("fuse_mount() failed for mountpoint {}", raw->mountpoint);
-    raw->status = MountState::failure;
-    lock.unlock();
-    raw->cv.notify_all();
+    fail();
     return;
   }
 
   m_mounts.emplace_back(std::move(state));
 
-  raw->status = MountState::success;
-  lock.unlock();
-  raw->cv.notify_all();
+  {
+    scoped_lock lock(raw->statusData->mtx);
+    raw->statusData->status = MountState::success;
+  }
+  raw->statusData->cv.notify_all();
 
   // Enter loop; this blocks until unmounted
   fuse_loop(raw->fusePtr);
@@ -865,6 +892,22 @@ bool UsvfsManager::mountInternal() noexcept
 
   // start a thread or process for each pending mount
   for (auto& state : toMount) {
+    MountState* raw = state.get();
+
+    // create shared memory for status data.
+    // only needed when using mount namespaces, but using this in both cases reduces
+    // complexity and should have negligible drawbacks
+    raw->statusData = static_cast<MountState::StatusData*>(
+        mmap(nullptr, sizeof(MountState::StatusData), PROT_READ | PROT_WRITE,
+             MAP_SHARED | MAP_ANONYMOUS, -1, 0));
+    if (raw->statusData == MAP_FAILED) {
+      logger::error("error creating shared memory for mount state: {}",
+                    strerror(errno));
+      return false;
+    }
+
+    raw->debugMode = m_debugMode;
+
     if (m_useMountNamespace) {
       // allocate memory to be used for the stack of the child.
       state->stack =
@@ -898,25 +941,13 @@ bool UsvfsManager::mountInternal() noexcept
       }
 
       // check for error in child
-      // todo: improve this to not determine success with a timeout
-      pollfd pfd = {state->pidFd, POLLIN, 0};
-      result     = poll(&pfd, 1, pollTimeout);
-      if (result == -1) {
-        logger::error("poll() failed: {}", strerror(errno));
+      unique_lock lock(raw->statusData->mtx);
+      raw->statusData->cv.wait(lock, [&] {
+        return raw->statusData->status != MountState::unknown;
+      });
+      if (raw->statusData->status == MountState::failure) {
+        logger::error("mount failed");
         return false;
-      }
-      if (result == 1) {
-        const int e    = errno;
-        siginfo_t info = {};
-        if (waitid(P_PIDFD, state->pidFd, &info, WEXITED | WNOHANG) == -1 &&
-            e != EAGAIN) {
-          logger::error("waitid() failed: {}", strerror(errno));
-          return false;
-        }
-        if (info.si_code != 0) {
-          logger::error("child exited with status {}", info.si_code);
-          return false;
-        }
       }
 
       // store pid fd to access namespace
@@ -927,19 +958,17 @@ bool UsvfsManager::mountInternal() noexcept
       logger::info("usvfs mounted in pid {}", pidfd_getpid(state->pidFd));
       m_mounts.emplace_back(std::move(state));
     } else {
-      MountState* raw = state.get();
-
       thread t([s = std::move(state), this]() mutable {
         run_fuse(std::move(s));
       });
       t.detach();
 
       // wait until mount state is no longer unknown
-      unique_lock lock(raw->mtx);
-      raw->cv.wait(lock, [&] {
-        return raw->status != MountState::unknown;
+      unique_lock lock(raw->statusData->mtx);
+      raw->statusData->cv.wait(lock, [&] {
+        return raw->statusData->status != MountState::unknown;
       });
-      if (raw->status == MountState::failure) {
+      if (raw->statusData->status == MountState::failure) {
         logger::error("mount failed");
         return false;
       }

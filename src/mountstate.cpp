@@ -8,4 +8,6 @@ MountState::~MountState()
     logger::trace("closing fd {}", fd);
     close(fd);
   }
+
+  munmap(statusData, sizeof(StatusData));
 }
