@@ -202,28 +202,23 @@ bool UsvfsManager::usvfsVirtualLinkFile(const std::string& source,
 
   logger::trace("{}, source: {}, destination: {}", __FUNCTION__, source, destination);
 
-  const auto src          = findCaseInsensitive(source);
-  const auto srcParentDir = getParentPath(source);
-  const auto srcFileName  = getFileNameFromPath(src);
-  const auto dstFileName  = getFileNameFromPath(destination);
-
-  FdMap fdMap;
-
-  string dstDir = getParentPath(destination);
-
-  if (fileNameInSkipSuffixes(srcFileName)) {
+  if (fileNameInSkipSuffixes(getFileNameFromPath(source))) {
     logger::debug("file {} should be skipped", source);
     return true;
   }
 
+  const string src          = findCaseInsensitive(source);
+  const string srcParentDir = getParentPath(source);
+  const string dstParentDir = getParentPath(destination);
+  const string dstFileName  = getFileNameFromPath(destination);
+
   // check if destination exists in pending mounts
   // todo: also check if destination is inside a pending mount
   for (const auto& state : m_pendingMounts) {
-    if (state->mountpoint == dstDir) {
+    if (state->mountpoint == dstParentDir) {
       logger::debug("mountpoint already exists, adding to file tree");
       // destination exists, add to the existing file tree
-      auto result =
-          state->fileTree->add(getFileNameFromPath(destination), src, file, true);
+      auto result = state->fileTree->add(dstFileName, src, file, true);
       if (result != nullptr) {
         int fd = open(srcParentDir.c_str(), OPEN_FLAGS);
         if (fd == -1) {
@@ -237,8 +232,6 @@ bool UsvfsManager::usvfsVirtualLinkFile(const std::string& source,
     }
   }
 
-  string dstParentDir = getParentPath(destination);
-
   // open a file descriptor for the source parent directory
   int fd = open(srcParentDir.c_str(), OPEN_FLAGS);
   if (fd == -1) {
@@ -246,6 +239,7 @@ bool UsvfsManager::usvfsVirtualLinkFile(const std::string& source,
     return false;
   }
   logger::trace("adding fd {} for {}", fd, srcParentDir);
+  FdMap fdMap;
   fdMap[srcParentDir] = fd;
 
   // open a file descriptor for the destination parent directory
@@ -261,8 +255,7 @@ bool UsvfsManager::usvfsVirtualLinkFile(const std::string& source,
   shared_ptr<VirtualFileTreeItem> destinationFileTree =
       createFileTree(dstParentDir, fdMap);
 
-  auto result =
-      destinationFileTree->add(dstPath.filename().string(), source, file, true);
+  auto result = destinationFileTree->add(dstFileName, source, file, true);
   if (result == nullptr) {
     return false;
   }
@@ -270,7 +263,7 @@ bool UsvfsManager::usvfsVirtualLinkFile(const std::string& source,
   // prepare state and enqueue to the pending list (no mounting yet)
   auto state        = make_unique<MountState>();
   state->fileTree   = std::move(destinationFileTree);
-  state->mountpoint = dstDir;
+  state->mountpoint = dstParentDir;
   state->fdMap      = fdMap;
   m_pendingMounts.emplace_back(std::move(state));
 
