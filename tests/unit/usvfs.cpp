@@ -230,7 +230,7 @@ bool createFile(const string& path, const string& content)
     return true;
   } catch (const exception& ex) {
     cerr << "error creating file '" << path << "': " << ex.what()
-         << ", errno: " << strerrorname_np(errno);
+         << ", errno: " << strerrorname_np(errno) << '\n';
     return false;
   }
 }
