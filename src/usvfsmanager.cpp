@@ -701,11 +701,7 @@ bool UsvfsManager::unmount() noexcept
       fuse_unmount(mount->fusePtr);
       fuse_destroy(mount->fusePtr);
     }
-
-    // close file descriptors
-    for (const int fd : mount->fdMap | views::values) {
-      close(fd);
-    }
+    // file descriptors are closed in MountState dtor
   }
   m_mounts.clear();
 
