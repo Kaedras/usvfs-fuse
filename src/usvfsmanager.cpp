@@ -202,39 +202,41 @@ bool UsvfsManager::usvfsVirtualLinkFile(const std::string& source,
 
   logger::trace("{}, source: {}, destination: {}", __FUNCTION__, source, destination);
 
-  const fs::path srcPath = fs::path(source);
-  const fs::path dstPath = fs::path(destination);
+  const auto src          = findCaseInsensitive(source);
+  const auto srcParentDir = getParentPath(source);
+  const auto srcFileName  = getFileNameFromPath(src);
+  const auto dstFileName  = getFileNameFromPath(destination);
 
   FdMap fdMap;
 
-  string dstDir = dstPath.parent_path().string();
+  string dstDir = getParentPath(destination);
 
-  if (fileNameInSkipSuffixes(srcPath.filename().string())) {
+  if (fileNameInSkipSuffixes(srcFileName)) {
     logger::debug("file {} should be skipped", source);
     return true;
   }
 
   // check if destination exists in pending mounts
+  // todo: also check if destination is inside a pending mount
   for (const auto& state : m_pendingMounts) {
     if (state->mountpoint == dstDir) {
       logger::debug("mountpoint already exists, adding to file tree");
       // destination exists, add to the existing file tree
-      auto result = state->fileTree->add(dstPath.filename().string(), source, file);
+      auto result =
+          state->fileTree->add(getFileNameFromPath(destination), src, file, true);
       if (result != nullptr) {
-        string parentDir = getParentPath(source);
-        int fd           = open(parentDir.c_str(), OPEN_FLAGS);
+        int fd = open(srcParentDir.c_str(), OPEN_FLAGS);
         if (fd == -1) {
-          logger::error("open() failed for {}: {}", parentDir, strerror(errno));
+          logger::error("open() failed for {}: {}", srcParentDir, strerror(errno));
           return false;
         }
-        logger::trace("adding fd {} for {}", fd, parentDir);
-        state->fdMap[parentDir] = fd;
+        logger::trace("adding fd {} for {}", fd, srcParentDir);
+        state->fdMap[srcParentDir] = fd;
       }
       return result != nullptr;
     }
   }
 
-  string srcParentDir = getParentPath(source);
   string dstParentDir = getParentPath(destination);
 
   // open a file descriptor for the source parent directory
@@ -283,21 +285,22 @@ bool UsvfsManager::usvfsVirtualLinkDirectoryStatic(const std::string& source,
 
   logger::trace("{}, source: {}, destination: {}", __FUNCTION__, source, destination);
 
-  error_code ec;
-  FdMap fdMap;
-  {
-    int fd = open(source.c_str(), OPEN_FLAGS);
-    if (fd == -1) {
-      logger::error("error opening {}: {}", source, strerror(errno));
-      return false;
-    }
-    logger::trace("adding fd {} for {}", fd, source);
-    fdMap[source] = fd;
-  }
+  const auto src = findCaseInsensitive(source);
+  const auto dst = findCaseInsensitive(destination);
 
-  auto sourceFileTree = VirtualFileTreeItem::create("/", source, dir);
+  FdMap fdMap;
+  int srcFd = open(src.c_str(), OPEN_FLAGS);
+  if (srcFd == -1) {
+    logger::error("error opening {}: {}", src, strerror(errno));
+    return false;
+  }
+  logger::trace("adding fd {} for {}", srcFd, src);
+  fdMap[src] = srcFd;
+
   // create the file tree
-  fs::recursive_directory_iterator iter(source, ec);
+  auto sourceFileTree = VirtualFileTreeItem::create("/", src, dir);
+  error_code ec;
+  fs::recursive_directory_iterator iter(src, ec);
   if (ec) {
     logger::error("error creating recursive_directory_iterator: {}", ec.message());
     return false;
@@ -310,7 +313,7 @@ bool UsvfsManager::usvfsVirtualLinkDirectoryStatic(const std::string& source,
       continue;
     }
 
-    fs::path relative = fs::relative(entry.path(), source);
+    fs::path relative = fs::relative(entry.path(), src);
 
     logger::debug("adding '{}' to file tree", relative.string());
     auto newItem = sourceFileTree->add(
@@ -838,6 +841,25 @@ bool UsvfsManager::anyProcessRunning() const noexcept
     int status;
     return waitpid(pid, &status, WNOHANG) > 0;
   });
+}
+
+std::string UsvfsManager::findCaseInsensitive(const std::string& path) noexcept
+{
+  auto parentPath = getParentPath(path);
+  auto fileName   = getFileNameFromPath(path);
+  for (const auto& entry : fs::directory_iterator(parentPath)) {
+    const auto entryFileName = entry.path().filename().string();
+    if (iequals(entryFileName, fileName)) {
+      if (entryFileName != fileName) {
+        logger::trace("case insensitive lookup for '{}' replaced '{}' with '{}'", path,
+                      fileName, entryFileName);
+      }
+      return entry.path().string();
+    }
+  }
+
+  // return the original path as fallback
+  return path;
 }
 
 bool UsvfsManager::mountInternal() noexcept
