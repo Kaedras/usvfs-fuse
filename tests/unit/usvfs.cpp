@@ -543,7 +543,7 @@ TEST(UsvfsTest, MergeModDirectories)
   ASSERT_TRUE(createFile(src / "mod1/A.txt", "mod1 a"));
 
   ASSERT_TRUE(createFile(src / "profile/Plugins.txt", "mod0.esp\nmod1.esp"));
-  ASSERT_TRUE(createFile(mnt2 / "profile/plugins.txt", ""));
+  ASSERT_TRUE(createFile(mnt2 / "plugins.txt", ""));
 
   auto usvfs = UsvfsManager::instance();
   usvfs->setProcessDelay(10ms);
