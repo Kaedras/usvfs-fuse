@@ -523,7 +523,7 @@ TEST_F(UsvfsTest, statfs)
   EXPECT_GT(statvfs(mnt.c_str(), &buf), -1) << "error: " << strerror(errno);
 }
 
-TEST(UsvfsTest, MergeModDirectories)
+TEST(usvfs, MergeModDirectories)
 {
   initLogging();
 
