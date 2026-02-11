@@ -76,6 +76,11 @@ public:
   std::shared_ptr<VirtualFileTreeItem> clone() const noexcept;
 
   /**
+   * @brief Merge another file tree item into this one
+   */
+  void merge(const std::shared_ptr<VirtualFileTreeItem>& other) noexcept;
+
+  /**
    * @brief Get the parent item
    */
   std::weak_ptr<VirtualFileTreeItem> getParent() const noexcept;

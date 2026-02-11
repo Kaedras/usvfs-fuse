@@ -359,7 +359,7 @@ bool UsvfsManager::usvfsVirtualLinkDirectoryStatic(const std::string& source,
                       destination);
         return false;
       }
-      *existingItem += *sourceFileTree;
+      existingItem->merge(sourceFileTree);
       for (const auto& [path, fd] : fdMap) {
         state->fdMap[path] = fd;
       }
@@ -375,7 +375,7 @@ bool UsvfsManager::usvfsVirtualLinkDirectoryStatic(const std::string& source,
   shared_ptr<VirtualFileTreeItem> destinationFileTree =
       createFileTree(destination, fdMap);
 
-  *destinationFileTree += *sourceFileTree;
+  destinationFileTree->merge(sourceFileTree);
 
   // prepare state and add to the pending list (no mounting yet)
   auto state        = make_unique<MountState>();

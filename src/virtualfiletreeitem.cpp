@@ -167,6 +167,12 @@ std::shared_ptr<VirtualFileTreeItem> VirtualFileTreeItem::clone() const noexcept
   }
 }
 
+void VirtualFileTreeItem::merge(
+    const std::shared_ptr<VirtualFileTreeItem>& other) noexcept
+{
+  *this += *other;
+}
+
 std::weak_ptr<VirtualFileTreeItem> VirtualFileTreeItem::getParent() const noexcept
 {
   shared_lock lock(m_mtx);
