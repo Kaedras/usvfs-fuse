@@ -183,6 +183,33 @@ std::string getParentPath(const std::string_view path) noexcept
   return string(path.substr(0, pos));
 }
 
+bool isParentPathOf(std::string_view parentPath, std::string_view path) noexcept
+{
+  if (parentPath.empty() || parentPath == "/") {
+    return true;
+  }
+
+  if (parentPath.ends_with('/')) {
+    parentPath.remove_suffix(1);
+  }
+  if (path.ends_with('/')) {
+    path.remove_suffix(1);
+  }
+
+  if (parentPath.length() > path.length()) {
+    return false;
+  }
+  if (parentPath.length() == path.length()) {
+    return iequals(parentPath, path);
+  }
+
+  try {
+    return istartsWith(path, parentPath) && path.at(parentPath.length()) == '/';
+  } catch (const out_of_range&) {
+    return false;
+  }
+}
+
 std::vector<std::string_view> createEnv() noexcept
 {
   // determine vector size

@@ -20,4 +20,6 @@ std::string getFileNameFromPath(std::string_view path) noexcept;
  */
 std::string getParentPath(std::string_view path) noexcept;
 
+bool isParentPathOf(std::string_view parentPath, std::string_view path) noexcept;
+
 std::vector<std::string_view> createEnv() noexcept;

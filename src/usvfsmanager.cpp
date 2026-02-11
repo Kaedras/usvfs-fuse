@@ -233,12 +233,12 @@ bool UsvfsManager::usvfsVirtualLinkFile(const std::string& source,
   const string dstFileName  = getFileNameFromPath(destination);
 
   // check if destination exists in pending mounts
-  // todo: also check if destination is inside a pending mount
   for (const auto& state : m_pendingMounts) {
-    if (state->mountpoint == dstParentDir) {
+    if (isParentPathOf(state->mountpoint, dstParentDir)) {
       logger::debug("mountpoint already exists, adding to file tree");
       // destination exists, add to the existing file tree
-      auto result = state->fileTree->add(dstFileName, src, file, true);
+      const string relative = destination.substr(state->mountpoint.length());
+      auto result           = state->fileTree->add(relative, src, file, true);
       if (result != nullptr) {
         int fd = open(srcParentDir.c_str(), OPEN_FLAGS);
         if (fd == -1) {
@@ -350,9 +350,16 @@ bool UsvfsManager::usvfsVirtualLinkDirectoryStatic(const std::string& source,
 
   // check if destination exists in pending mounts
   for (const auto& state : m_pendingMounts) {
-    if (state->mountpoint == destination) {
+    if (isParentPathOf(state->mountpoint, destination)) {
       // destination exists, merge file trees
-      *state->fileTree += *sourceFileTree;
+      const string relative = destination.substr(state->mountpoint.length());
+      auto existingItem     = state->fileTree->find(relative);
+      if (existingItem == nullptr) {
+        logger::error("Error merging destination '{}' into existing file tree",
+                      destination);
+        return false;
+      }
+      *existingItem += *sourceFileTree;
       for (const auto& [path, fd] : fdMap) {
         state->fdMap[path] = fd;
       }

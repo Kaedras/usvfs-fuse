@@ -92,3 +92,22 @@ TEST(utils, getFileNameFromPath)
   EXPECT_EQ(getFileNameFromPath("/a/b"), "b");
   EXPECT_EQ(getFileNameFromPath("/a/b/c"), "c");
 }
+
+TEST(utils, isParentPathOf)
+{
+  EXPECT_TRUE(isParentPathOf("/", "/a"));
+  EXPECT_TRUE(isParentPathOf("/a", "/a"));
+  EXPECT_TRUE(isParentPathOf("/a", "/a/"));
+  EXPECT_TRUE(isParentPathOf("/a/", "/a"));
+  EXPECT_TRUE(isParentPathOf("/a", "/a/b"));
+  EXPECT_FALSE(isParentPathOf("/a", "/aa"));
+  EXPECT_FALSE(isParentPathOf("/aa", "/a"));
+
+  EXPECT_TRUE(isParentPathOf("/", "/A"));
+  EXPECT_TRUE(isParentPathOf("/a", "/A"));
+  EXPECT_TRUE(isParentPathOf("/a", "/A/"));
+  EXPECT_TRUE(isParentPathOf("/a/", "/A"));
+  EXPECT_TRUE(isParentPathOf("/a", "/A/B"));
+  EXPECT_FALSE(isParentPathOf("/a", "/AA"));
+  EXPECT_FALSE(isParentPathOf("/aa", "/A"));
+}
