@@ -900,21 +900,20 @@ bool UsvfsManager::mountInternal() noexcept
   for (auto& state : toMount) {
     MountState* raw = state.get();
 
-    // create shared memory for status data.
-    // only needed when using mount namespaces, but using this in both cases reduces
-    // complexity and should have negligible drawbacks
-    raw->statusData = static_cast<MountState::StatusData*>(
-        mmap(nullptr, sizeof(MountState::StatusData), PROT_READ | PROT_WRITE,
-             MAP_SHARED | MAP_ANONYMOUS, -1, 0));
-    if (raw->statusData == MAP_FAILED) {
-      logger::error("error creating shared memory for mount state: {}",
-                    strerror(errno));
-      return false;
-    }
-
-    raw->debugMode = m_debugMode;
+    raw->useMountNamespace = m_useMountNamespace;
+    raw->debugMode         = m_debugMode;
 
     if (m_useMountNamespace) {
+      // create shared memory for status data.
+      raw->statusData = static_cast<MountState::StatusData*>(
+          mmap(nullptr, sizeof(MountState::StatusData), PROT_READ | PROT_WRITE,
+               MAP_SHARED | MAP_ANONYMOUS, -1, 0));
+      if (raw->statusData == MAP_FAILED) {
+        logger::error("error creating shared memory for mount state: {}",
+                      strerror(errno));
+        return false;
+      }
+
       size_t stackSize;
       rlimit limit;
       if (getrlimit(RLIMIT_STACK, &limit) == 0) {
@@ -975,6 +974,12 @@ bool UsvfsManager::mountInternal() noexcept
       logger::info("usvfs mounted in pid {}", pidfd_getpid(state->pidFd));
       m_mounts.emplace_back(std::move(state));
     } else {
+      try {
+        raw->statusData = new MountState::StatusData();
+      } catch (const bad_alloc& ex) {
+        logger::error("error allocating memory for mount state: {}", ex.what());
+        return false;
+      }
       thread t([s = std::move(state), this]() mutable {
         run_fuse(std::move(s));
       });

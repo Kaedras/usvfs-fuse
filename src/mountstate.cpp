@@ -9,5 +9,12 @@ MountState::~MountState()
     close(fd);
   }
 
-  munmap(statusData, sizeof(StatusData));
+  logger::trace("deleting status data");
+  if (useMountNamespace) {
+    if (munmap(statusData, sizeof(StatusData)) == -1) {
+      logger::error("munmap error: {}", strerror(errno));
+    }
+  } else {
+    delete statusData;
+  }
 }

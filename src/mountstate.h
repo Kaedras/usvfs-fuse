@@ -26,6 +26,7 @@ struct MountState
   fuse* fusePtr          = nullptr;
   StatusData* statusData = nullptr;
   bool debugMode         = false;
+  bool useMountNamespace = false;
 
   char* stack    = nullptr;  // Start of stack buffer
   char* stackTop = nullptr;  // End of stack buffer
