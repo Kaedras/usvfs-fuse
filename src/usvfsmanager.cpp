@@ -15,9 +15,10 @@ namespace fs = std::filesystem;
 namespace
 {
 
-constexpr size_t defaultStackSize = 1024 * 1024 * 8;   // stack size for cloned child.
-constexpr size_t maxLogFileSize   = 1024 * 1024 * 10;  // 10 MiB
-constexpr size_t maxLogFileCount  = 10;
+constexpr size_t defaultStackSize  = 1024 * 1024 * 8;   // stack size for cloned child.
+constexpr size_t maxLogFileSize    = 1024 * 1024 * 10;  // 10 MiB
+constexpr size_t maxLogFileCount   = 10;
+constexpr auto defaultMountOptions = "default_permissions";
 
 shared_ptr<VirtualFileTreeItem> createFileTree(const string& path, FdMap& fdMap)
 {
@@ -156,9 +157,11 @@ int childFunc(void* arg) noexcept
     }
   }
 
-  const char* opts =
-      state->debugMode ? "default_permissions,debug" : "default_permissions";
-  const char* argv[] = {"usvfs_fuse", "-o", opts};
+  string opts = defaultMountOptions;
+  if (state->debugMode) {
+    opts.append(",debug");
+  }
+  const char* argv[] = {"usvfs_fuse", "-o", opts.c_str()};
   int argc           = 3;
   fuse_args args     = FUSE_ARGS_INIT(argc, const_cast<char**>(argv));
 
@@ -762,8 +765,11 @@ UsvfsManager::UsvfsManager() noexcept
 
 void UsvfsManager::run_fuse(std::unique_ptr<MountState> state)
 {
-  const char* opts = m_debugMode ? "default_permissions,debug" : "default_permissions";
-  const char* argv[] = {"usvfs_fuse", "-o", opts};
+  string opts = defaultMountOptions;
+  if (state->debugMode) {
+    opts.append(",debug");
+  }
+  const char* argv[] = {"usvfs_fuse", "-o", opts.c_str()};
   int argc           = 3;
   fuse_args args     = FUSE_ARGS_INIT(argc, const_cast<char**>(argv));
 
