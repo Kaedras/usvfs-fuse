@@ -183,7 +183,8 @@ void unlinkDir(const string& path)
 
 void unlinkDirWithFailure(const string& path, int error)
 {
-  EXPECT_EQ(rmdir(path.c_str()), -1) << "error: " << strerror(errno);
+  EXPECT_EQ(rmdir(path.c_str()), -1)
+      << "error for '" << path << "': " << strerror(errno);
   EXPECT_EQ(errno, error) << "expected " << strerrorname_np(error) << ", got "
                           << strerrorname_np(errno);
 }
@@ -191,14 +192,16 @@ void unlinkDirWithFailure(const string& path, int error)
 void statPath(const string& path)
 {
   struct stat st{};
-  EXPECT_EQ(stat(path.c_str(), &st), 0) << "error: " << strerror(errno);
+  EXPECT_EQ(stat(path.c_str(), &st), 0)
+      << "error for '" << path << "': " << strerror(errno);
 }
 
 void statPathWithFailure(const string& path, int error)
 {
   struct stat st{};
   EXPECT_EQ(stat(path.c_str(), &st), -1);
-  EXPECT_EQ(errno, error) << "expected " << strerrorname_np(error) << ", got "
+  EXPECT_EQ(errno, error) << "error for '" << path << "', expected "
+                          << strerrorname_np(error) << ", got "
                           << strerrorname_np(errno);
 }
 
