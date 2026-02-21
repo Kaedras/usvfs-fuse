@@ -186,7 +186,11 @@ int childFunc(void* arg) noexcept
 
   // set signal handlers
   fuse_session* session = fuse_get_session(state->fusePtr);
-  fuse_set_signal_handlers(session);
+  if (fuse_set_signal_handlers(session) == -1) {
+    logger::error("fuse_set_signal_handlers() failed: {}", strerror(errno));
+    fail();
+    return -1;
+  }
 
   logger::trace("mount success, notifying parent");
   {
