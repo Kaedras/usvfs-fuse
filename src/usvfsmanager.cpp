@@ -18,7 +18,7 @@ namespace
 constexpr size_t defaultStackSize  = 1024 * 1024 * 8;   // stack size for cloned child.
 constexpr size_t maxLogFileSize    = 1024 * 1024 * 10;  // 10 MiB
 constexpr size_t maxLogFileCount   = 10;
-constexpr auto defaultMountOptions = "default_permissions";
+constexpr auto defaultMountOptions = "default_permissions,auto_unmount";
 
 shared_ptr<VirtualFileTreeItem> createFileTree(const string& path, FdMap& fdMap)
 {
