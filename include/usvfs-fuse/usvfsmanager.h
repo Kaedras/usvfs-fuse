@@ -6,23 +6,16 @@
 
 // forward declarations
 struct MountState;
-class VirtualFileTreeItem;
-class QProcess;
 
 namespace spdlog
 {
 class logger;
 namespace sinks
 {
-  class sink;
   template <typename Mutex>
   class rotating_file_sink;
 }  // namespace sinks
 }  // namespace spdlog
-
-struct fuse_file_info;
-struct fuse_operations;
-struct fuse;
 
 namespace linkFlag
 {
