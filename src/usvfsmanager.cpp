@@ -291,7 +291,7 @@ bool UsvfsManager::usvfsVirtualLinkFile(const std::string& source,
   auto state        = make_unique<MountState>();
   state->fileTree   = std::move(destinationFileTree);
   state->mountpoint = dstParentDir;
-  state->fdMap      = fdMap;
+  state->fdMap      = std::move(fdMap);
   m_pendingMounts.emplace_back(std::move(state));
 
   return true;
@@ -367,9 +367,7 @@ bool UsvfsManager::usvfsVirtualLinkDirectoryStatic(const std::string& source,
         return false;
       }
       existingItem->merge(sourceFileTree);
-      for (const auto& [path, fd] : fdMap) {
-        state->fdMap[path] = fd;
-      }
+      state->fdMap.merge(fdMap);
 
       if (flags & linkFlag::CREATE_TARGET) {
         state->upperDir = source;
@@ -388,7 +386,7 @@ bool UsvfsManager::usvfsVirtualLinkDirectoryStatic(const std::string& source,
   auto state        = make_unique<MountState>();
   state->fileTree   = std::move(destinationFileTree);
   state->mountpoint = destination;
-  state->fdMap      = fdMap;
+  state->fdMap      = std::move(fdMap);
 
   if (flags & linkFlag::CREATE_TARGET) {
     state->upperDir = source;
@@ -735,7 +733,6 @@ bool UsvfsManager::unmount() noexcept
       fuse_unmount(mount->fusePtr);
       fuse_destroy(mount->fusePtr);
     }
-    // file descriptors are closed in MountState dtor
   }
   m_mounts.clear();
 
