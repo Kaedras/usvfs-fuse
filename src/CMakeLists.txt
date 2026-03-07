@@ -40,3 +40,30 @@ endif()
 
 target_compile_options(usvfs-fuse PRIVATE -Wall -Wextra -Wpedantic)
 target_link_libraries(usvfs-fuse PRIVATE PkgConfig::FUSE3 spdlog::spdlog ICU::data ICU::uc)
+
+# from https://stackoverflow.com/a/78987613
+# NOTE: The dbg extension is used solely because it is used as a standard
+# NOTE: In Linux documentation etc.
+# NOTE: Obtained from https://www.man7.org/linux/man-pages/man1/objcopy.1.html
+add_custom_command(
+        TARGET usvfs-fuse
+        # Separate the Debug Information from the Target file
+        COMMAND ${CMAKE_OBJCOPY} ARGS --only-keep-debug $<TARGET_FILE:usvfs-fuse> $<TARGET_FILE:usvfs-fuse>.dbg
+        # As we have previously separated the debug information from the
+        # previous output, remove all debug information from the same
+        COMMAND ${CMAKE_OBJCOPY} ARGS --strip-debug $<TARGET_FILE:usvfs-fuse>
+        # Link the Separate Debug Information with the Final Release
+        COMMAND ${CMAKE_OBJCOPY} ARGS --add-gnu-debuglink=$<TARGET_FILE:usvfs-fuse>.dbg $<TARGET_FILE:usvfs-fuse>
+        POST_BUILD
+)
+# NOTE: Add this to the clean target
+# NOTE: This is needed because otherwise old debug information
+# NOTE:  Will not be cleared upon clean
+set_property(
+        TARGET usvfs-fuse
+        APPEND
+        PROPERTY
+        ADDITIONAL_CLEAN_FILES
+        $<TARGET_FILE:usvfs-fuse>.dbg
+)
+install(FILES $<TARGET_FILE:usvfs-fuse>.dbg DESTINATION debug)
