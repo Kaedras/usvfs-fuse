@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.31)
+cmake_minimum_required(VERSION 3.28)
 
 find_package(PkgConfig)
 pkg_check_modules(FUSE3 REQUIRED IMPORTED_TARGET fuse3)
