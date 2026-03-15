@@ -10,13 +10,13 @@ bool iequals(const std::string_view lhs, const std::string_view rhs) noexcept
   }
 
   // try a fast ASCII comparison first
-  bool is_ascii = true;
+  bool isAscii = true;
   for (size_t i = 0; i < lhs.length(); ++i) {
     const auto a = static_cast<unsigned char>(lhs[i]);
     const auto b = static_cast<unsigned char>(rhs[i]);
 
     if (a > 127 || b > 127) {
-      is_ascii = false;
+      isAscii = false;
       break;
     }
     if (tolower(a) != tolower(b)) {
@@ -24,7 +24,7 @@ bool iequals(const std::string_view lhs, const std::string_view rhs) noexcept
     }
   }
 
-  if (is_ascii) {
+  if (isAscii) {
     return true;
   }
   const auto a = UnicodeString::fromUTF8(lhs);
@@ -62,17 +62,17 @@ bool istartsWith(const std::string_view lhs, const std::string_view rhs) noexcep
 std::string toLower(const std::string_view str) noexcept
 {
   // try using ASCII first
-  bool is_ascii = true;
+  bool isAscii = true;
   for (const unsigned char c : str) {
     if (c > 127) {
-      is_ascii = false;
+      isAscii = false;
       break;
     }
   }
 
   string result;
 
-  if (is_ascii) {
+  if (isAscii) {
     result.reserve(str.length());
     for (const char c : str) {
       result.push_back(static_cast<char>(tolower(c)));
@@ -90,15 +90,15 @@ std::string toLower(const std::string_view str) noexcept
 void toLowerInplace(std::string& str) noexcept
 {
   // try using ASCII first
-  bool is_ascii = true;
+  bool isAscii = true;
   for (const unsigned char c : str) {
     if (c > 127) {
-      is_ascii = false;
+      isAscii = false;
       break;
     }
   }
 
-  if (is_ascii) {
+  if (isAscii) {
     for (char& c : str) {
       c = static_cast<char>(tolower(c));
     }
@@ -115,17 +115,17 @@ void toLowerInplace(std::string& str) noexcept
 std::string toUpper(const std::string_view str) noexcept
 {
   // try using ASCII first
-  bool is_ascii = true;
+  bool isAscii = true;
   for (const unsigned char c : str) {
     if (c > 127) {
-      is_ascii = false;
+      isAscii = false;
       break;
     }
   }
 
   string result;
 
-  if (is_ascii) {
+  if (isAscii) {
     result.reserve(str.length());
     for (const char c : str) {
       result.push_back(static_cast<char>(toupper(c)));
@@ -143,15 +143,15 @@ std::string toUpper(const std::string_view str) noexcept
 void toUpperInplace(std::string& str) noexcept
 {
   // try using ASCII first
-  bool is_ascii = true;
+  bool isAscii = true;
   for (const unsigned char c : str) {
     if (c > 127) {
-      is_ascii = false;
+      isAscii = false;
       break;
     }
   }
 
-  if (is_ascii) {
+  if (isAscii) {
     for (char& c : str) {
       c = static_cast<char>(toupper(c));
     }
