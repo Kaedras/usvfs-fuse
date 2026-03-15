@@ -71,9 +71,9 @@ std::string toLower(const std::string_view str) noexcept
   }
 
   string result;
-  result.reserve(str.length());
 
   if (is_ascii) {
+    result.reserve(str.length());
     for (const char c : str) {
       result.push_back(static_cast<char>(tolower(c)));
     }
@@ -124,9 +124,9 @@ std::string toUpper(const std::string_view str) noexcept
   }
 
   string result;
-  result.reserve(str.length());
 
   if (is_ascii) {
+    result.reserve(str.length());
     for (const char c : str) {
       result.push_back(static_cast<char>(toupper(c)));
     }
