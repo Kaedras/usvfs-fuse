@@ -69,13 +69,11 @@ VirtualFileTreeItem::create(std::string path, std::string realPath,
     return nullptr;
   }
 }
-
 std::shared_ptr<VirtualFileTreeItem> VirtualFileTreeItem::createFileTree(
     const std::string& path,
     std::optional<std::reference_wrapper<FdMap>> fdMap) noexcept(false)
 {
   logger::debug("creating file tree for {}", path);
-  error_code ec;
   auto fileTree = create("/", path, dir);
 
   if (fdMap.has_value()) {
@@ -88,19 +86,18 @@ std::shared_ptr<VirtualFileTreeItem> VirtualFileTreeItem::createFileTree(
     fdMap.value().get()[path] = fd;
   }
 
-  fs::recursive_directory_iterator iter(path, ec);
-  if (ec) {
-    throw runtime_error("error creating file tree: "s + ec.message());
-  }
-  for (const fs::directory_entry& entry : iter) {
-    fs::path relative = fs::relative(entry.path(), path);
+  for (const fs::directory_entry& entry : fs::recursive_directory_iterator(path)) {
+    const string full    = entry.path().string();
+    string_view relative = full;
+    relative.remove_prefix(path.size());
 
-    logger::debug("adding '{}' to file tree", relative.string());
+    logger::debug("adding '{}' to file tree", relative);
     auto newItem =
-        fileTree->add(relative.string(), entry.path().string(),
+        fileTree->add(relative, entry.path().string(),
                       entry.status().type() == fs::file_type::directory ? dir : file);
     if (newItem == nullptr) {
-      throw runtime_error("error adding "s + relative.string() + " to file tree");
+      throw runtime_error(
+          format("error adding {} to file tree, {}", relative, strerror(errno)));
     }
 
     if (entry.is_directory() && fdMap.has_value()) {
