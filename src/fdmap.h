@@ -11,6 +11,9 @@ public:
   FdMap& operator=(FdMap&& other) noexcept;
   ~FdMap() noexcept;
 
+  FdMap(const FdMap&)            = delete;
+  FdMap& operator=(const FdMap&) = delete;
+
   int at(std::string_view path) const noexcept;
   int& operator[](std::string_view path) noexcept;
   /**
