@@ -394,7 +394,8 @@ VirtualFileTreeItem::VirtualFileTreeItem(
 }
 
 VirtualFileTreeItem::VirtualFileTreeItem(const VirtualFileTreeItem& other) noexcept
-    : m_fileName(other.m_fileName), m_realPath(other.m_realPath), m_type(other.m_type),
+    : std::enable_shared_from_this<VirtualFileTreeItem>(other),
+      m_fileName(other.m_fileName), m_realPath(other.m_realPath), m_type(other.m_type),
       m_deleted(other.m_deleted)
 {}
 
