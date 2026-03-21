@@ -228,7 +228,7 @@ VirtualFileTreeItem::find(std::string_view path, bool includeDeleted) noexcept
   return findInternal(toLower(path), includeDeleted);
 }
 
-std::string VirtualFileTreeItem::fileName() const noexcept
+const std::string& VirtualFileTreeItem::fileName() const noexcept
 {
   shared_lock lock(m_mtx);
   return m_fileName;
@@ -244,7 +244,7 @@ std::string VirtualFileTreeItem::filePath() const noexcept
   return "";
 }
 
-std::string VirtualFileTreeItem::realPath() const noexcept
+const std::string& VirtualFileTreeItem::realPath() const noexcept
 {
   shared_lock lock(m_mtx);
   return m_realPath;

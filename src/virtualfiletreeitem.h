@@ -125,7 +125,7 @@ public:
    * @brief Get the file name
    * @note Returns '/' for root items
    */
-  [[nodiscard]] std::string fileName() const noexcept;
+  [[nodiscard]] const std::string& fileName() const noexcept;
 
   /**
    * @brief Get the file path including all ancestors
@@ -136,7 +136,7 @@ public:
   /**
    * @brief Get the real path
    */
-  [[nodiscard]] std::string realPath() const noexcept;
+  [[nodiscard]] const std::string& realPath() const noexcept;
 
   /**
    * @brief Set the file name
