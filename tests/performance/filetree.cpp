@@ -1,6 +1,8 @@
 #include "../../src/virtualfiletreeitem.h"
 #include "benchmark_utils.h"
+
 #include <benchmark/benchmark.h>
+#include <cmath>
 #include <filesystem>
 #include <iostream>
 
@@ -90,6 +92,44 @@ static void addMultipleItemsToFiletree(benchmark::State& state)
   }
 }
 
+static void addMultipleModsFromDisk(benchmark::State& state)
+{
+  const int count            = static_cast<int>(state.range(0));
+  static constexpr int depth = 2;
+  static constexpr int width = 10;
+
+  // calculate the total item count
+  const double fileCount  = (1 + width * (pow(width, depth) - 1) / (width - 1)) * count;
+  state.counters["files"] = fileCount;
+
+  // create files
+  const fs::path baseDir = fs::temp_directory_path() / "usvfs-fuse-benchmark";
+  function<void(const fs::path&, int)> addLevel = [&](const fs::path& dir,
+                                                      const int currentDepth) {
+    if (currentDepth >= depth) {
+      return;
+    }
+
+    for (int i = 0; i < width; ++i) {
+      fs::path childPath = dir / to_string(i);
+
+      create_directories(childPath);
+      addLevel(childPath, currentDepth + 1);
+    }
+  };
+  for (int i = 0; i < count; ++i) {
+    addLevel(baseDir / to_string(i), 0);
+  }
+
+  for (auto _ : state) {
+    auto tree = VirtualFileTreeItem::createFileTree(baseDir.string());
+    benchmark::DoNotOptimize(tree);
+  }
+
+  // remove files
+  fs::remove_all(baseDir);
+}
+
 static void findInFiletree(benchmark::State& state)
 {
   CREATE_FILE_TREE_WITH_DEPTH();
@@ -144,6 +184,10 @@ BENCHMARK(addMultipleItemsToFiletree)
     ->UseManualTime()
     ->ArgsProduct({benchmark::CreateDenseRange(1, 5, 1),
                    benchmark::CreateDenseRange(1, 5, 1)});
+BENCHMARK(addMultipleModsFromDisk)
+    ->Name("filetree/addMultipleModsFromDisk")
+    ->RangeMultiplier(10)
+    ->Range(1, 10000);
 BENCHMARK(findInFiletree)->Name("filetree/find")->DenseRange(1, 10);
 BENCHMARK(eraseFromFiletree)
     ->Name("filetree/erase")
