@@ -2,10 +2,12 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <shared_mutex>
 #include <string>
 #include <vector>
 
+class FdMap;
 class VirtualFileTreeItem;
 using FileMap =
     std::map<std::string, std::shared_ptr<VirtualFileTreeItem>, std::less<>>;
@@ -32,6 +34,11 @@ public:
   static std::shared_ptr<VirtualFileTreeItem>
   create(std::string path, std::string realPath,
          std::weak_ptr<VirtualFileTreeItem> parent = {}) noexcept;
+
+  static std::shared_ptr<VirtualFileTreeItem>
+  createFileTree(const std::string& path,
+                 std::optional<std::reference_wrapper<FdMap>> fdMap =
+                     std::nullopt) noexcept(false);
 
   // ctors for use with std::make_shared
   VirtualFileTreeItem(Passkey, std::string path, std::string realPath, Type type,

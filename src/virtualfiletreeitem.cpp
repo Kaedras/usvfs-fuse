@@ -1,6 +1,8 @@
 #include "virtualfiletreeitem.h"
 
+#include "fdmap.h"
 #include "logger.h"
+#include "usvfs.h"
 #include "utils.h"
 
 using namespace std;
@@ -66,6 +68,52 @@ VirtualFileTreeItem::create(std::string path, std::string realPath,
     logger::error("error creating file tree item: {}", ex.what());
     return nullptr;
   }
+}
+
+std::shared_ptr<VirtualFileTreeItem> VirtualFileTreeItem::createFileTree(
+    const std::string& path,
+    std::optional<std::reference_wrapper<FdMap>> fdMap) noexcept(false)
+{
+  logger::debug("creating file tree for {}", path);
+  error_code ec;
+  auto fileTree = create("/", path, dir);
+
+  if (fdMap.has_value()) {
+    int fd = open(path.c_str(), OPEN_FLAGS);
+    if (fd == -1) {
+      throw runtime_error(
+          format("error opening directory {}: {}", path, strerror(errno)));
+    }
+    logger::trace("adding fd {} for {}", fd, path);
+    fdMap.value().get()[path] = fd;
+  }
+
+  fs::recursive_directory_iterator iter(path, ec);
+  if (ec) {
+    throw runtime_error("error creating file tree: "s + ec.message());
+  }
+  for (const fs::directory_entry& entry : iter) {
+    fs::path relative = fs::relative(entry.path(), path);
+
+    logger::debug("adding '{}' to file tree", relative.string());
+    auto newItem =
+        fileTree->add(relative.string(), entry.path().string(),
+                      entry.status().type() == fs::file_type::directory ? dir : file);
+    if (newItem == nullptr) {
+      throw runtime_error("error adding "s + relative.string() + " to file tree");
+    }
+
+    if (entry.is_directory() && fdMap.has_value()) {
+      int fd = open(entry.path().string().c_str(), OPEN_FLAGS);
+      if (fd == -1) {
+        throw runtime_error(
+            format("error opening directory {}: {}", path, strerror(errno)));
+      }
+      logger::trace("adding fd {} for {}", fd, entry.path().string());
+      fdMap.value().get()[entry.path().string()] = fd;
+    }
+  }
+  return fileTree;
 }
 
 VirtualFileTreeItem::VirtualFileTreeItem(

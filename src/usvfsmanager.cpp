@@ -20,48 +20,6 @@ constexpr size_t maxLogFileSize    = 1024 * 1024 * 10;  // 10 MiB
 constexpr size_t maxLogFileCount   = 10;
 constexpr auto defaultMountOptions = "default_permissions,auto_unmount";
 
-shared_ptr<VirtualFileTreeItem> createFileTree(const string& path, FdMap& fdMap)
-{
-  logger::debug("creating file tree for {}", path);
-  error_code ec;
-  auto fileTree = VirtualFileTreeItem::create("/", path, dir);
-
-  int fd = open(path.c_str(), OPEN_FLAGS);
-  if (fd == -1) {
-    throw runtime_error(
-        format("error opening directory {}: {}", path, strerror(errno)));
-  }
-  logger::trace("adding fd {} for {}", fd, path);
-  fdMap[path] = fd;
-
-  fs::recursive_directory_iterator iter(path, ec);
-  if (ec) {
-    throw runtime_error("error creating file tree: "s + ec.message());
-  }
-  for (const fs::directory_entry& entry : iter) {
-    fs::path relative = fs::relative(entry.path(), path);
-
-    logger::debug("adding '{}' to file tree", relative.string());
-    auto newItem =
-        fileTree->add(relative.string(), entry.path().string(),
-                      entry.status().type() == fs::file_type::directory ? dir : file);
-    if (newItem == nullptr) {
-      throw runtime_error("error adding "s + relative.string() + " to file tree");
-    }
-
-    if (entry.is_directory()) {
-      fd = open(entry.path().string().c_str(), OPEN_FLAGS);
-      if (fd == -1) {
-        throw runtime_error(
-            format("error opening directory {}: {}", path, strerror(errno)));
-      }
-      logger::trace("adding fd {} for {}", fd, entry.path().string());
-      fdMap[entry.path().string()] = fd;
-    }
-  }
-  return fileTree;
-}
-
 fuse_operations createOperations() noexcept
 {
   fuse_operations ops = {};
@@ -280,7 +238,7 @@ bool UsvfsManager::usvfsVirtualLinkFile(const std::string& source,
 
   // create the file tree for existing files
   shared_ptr<VirtualFileTreeItem> destinationFileTree =
-      createFileTree(dstParentDir, fdMap);
+      VirtualFileTreeItem::createFileTree(dstParentDir, fdMap);
 
   auto result = destinationFileTree->add(dstFileName, source, file, true);
   if (result == nullptr) {
@@ -378,7 +336,7 @@ bool UsvfsManager::usvfsVirtualLinkDirectoryStatic(const std::string& source,
 
   // create the file tree for existing files
   shared_ptr<VirtualFileTreeItem> destinationFileTree =
-      createFileTree(destination, fdMap);
+      VirtualFileTreeItem::createFileTree(destination, fdMap);
 
   destinationFileTree->merge(sourceFileTree);
 
