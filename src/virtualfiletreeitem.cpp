@@ -51,27 +51,26 @@ std::shared_ptr<VirtualFileTreeItem> VirtualFileTreeItem::createFileTree(
   }
 
   for (const fs::directory_entry& entry : fs::recursive_directory_iterator(path)) {
-    const string full    = entry.path().string();
-    string_view relative = full;
-    relative.remove_prefix(path.size());
+    const string entryPath = entry.path().string();
+    const bool isDirectory = entry.is_directory();
+
+    string_view relative = relativePath(entryPath, path);
 
     logger::debug("adding '{}' to file tree", relative);
-    auto newItem =
-        fileTree->add(relative, entry.path().string(),
-                      entry.status().type() == fs::file_type::directory ? dir : file);
+    auto newItem = fileTree->add(relative, entryPath, isDirectory ? dir : file);
     if (newItem == nullptr) {
       throw runtime_error(
           format("error adding {} to file tree, {}", relative, strerror(errno)));
     }
 
-    if (entry.is_directory() && fdMap.has_value()) {
-      int fd = open(entry.path().string().c_str(), OPEN_FLAGS);
+    if (isDirectory && fdMap.has_value()) {
+      int fd = open(entryPath.c_str(), OPEN_FLAGS);
       if (fd == -1) {
         throw runtime_error(
             format("error opening directory {}: {}", path, strerror(errno)));
       }
-      logger::trace("adding fd {} for {}", fd, entry.path().string());
-      fdMap.value().get()[entry.path().string()] = fd;
+      logger::trace("adding fd {} for {}", fd, entryPath);
+      fdMap.value().get()[entryPath] = fd;
     }
   }
   return fileTree;
