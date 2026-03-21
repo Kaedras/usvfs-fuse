@@ -111,3 +111,11 @@ TEST(utils, isParentPathOf)
   EXPECT_FALSE(isParentPathOf("/a", "/AA"));
   EXPECT_FALSE(isParentPathOf("/aa", "/A"));
 }
+
+TEST(utils, relativePath)
+{
+  EXPECT_EQ(relativePath("/a", "/a"), "");
+  EXPECT_EQ(relativePath("/a/bc/", "/a"), "bc");
+  EXPECT_EQ(relativePath("/a/bc", "/a/"), "bc");
+  EXPECT_EQ(relativePath("/a/bc/", "/a/"), "bc");
+}

@@ -210,6 +210,25 @@ bool isParentPathOf(std::string_view parentPath, std::string_view path) noexcept
   }
 }
 
+std::string_view relativePath(std::string_view path, std::string_view base) noexcept
+{
+  if (path == base) {
+    return {};
+  }
+  // remove trailing slashes
+  if (path.ends_with('/')) {
+    path.remove_suffix(1);
+  }
+  if (base.ends_with('/')) {
+    base.remove_suffix(1);
+  }
+
+  string_view relative = path;
+  relative.remove_prefix(base.size() + 1);
+
+  return relative;
+}
+
 std::vector<std::string_view> createEnv() noexcept
 {
   // determine vector size
