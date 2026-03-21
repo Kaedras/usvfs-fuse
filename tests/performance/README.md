@@ -1,9 +1,11 @@
 # Reducing variance
+
 See [here](https://github.com/google/benchmark/blob/main/docs/reducing_variance.md) how to reduce run variance
 
 # Example run
 
 ## Command:
+
 ```shell
 # set cpu governor to performance
 sudo cpupower frequency-set -g performance
@@ -14,6 +16,7 @@ taskset -c 0 ./usvfs-performance-tests --benchmark_repetitions=20 --benchmark_mi
 ```
 
 ## Output
+
 ```
 2025-12-27T16:37:01+01:00
 Running ./usvfs-performance-tests

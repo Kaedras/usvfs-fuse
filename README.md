@@ -22,6 +22,7 @@ make -j$(nproc)
 ```
 
 optional build options:
+
 - BUILD_TESTING=ON/OFF: build unit tests
 - BUILD_PERF_TESTS=ON/OFF: build performance tests
 
@@ -30,4 +31,5 @@ optional build options:
 - Some functions haven’t been implemented yet (they may not even be required)
 - There may be much room for performance optimisation
 - Unit tests need to be expanded
-- Mounting in a separate user namespace by calling `UsvfsManager::setUseMountNamespace(true)` may require an AppArmor rule
+- Mounting in a separate user namespace by calling `UsvfsManager::setUseMountNamespace(true)` may require an AppArmor
+  rule
