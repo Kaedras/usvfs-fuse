@@ -492,7 +492,7 @@ VirtualFileTreeItem::addInternal(std::string_view path, std::string_view pathLc,
     return it->second;
   }
 
-  it->second = create(string(path), realPath, type, weak_from_this());
+  it->second = create(string(path), std::move(realPath), type, weak_from_this());
   return it->second;
 }
 
