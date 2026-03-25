@@ -551,6 +551,10 @@ int usvfs_readdir(const char* path, void* buf, const fuse_fill_dir_t filler,
   filler(buf, "..", nullptr, 0, fill_flags);
 
   for (const auto& [itemName, item] : tree->getChildren()) {
+    if (item->isDeleted()) {
+      continue;
+    }
+
     GET_PATHS()
 
     struct stat stbuf;
