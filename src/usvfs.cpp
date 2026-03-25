@@ -232,7 +232,10 @@ int usvfs_unlink(const char* path) noexcept
   }
 
   if (!state->fileTree->erase(path, false)) {
-    return -errno;
+    const int e = errno;
+    logger::error("usvfs_unlink(path='{}'): error erasing item from file tree: {}",
+                  path, realPath, strerror(e));
+    return -e;
   }
   return 0;
 }
@@ -246,11 +249,13 @@ int usvfs_rmdir(const char* path) noexcept
 
   // check if the item is a directory
   if (!item->isDir()) {
+    logger::warn("usvfs_rmdir(path='{}'): Not a directory", path);
     return -ENOTDIR;
   }
 
   // check if the directory is empty
   if (!item->isEmpty()) {
+    logger::warn("usvfs_rmdir(path='{}'): Directory not empty", path);
     return -ENOTEMPTY;
   }
 
@@ -476,9 +481,14 @@ int usvfs_release(const char* path, fuse_file_info* fi) noexcept
 {
   logger::trace("usvfs_release(path='{}')", path);
   if (fi && fi->fh != 0) {
-    close(static_cast<int>(fi->fh));
+    if (close(static_cast<int>(fi->fh)) == -1) {
+      const int e = errno;
+      logger::error("usvfs_release(path='{}'): close failed: {}", path, strerror(e));
+      return -e;
+    }
     fi->fh = 0;
   }
+  logger::warn("usvfs_release(path='{}'): file_info has no file descriptor", path);
   return 0;
 }
 
@@ -539,6 +549,7 @@ int usvfs_readdir(const char* path, void* buf, const fuse_fill_dir_t filler,
 
   const auto tree = state->fileTree->find(path);
   if (tree == nullptr) {
+    logger::warn("usvfs_readdir(path='{}'): No such file or directory", path);
     return -ENOENT;
   }
 
@@ -580,9 +591,14 @@ int usvfs_releasedir(const char* path, fuse_file_info* fi) noexcept
 {
   logger::trace("usvfs_releasedir(path='{}')", path);
   if (fi && fi->fh != 0) {
-    close(static_cast<int>(fi->fh));
+    if (close(static_cast<int>(fi->fh)) == -1) {
+      const int e = errno;
+      logger::error("usvfs_releasedir(path='{}'): close failed: {}", path, strerror(e));
+      return -e;
+    }
     fi->fh = 0;
   }
+  logger::warn("usvfs_releasedir(path='{}'): file_info has no file descriptor", path);
   return 0;
 }
 
