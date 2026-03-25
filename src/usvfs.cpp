@@ -487,8 +487,9 @@ int usvfs_release(const char* path, fuse_file_info* fi) noexcept
       return -e;
     }
     fi->fh = 0;
+  } else {
+    logger::warn("usvfs_release(path='{}'): file_info has no file descriptor", path);
   }
-  logger::warn("usvfs_release(path='{}'): file_info has no file descriptor", path);
   return 0;
 }
 
@@ -597,8 +598,9 @@ int usvfs_releasedir(const char* path, fuse_file_info* fi) noexcept
       return -e;
     }
     fi->fh = 0;
+  } else {
+    logger::warn("usvfs_releasedir(path='{}'): file_info has no file descriptor", path);
   }
-  logger::warn("usvfs_releasedir(path='{}'): file_info has no file descriptor", path);
   return 0;
 }
 
