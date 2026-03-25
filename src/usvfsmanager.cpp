@@ -48,9 +48,9 @@ fuse_operations createOperations() noexcept
   // listxattr
   // removexattr
   // ops.opendir = usvfs_opendir;
-  ops.readdir    = usvfs_readdir;
-  ops.releasedir = usvfs_releasedir;
-  ops.fsyncdir   = usvfs_fsyncdir;
+  ops.readdir = usvfs_readdir;
+  // ops.releasedir = usvfs_releasedir;
+  ops.fsyncdir = usvfs_fsyncdir;
   // init
   // destroy
   // access

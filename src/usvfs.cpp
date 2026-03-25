@@ -588,22 +588,6 @@ int usvfs_readdir(const char* path, void* buf, const fuse_fill_dir_t filler,
   return 0;
 }
 
-int usvfs_releasedir(const char* path, fuse_file_info* fi) noexcept
-{
-  logger::trace("usvfs_releasedir(path='{}')", path);
-  if (fi && fi->fh != 0) {
-    if (close(static_cast<int>(fi->fh)) == -1) {
-      const int e = errno;
-      logger::error("usvfs_releasedir(path='{}'): close failed: {}", path, strerror(e));
-      return -e;
-    }
-    fi->fh = 0;
-  } else {
-    logger::warn("usvfs_releasedir(path='{}'): file_info has no file descriptor", path);
-  }
-  return 0;
-}
-
 int usvfs_fsyncdir(const char* path, int, fuse_file_info* fi) noexcept
 {
 #warning STUB
