@@ -116,6 +116,7 @@ void initLogging()
 {
   auto usvfs = UsvfsManager::instance();
   usvfs->setLogLevel(logLevel);
+  usvfs->setLogFile("/tmp/usvfs.log");
 }
 
 void dumpUsvfs()
