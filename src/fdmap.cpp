@@ -1,6 +1,5 @@
 #include "fdmap.h"
 
-#include "logger.h"
 #include "utils.h"
 
 FdMap::FdMap() noexcept = default;
@@ -20,7 +19,7 @@ FdMap::~FdMap() noexcept
 {
   for (const auto& fd : m_map | std::views::values) {
     if (fd >= 0) {
-      logger::trace("closing fd {}", fd);
+      spdlog::trace("closing fd {}", fd);
       close(fd);
     }
   }
@@ -31,7 +30,7 @@ int FdMap::at(const std::string_view path) const noexcept
   try {
     return m_map.at(toLower(path));
   } catch (const std::out_of_range&) {
-    logger::error("error geting dirFd for '{}'", path);
+    spdlog::error("error geting dirFd for '{}'", path);
     return -1;
   }
 }

@@ -213,4 +213,5 @@ private:
   std::vector<std::unique_ptr<MountState>> m_mounts;
   std::vector<std::unique_ptr<MountState>> m_pendingMounts;
   std::vector<pid_t> m_spawnedProcesses;
+  LogLevel m_logLevel = LogLevel::Debug;
 };

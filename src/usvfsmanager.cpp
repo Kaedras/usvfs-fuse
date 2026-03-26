@@ -1,7 +1,6 @@
 #include "usvfs-fuse/usvfsmanager.h"
 
 #include "fdmap.h"
-#include "logger.h"
 #include "loghelpers.h"
 #include "mountstate.h"
 #include "usvfs-fuse/usvfs_version.h"
@@ -15,10 +14,9 @@ namespace fs = std::filesystem;
 namespace
 {
 
-constexpr size_t defaultStackSize  = 1024 * 1024 * 8;   // stack size for cloned child.
-constexpr size_t maxLogFileSize    = 1024 * 1024 * 10;  // 10 MiB
-constexpr size_t maxLogFileCount   = 10;
+constexpr size_t defaultStackSize  = 1024 * 1024 * 8;  // stack size for cloned child.
 constexpr auto defaultMountOptions = "default_permissions,auto_unmount";
+const string logPattern            = "%H:%M:%S.%e [%L] %v";
 
 fuse_operations createOperations() noexcept
 {
@@ -73,7 +71,7 @@ void writeToFile(const string& filename, string_view content) noexcept(false)
 {
   ofstream ofs(filename);
   if (!ofs) {
-    logger::error("failed to open file '{}': {}", filename, strerror(errno));
+    spdlog::error("failed to open file '{}': {}", filename, strerror(errno));
   }
   ofs.exceptions(std::ifstream::failbit | std::ifstream::badbit);
   ofs << content;
@@ -99,17 +97,17 @@ int childFunc(void* arg) noexcept
     // remap gid
     writeToFile("/proc/self/gid_map", format("0 {} 1", state->gid));
   } catch (const exception& e) {
-    logger::error("failed to set up namespace, {}", e.what());
+    spdlog::error("failed to set up namespace, {}", e.what());
     fail();
     return -1;
   }
 
   // enter existing namespace
   if (state->nsFd != -1) {
-    logger::debug("usvfs entering existing namespace");
+    spdlog::debug("usvfs entering existing namespace");
     int result = setns(state->nsFd, CLONE_NEWUSER | CLONE_NEWNS);
     if (result == -1) {
-      logger::error("setns() failed: {}", strerror(errno));
+      spdlog::error("setns() failed: {}", strerror(errno));
       fail();
       return -1;
     }
@@ -129,14 +127,14 @@ int childFunc(void* arg) noexcept
   fuse_opt_free_args(&args);
   if (state->fusePtr == nullptr) {
     // Couldn't create FUSE handle; drop the mount
-    logger::error("fuse_new() failed");
+    spdlog::error("fuse_new() failed");
     fail();
     return -1;
   }
   if (fuse_mount(state->fusePtr, state->mountpoint.c_str()) == -1) {
     fuse_destroy(state->fusePtr);
     state->fusePtr = nullptr;
-    logger::error("fuse_mount() failed for mountpoint {}: {}", state->mountpoint,
+    spdlog::error("fuse_mount() failed for mountpoint {}: {}", state->mountpoint,
                   strerror(errno));
     fail();
     return -1;
@@ -145,12 +143,12 @@ int childFunc(void* arg) noexcept
   // set signal handlers
   fuse_session* session = fuse_get_session(state->fusePtr);
   if (fuse_set_signal_handlers(session) == -1) {
-    logger::error("fuse_set_signal_handlers() failed: {}", strerror(errno));
+    spdlog::error("fuse_set_signal_handlers() failed: {}", strerror(errno));
     fail();
     return -1;
   }
 
-  logger::trace("mount success, notifying parent");
+  spdlog::trace("mount success, notifying parent");
   {
     scoped_lock lock(state->statusData->mtx);
     state->statusData->status = MountState::success;
@@ -185,10 +183,10 @@ bool UsvfsManager::usvfsVirtualLinkFile(const std::string& source,
 {
   scoped_lock lock(m_mtx);
 
-  logger::trace("{}, source: {}, destination: {}", __FUNCTION__, source, destination);
+  spdlog::trace("{}, source: {}, destination: {}", __FUNCTION__, source, destination);
 
   if (fileNameInSkipSuffixes(getFileNameFromPath(source))) {
-    logger::debug("file {} should be skipped", source);
+    spdlog::debug("file {} should be skipped", source);
     return true;
   }
 
@@ -200,17 +198,17 @@ bool UsvfsManager::usvfsVirtualLinkFile(const std::string& source,
   // check if destination exists in pending mounts
   for (const auto& state : m_pendingMounts) {
     if (isParentPathOf(state->mountpoint, dstParentDir)) {
-      logger::debug("mountpoint already exists, adding to file tree");
+      spdlog::debug("mountpoint already exists, adding to file tree");
       // destination exists, add to the existing file tree
       const string relative = destination.substr(state->mountpoint.length());
       auto result           = state->fileTree->add(relative, src, file, true);
       if (result != nullptr) {
         int fd = open(srcParentDir.c_str(), OPEN_FLAGS);
         if (fd == -1) {
-          logger::error("open() failed for {}: {}", srcParentDir, strerror(errno));
+          spdlog::error("open() failed for {}: {}", srcParentDir, strerror(errno));
           return false;
         }
-        logger::trace("adding fd {} for {}", fd, srcParentDir);
+        spdlog::trace("adding fd {} for {}", fd, srcParentDir);
         state->fdMap[srcParentDir] = fd;
       }
       return result != nullptr;
@@ -220,20 +218,20 @@ bool UsvfsManager::usvfsVirtualLinkFile(const std::string& source,
   // open a file descriptor for the source parent directory
   int fd = open(srcParentDir.c_str(), OPEN_FLAGS);
   if (fd == -1) {
-    logger::error("open() failed for {}: {}", srcParentDir, strerror(errno));
+    spdlog::error("open() failed for {}: {}", srcParentDir, strerror(errno));
     return false;
   }
-  logger::trace("adding fd {} for {}", fd, srcParentDir);
+  spdlog::trace("adding fd {} for {}", fd, srcParentDir);
   FdMap fdMap;
   fdMap[srcParentDir] = fd;
 
   // open a file descriptor for the destination parent directory
   fd = open(dstParentDir.c_str(), OPEN_FLAGS);
   if (fd == -1) {
-    logger::error("open() failed for {}: {}", dstParentDir, strerror(errno));
+    spdlog::error("open() failed for {}: {}", dstParentDir, strerror(errno));
     return false;
   }
-  logger::trace("adding fd {} for {}", fd, dstParentDir);
+  spdlog::trace("adding fd {} for {}", fd, dstParentDir);
   fdMap[dstParentDir] = fd;
 
   // create the file tree for existing files
@@ -261,7 +259,7 @@ bool UsvfsManager::usvfsVirtualLinkDirectoryStatic(const std::string& source,
 {
   scoped_lock lock(m_mtx);
 
-  logger::trace("{}, source: {}, destination: {}", __FUNCTION__, source, destination);
+  spdlog::trace("{}, source: {}, destination: {}", __FUNCTION__, source, destination);
 
   const auto src = findCaseInsensitive(source);
   const auto dst = findCaseInsensitive(destination);
@@ -269,10 +267,10 @@ bool UsvfsManager::usvfsVirtualLinkDirectoryStatic(const std::string& source,
   FdMap fdMap;
   int srcFd = open(src.c_str(), OPEN_FLAGS);
   if (srcFd == -1) {
-    logger::error("error opening {}: {}", src, strerror(errno));
+    spdlog::error("error opening {}: {}", src, strerror(errno));
     return false;
   }
-  logger::trace("adding fd {} for {}", srcFd, src);
+  spdlog::trace("adding fd {} for {}", srcFd, src);
   fdMap[src] = srcFd;
 
   // create the file tree
@@ -280,7 +278,7 @@ bool UsvfsManager::usvfsVirtualLinkDirectoryStatic(const std::string& source,
   error_code ec;
   fs::recursive_directory_iterator iter(src, ec);
   if (ec) {
-    logger::error("error creating recursive_directory_iterator: {}", ec.message());
+    spdlog::error("error creating recursive_directory_iterator: {}", ec.message());
     return false;
   }
   for (const fs::directory_entry& entry : iter) {
@@ -293,22 +291,22 @@ bool UsvfsManager::usvfsVirtualLinkDirectoryStatic(const std::string& source,
 
     fs::path relative = fs::relative(entry.path(), src);
 
-    logger::debug("adding '{}' to file tree", relative.string());
+    spdlog::debug("adding '{}' to file tree", relative.string());
     auto newItem = sourceFileTree->add(
         relative.string(), entry.path().string(),
         entry.status().type() == filesystem::file_type::directory ? dir : file);
     if (newItem == nullptr) {
-      logger::error("error adding '{}' to file tree", relative.string());
+      spdlog::error("error adding '{}' to file tree", relative.string());
       return false;
     }
     if (entry.is_directory()) {
       int fd = open(entry.path().string().c_str(), OPEN_FLAGS);
       if (fd == -1) {
-        logger::error("open('{}') failed: {}", entry.path().string(), strerror(errno));
+        spdlog::error("open('{}') failed: {}", entry.path().string(), strerror(errno));
         return false;
       }
       fdMap[entry.path().string()] = fd;
-      logger::trace("adding fd {} for {}, real path: {}", fd, fileName,
+      spdlog::trace("adding fd {} for {}, real path: {}", fd, fileName,
                     newItem->realPath());
     }
   }
@@ -320,7 +318,7 @@ bool UsvfsManager::usvfsVirtualLinkDirectoryStatic(const std::string& source,
       const string relative = destination.substr(state->mountpoint.length());
       auto existingItem     = state->fileTree->find(relative);
       if (existingItem == nullptr) {
-        logger::error("Error merging destination '{}' into existing file tree",
+        spdlog::error("Error merging destination '{}' into existing file tree",
                       destination);
         return false;
       }
@@ -369,11 +367,11 @@ pid_t UsvfsManager::usvfsCreateProcessHooked(
 
   // sanity check
   if (!m_mounts.empty() && m_nsPidFd == -1) {
-    logger::error("usvfs is mounted without any reference to a namespace, aborting");
+    spdlog::error("usvfs is mounted without any reference to a namespace, aborting");
     return false;
   }
 
-  logger::trace("{}: {}, {}, {}", __FUNCTION__, file, arg, workDir);
+  spdlog::trace("{}: {}, {}, {}", __FUNCTION__, file, arg, workDir);
 
   if (!m_executableBlacklist.contains(file)) {
     if (!mountInternal()) {
@@ -382,12 +380,12 @@ pid_t UsvfsManager::usvfsCreateProcessHooked(
   }
 
   const string cmd = "'" + file + "' " + arg;
-  logger::debug("{}: command string: {}", __FUNCTION__, cmd);
+  spdlog::debug("{}: command string: {}", __FUNCTION__, cmd);
 
   int pipefd[2];
 
   if (pipe(pipefd) == -1) {
-    logger::error("pipe failed: {}", strerror(errno));
+    spdlog::error("pipe failed: {}", strerror(errno));
     return -1;
   }
 
@@ -398,7 +396,7 @@ pid_t UsvfsManager::usvfsCreateProcessHooked(
     close(pipefd[0]);
     close(pipefd[1]);
 
-    logger::error("fork failed: {}", strerror(errno));
+    spdlog::error("fork failed: {}", strerror(errno));
     return -1;
   }
 
@@ -411,13 +409,13 @@ pid_t UsvfsManager::usvfsCreateProcessHooked(
 
     if (m_useMountNamespace) {
       if (setns(m_nsPidFd, CLONE_NEWUSER | CLONE_NEWNS) == -1) {
-        logger::error("setns failed: {}", strerror(errno));
+        spdlog::error("setns failed: {}", strerror(errno));
         exit(EXIT_FAILURE);
       }
     }
 
     if (chdir(workDir.c_str()) == -1) {
-      logger::error("chdir failed: {}", strerror(errno));
+      spdlog::error("chdir failed: {}", strerror(errno));
     }
 
     // handle wine dll overrides
@@ -431,7 +429,7 @@ pid_t UsvfsManager::usvfsCreateProcessHooked(
         const string processName =
             wine ? arg.substr(0, firstSpace - 1)
                  : arg.substr(firstSpace, arg.find_first_of(' ') - 1);
-        logger::trace("using process name {}", processName);
+        spdlog::trace("using process name {}", processName);
         const vector<string> applicableLibraries = librariesToForceLoad(processName);
         if (!applicableLibraries.empty()) {
           string dllOverrides = "WINEDLLOVERRIDES=\"";
@@ -440,7 +438,7 @@ pid_t UsvfsManager::usvfsCreateProcessHooked(
           }
           dllOverrides += applicableLibraries.back() + "=n,b\"";
           putenv(const_cast<char*>(dllOverrides.c_str()));
-          logger::debug("adding '{}' to process", dllOverrides);
+          spdlog::debug("adding '{}' to process", dllOverrides);
         }
       }
     }
@@ -456,7 +454,7 @@ pid_t UsvfsManager::usvfsCreateProcessHooked(
     // write error to pipe
     const int error = errno;
     if (write(pipefd[1], &error, sizeof(int)) == -1) {
-      logger::error("Error writing exec error to pipe: {}\n Exec error was {}",
+      spdlog::error("Error writing exec error to pipe: {}\n Exec error was {}",
                     strerror(errno), strerror(error));
     }
 
@@ -480,7 +478,7 @@ pid_t UsvfsManager::usvfsCreateProcessHooked(
     return pid;
   }
 
-  logger::error("execl failed: {}", strerror(error));
+  spdlog::error("execl failed: {}", strerror(error));
   return -1;
 }
 
@@ -498,7 +496,7 @@ std::string UsvfsManager::usvfsCreateVFSDump() const noexcept
   shared_lock lock(m_mtx);
   ostringstream oss;
   string result;
-  logger::debug("dumping {} pending and {} active mounts", m_pendingMounts.size(),
+  spdlog::debug("dumping {} pending and {} active mounts", m_pendingMounts.size(),
                 m_mounts.size());
   for (const auto& state : m_pendingMounts) {
     state->fileTree->dumpTree(oss);
@@ -514,14 +512,14 @@ std::string UsvfsManager::usvfsCreateVFSDump() const noexcept
 void UsvfsManager::usvfsBlacklistExecutable(const std::string& executableName) noexcept
 {
   scoped_lock lock(m_mtx);
-  logger::debug("blacklisting '{}'", executableName);
+  spdlog::debug("blacklisting '{}'", executableName);
   m_executableBlacklist.emplace(executableName);
 }
 
 void UsvfsManager::usvfsClearExecutableBlacklist() noexcept
 {
   scoped_lock lock(m_mtx);
-  logger::debug("clearing blacklist");
+  spdlog::debug("clearing blacklist");
   m_executableBlacklist.clear();
 }
 
@@ -532,14 +530,14 @@ void UsvfsManager::usvfsAddSkipFileSuffix(const std::string& fileSuffix) noexcep
   }
 
   scoped_lock lock(m_mtx);
-  logger::debug("added skip file suffix '{}'", fileSuffix);
+  spdlog::debug("added skip file suffix '{}'", fileSuffix);
   m_skipFileSuffixes.emplace(fileSuffix);
 }
 
 void UsvfsManager::usvfsClearSkipFileSuffixes() noexcept
 {
   scoped_lock lock(m_mtx);
-  logger::debug("clearing skip file suffixes");
+  spdlog::debug("clearing skip file suffixes");
   m_skipFileSuffixes.clear();
 }
 
@@ -550,14 +548,14 @@ void UsvfsManager::usvfsAddSkipDirectory(const std::string& directory) noexcept
   }
 
   scoped_lock lock(m_mtx);
-  logger::debug("added skip directory '{}'", directory);
+  spdlog::debug("added skip directory '{}'", directory);
   m_skipDirectories.emplace(directory);
 }
 
 void UsvfsManager::usvfsClearSkipDirectories() noexcept
 {
   scoped_lock lock(m_mtx);
-  logger::debug("clearing skip directories");
+  spdlog::debug("clearing skip directories");
   m_skipDirectories.clear();
 }
 
@@ -565,7 +563,7 @@ void UsvfsManager::usvfsForceLoadLibrary(const std::string& processName,
                                          const std::string& libraryPath) noexcept
 {
   scoped_lock lock(m_mtx);
-  logger::debug("adding forced library '{}' for process '{}'", libraryPath,
+  spdlog::debug("adding forced library '{}' for process '{}'", libraryPath,
                 processName);
   m_forceLoadLibraries.push_back({processName, libraryPath});
 }
@@ -573,35 +571,33 @@ void UsvfsManager::usvfsForceLoadLibrary(const std::string& processName,
 void UsvfsManager::usvfsClearLibraryForceLoads() noexcept
 {
   scoped_lock lock(m_mtx);
-  logger::debug("clearing forced libraries");
+  spdlog::debug("clearing forced libraries");
   m_forceLoadLibraries.clear();
 }
 
 void UsvfsManager::usvfsPrintDebugInfo() noexcept
 {
 #warning STUB
-  // std::string shmName = "SHM_NAME";
-  // logger::warn("===== debug {} =====",
-  //                            shmName);
+  // spdlog::get("usvfs")->warn("===== debug {} =====",
+  //                            context->redirectionTable().shmName());
   // void* buffer      = nullptr;
   // size_t bufferSize = 0;
-  // // context->redirectionTable().getBuffer(buffer, bufferSize);
-  //
+  // context->redirectionTable().getBuffer(buffer, bufferSize);
   // std::ostringstream temp;
   // for (size_t i = 0; i < bufferSize; ++i) {
   //   temp << std::hex << std::setfill('0') << std::setw(2)
   //        << (unsigned)reinterpret_cast<char*>(buffer)[i] << " ";
   //   if ((i % 16) == 15) {
-  //     logger::info("{}", temp.str());
+  //     spdlog::get("usvfs")->info("{}", temp.str());
   //     temp.str("");
   //     temp.clear();
   //   }
   // }
   // if (!temp.str().empty()) {
-  //   logger::info("{}", temp.str());
+  //   spdlog::get("usvfs")->info("{}", temp.str());
   // }
-  // logger::warn("===== / debug {} =====",
-  //                            shmName);
+  // spdlog::get("usvfs")->warn("===== / debug {} =====",
+  //                            context->redirectionTable().shmName());
 }
 
 void UsvfsManager::setDebugMode(bool value) noexcept
@@ -619,23 +615,26 @@ void UsvfsManager::setProcessDelay(std::chrono::milliseconds processDelay) noexc
 void UsvfsManager::setLogLevel(LogLevel logLevel) noexcept
 {
   scoped_lock lock(m_mtx);
-  spdlog::get("usvfs")->set_level(ConvertLogLevel(logLevel));
+  m_logLevel = logLevel;
+  spdlog::set_level(ConvertLogLevel(logLevel));
 }
 
 void UsvfsManager::setLogFile(const std::string& logFile) noexcept
 {
   scoped_lock lock(m_mtx);
 
-  auto logger = spdlog::get("usvfs");
-  auto sinks  = logger->sinks();
+  auto stdoutSink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+  auto fileSink   = std::make_shared<spdlog::sinks::basic_file_sink_mt>(logFile);
 
-  auto fileSink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(logFile);
+  stdoutSink->set_pattern(logPattern);
+  fileSink->set_pattern(logPattern);
+  stdoutSink->set_level(spdlog::level::info);
   fileSink->set_level(spdlog::level::trace);
-  sinks.emplace_back(fileSink);
 
-  auto newLogger = make_shared<spdlog::logger>("usvfs", sinks.begin(), sinks.end());
-
-  spdlog::register_or_replace(newLogger);
+  vector<spdlog::sink_ptr> sinks{stdoutSink, fileSink};
+  auto logger = std::make_shared<spdlog::logger>("usvfs", sinks.begin(), sinks.end());
+  logger->set_level(ConvertLogLevel(m_logLevel));
+  spdlog::set_default_logger(logger);
 }
 
 const char* UsvfsManager::usvfsVersionString() noexcept
@@ -656,34 +655,34 @@ bool UsvfsManager::unmount() noexcept
     return true;
   }
 
-  logger::info("unmounting {} mounts", m_mounts.size());
+  spdlog::info("unmounting {} mounts", m_mounts.size());
 
   if (anyProcessRunning()) {
-    logger::warn("there is still at least one process running, not unmounting");
+    spdlog::warn("there is still at least one process running, not unmounting");
     return false;
   }
 
   for (std::unique_ptr<MountState>& mount : m_mounts) {
-    logger::debug("unmounting {}", mount->mountpoint);
+    spdlog::debug("unmounting {}", mount->mountpoint);
 
     // unmount fuse
     if (m_useMountNamespace) {
       if (mount->pidFd == -1) {
-        logger::warn("mount pidFd is -1");
+        spdlog::warn("mount pidFd is -1");
         return false;
       }
 
       siginfo_t info;
       if (pidfd_send_signal(mount->pidFd, SIGINT, nullptr, 0) == -1) {
-        logger::error("pidfd_send_signal() failed: {}", strerror(errno));
+        spdlog::error("pidfd_send_signal() failed: {}", strerror(errno));
         return false;
       }
       // wait for the child to exit
       if (waitid(P_PIDFD, mount->pidFd, &info, WEXITED) == -1) {
-        logger::error("waitid() failed: {}", strerror(errno));
+        spdlog::error("waitid() failed: {}", strerror(errno));
         return false;
       }
-      logger::debug("usvfs exited with code {}", info.si_status);
+      spdlog::debug("usvfs exited with code {}", info.si_status);
     } else {
       fuse_unmount(mount->fusePtr);
       fuse_destroy(mount->fusePtr);
@@ -711,12 +710,10 @@ UsvfsManager::UsvfsManager() noexcept
 {
   umask(0);
 
-  auto logger = spdlog::get("usvfs");
-  if (logger == nullptr) {
-    logger = spdlog::create<spdlog::sinks::stdout_color_sink_mt>("usvfs");
-    logger->set_pattern("%H:%M:%S.%e [%L] %v");
-    logger->set_level(spdlog::level::info);
-  }
+  auto logger = spdlog::create<spdlog::sinks::stdout_color_sink_mt>("usvfs");
+  logger->set_pattern(logPattern);
+  logger->set_level(spdlog::level::debug);
+  spdlog::set_default_logger(logger);
 }
 
 void UsvfsManager::run_fuse(std::unique_ptr<MountState> state)
@@ -744,14 +741,14 @@ void UsvfsManager::run_fuse(std::unique_ptr<MountState> state)
   raw->fusePtr = fuse_new(&args, &ops, sizeof(fuse_operations), raw);
   fuse_opt_free_args(&args);
   if (!raw->fusePtr) {
-    logger::error("fuse_new() failed for mountpoint {}", raw->mountpoint);
+    spdlog::error("fuse_new() failed for mountpoint {}", raw->mountpoint);
     fail();
     return;
   }
   if (fuse_mount(raw->fusePtr, raw->mountpoint.c_str()) == -1) {
     fuse_destroy(raw->fusePtr);
     raw->fusePtr = nullptr;
-    logger::error("fuse_mount() failed for mountpoint {}", raw->mountpoint);
+    spdlog::error("fuse_mount() failed for mountpoint {}", raw->mountpoint);
     fail();
     return;
   }
@@ -778,7 +775,7 @@ bool UsvfsManager::fileNameInSkipSuffixes(
 {
   return ranges::any_of(skipSuffixes, [&](const std::string& suffix) {
     if (iendsWith(fileName, suffix)) {
-      logger::debug("file '{}' should be skipped, matches file suffix '{}'", fileName,
+      spdlog::debug("file '{}' should be skipped, matches file suffix '{}'", fileName,
                     suffix);
       return true;
     }
@@ -798,7 +795,7 @@ bool UsvfsManager::fileNameInSkipDirectories(
 {
   return ranges::any_of(skipDirectories, [&](const std::string& suffix) {
     if (iendsWith(directoryName, suffix)) {
-      logger::debug("directory '{}' should be skipped", directoryName);
+      spdlog::debug("directory '{}' should be skipped", directoryName);
       return true;
     }
     return false;
@@ -835,7 +832,7 @@ std::string UsvfsManager::findCaseInsensitive(const std::string& path) noexcept
     const auto entryFileName = entry.path().filename().string();
     if (iequals(entryFileName, fileName)) {
       if (entryFileName != fileName) {
-        logger::trace("case insensitive lookup for '{}' replaced '{}' with '{}'", path,
+        spdlog::trace("case insensitive lookup for '{}' replaced '{}' with '{}'", path,
                       fileName, entryFileName);
       }
       return entry.path().string();
@@ -852,7 +849,7 @@ bool UsvfsManager::mountInternal() noexcept
     return true;
   }
 
-  logger::info("mounting {} mount points", m_pendingMounts.size());
+  spdlog::info("mounting {} mount points", m_pendingMounts.size());
 
   // move pending to a local list
   vector<unique_ptr<MountState>> toMount;
@@ -871,7 +868,7 @@ bool UsvfsManager::mountInternal() noexcept
           mmap(nullptr, sizeof(MountState::StatusData), PROT_READ | PROT_WRITE,
                MAP_SHARED | MAP_ANONYMOUS, -1, 0));
       if (raw->statusData == MAP_FAILED) {
-        logger::error("error creating shared memory for mount state: {}",
+        spdlog::error("error creating shared memory for mount state: {}",
                       strerror(errno));
         return false;
       }
@@ -880,10 +877,10 @@ bool UsvfsManager::mountInternal() noexcept
       rlimit limit;
       if (getrlimit(RLIMIT_STACK, &limit) == 0) {
         stackSize = min(limit.rlim_cur, defaultStackSize);
-        logger::trace("setting stack size to {}", stackSize);
+        spdlog::trace("setting stack size to {}", stackSize);
       } else {
         stackSize = defaultStackSize;
-        logger::trace("error getting stack size limit: {}\nusing 8 MiB",
+        spdlog::trace("error getting stack size limit: {}\nusing 8 MiB",
                       strerror(errno));
       }
 
@@ -892,7 +889,7 @@ bool UsvfsManager::mountInternal() noexcept
           static_cast<char*>(mmap(nullptr, stackSize, PROT_READ | PROT_WRITE,
                                   MAP_PRIVATE | MAP_ANONYMOUS | MAP_STACK, -1, 0));
       if (state->stack == MAP_FAILED) {
-        logger::error("mmap() failed: {}", strerror(errno));
+        spdlog::error("mmap() failed: {}", strerror(errno));
         return false;
       }
 
@@ -914,7 +911,7 @@ bool UsvfsManager::mountInternal() noexcept
                          flags | SIGCHLD | CLONE_PIDFD | CLONE_FILES | CLONE_VM,
                          state.get(), &state->pidFd);
       if (state->pidFd == -1 || result == -1) {
-        logger::error("clone() failed: {}", strerror(errno));
+        spdlog::error("clone() failed: {}", strerror(errno));
         return false;
       }
 
@@ -924,7 +921,7 @@ bool UsvfsManager::mountInternal() noexcept
         return raw->statusData->status != MountState::unknown;
       });
       if (raw->statusData->status == MountState::failure) {
-        logger::error("mount failed");
+        spdlog::error("mount failed");
         return false;
       }
 
@@ -933,13 +930,13 @@ bool UsvfsManager::mountInternal() noexcept
         m_nsPidFd = state->pidFd;
       }
 
-      logger::info("usvfs mounted in pid {}", pidfd_getpid(state->pidFd));
+      spdlog::info("usvfs mounted in pid {}", pidfd_getpid(state->pidFd));
       m_mounts.emplace_back(std::move(state));
     } else {
       try {
         raw->statusData = new MountState::StatusData();
       } catch (const bad_alloc& ex) {
-        logger::error("error allocating memory for mount state: {}", ex.what());
+        spdlog::error("error allocating memory for mount state: {}", ex.what());
         return false;
       }
       thread t([s = std::move(state), this]() mutable {
@@ -953,11 +950,11 @@ bool UsvfsManager::mountInternal() noexcept
         return raw->statusData->status != MountState::unknown;
       });
       if (raw->statusData->status == MountState::failure) {
-        logger::error("mount failed");
+        spdlog::error("mount failed");
         return false;
       }
 
-      logger::info("successfully mounted {}", raw->mountpoint);
+      spdlog::info("successfully mounted {}", raw->mountpoint);
     }
   }
   return true;

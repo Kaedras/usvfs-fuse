@@ -1,7 +1,6 @@
 #include "virtualfiletreeitem.h"
 
 #include "fdmap.h"
-#include "logger.h"
 #include "usvfs.h"
 #include "utils.h"
 
@@ -16,7 +15,7 @@ VirtualFileTreeItem::create(std::string path, std::string realPath, Type type,
     return make_shared<VirtualFileTreeItem>(
         Passkey{}, std::move(path), std::move(realPath), type, std::move(parent));
   } catch (const exception& ex) {
-    logger::error("error creating file tree item: {}", ex.what());
+    spdlog::error("error creating file tree item: {}", ex.what());
     return nullptr;
   }
 }
@@ -29,7 +28,7 @@ VirtualFileTreeItem::create(std::string path, std::string realPath,
     return make_shared<VirtualFileTreeItem>(Passkey{}, std::move(path),
                                             std::move(realPath), std::move(parent));
   } catch (const exception& ex) {
-    logger::error("error creating file tree item: {}", ex.what());
+    spdlog::error("error creating file tree item: {}", ex.what());
     return nullptr;
   }
 }
@@ -37,7 +36,7 @@ std::shared_ptr<VirtualFileTreeItem> VirtualFileTreeItem::createFileTree(
     const std::string& path,
     std::optional<std::reference_wrapper<FdMap>> fdMap) noexcept(false)
 {
-  logger::debug("creating file tree for {}", path);
+  spdlog::debug("creating file tree for {}", path);
   auto fileTree = create("/", path, dir);
 
   if (fdMap.has_value()) {
@@ -46,7 +45,7 @@ std::shared_ptr<VirtualFileTreeItem> VirtualFileTreeItem::createFileTree(
       throw runtime_error(
           format("error opening directory {}: {}", path, strerror(errno)));
     }
-    logger::trace("adding fd {} for {}", fd, path);
+    spdlog::trace("adding fd {} for {}", fd, path);
     fdMap.value().get()[path] = fd;
   }
 
@@ -56,7 +55,7 @@ std::shared_ptr<VirtualFileTreeItem> VirtualFileTreeItem::createFileTree(
 
     string_view relative = relativePath(entryPath, path);
 
-    logger::debug("adding '{}' to file tree", relative);
+    spdlog::debug("adding '{}' to file tree", relative);
     auto newItem = fileTree->add(relative, entryPath, isDirectory ? dir : file);
     if (newItem == nullptr) {
       throw runtime_error(
@@ -69,7 +68,7 @@ std::shared_ptr<VirtualFileTreeItem> VirtualFileTreeItem::createFileTree(
         throw runtime_error(
             format("error opening directory {}: {}", path, strerror(errno)));
       }
-      logger::trace("adding fd {} for {}", fd, entryPath);
+      spdlog::trace("adding fd {} for {}", fd, entryPath);
       fdMap.value().get()[entryPath] = fd;
     }
   }
@@ -120,13 +119,13 @@ VirtualFileTreeItem::add(std::string_view path, std::string realPath, Type type,
   unique_lock lock(m_mtx);
 
   if (path.empty() || realPath.empty()) {
-    logger::error("attempted to add an entry with empty path!");
+    spdlog::error("attempted to add an entry with empty path!");
     errno = EINVAL;
     return nullptr;
   }
 
   if (path == "/") {
-    logger::error("attempted to add an entry with path '/'");
+    spdlog::error("attempted to add an entry with path '/'");
     errno = EINVAL;
     return nullptr;
   }
@@ -199,7 +198,7 @@ bool VirtualFileTreeItem::erase(std::string_view path, bool reallyErase) noexcep
   unique_lock lock(m_mtx);
 
   if (path.empty()) {
-    logger::error("erase: path must not be empty");
+    spdlog::error("erase: path must not be empty");
     errno = EINVAL;
     return false;
   }
@@ -253,7 +252,7 @@ const std::string& VirtualFileTreeItem::realPath() const noexcept
 void VirtualFileTreeItem::setName(std::string name) noexcept
 {
   if (name.empty()) {
-    logger::error("setName: name must not be empty");
+    spdlog::error("setName: name must not be empty");
     errno = EINVAL;
     return;
   }
@@ -264,7 +263,7 @@ void VirtualFileTreeItem::setName(std::string name) noexcept
 void VirtualFileTreeItem::setRealPath(std::string realPath) noexcept
 {
   if (realPath.empty()) {
-    logger::error("attempted to call {} with an empty parameter", __FUNCTION__);
+    spdlog::error("attempted to call {} with an empty parameter", __FUNCTION__);
     errno = EINVAL;
     return;
   }
@@ -363,7 +362,7 @@ VirtualFileTreeItem::VirtualFileTreeItem(
     : m_fileName(std::move(path)), m_realPath(std::move(realPath)),
       m_parent(std::move(parent)), m_type(type), m_deleted(false)
 {
-  logger::trace("VirtualFileTreeItem(path='{}', realPath= '{}')", m_fileName,
+  spdlog::trace("VirtualFileTreeItem(path='{}', realPath= '{}')", m_fileName,
                 m_realPath);
   if (m_fileName.empty()) {
     errno = EINVAL;
@@ -408,7 +407,7 @@ VirtualFileTreeItem::findInternal(std::string_view path, bool includeDeleted) no
     const string_view subDirectory = path.substr(0, pos);
     const auto it                  = m_children.find(subDirectory);
     if (it == m_children.end()) {
-      logger::debug("could not find '{}'", path);
+      spdlog::debug("could not find '{}'", path);
       errno = ENOENT;
       return nullptr;
     }
@@ -419,7 +418,7 @@ VirtualFileTreeItem::findInternal(std::string_view path, bool includeDeleted) no
       if (!it->second->isDeleted() || includeDeleted) {
         return it->second;
       }
-      logger::debug("'{}' has been deleted, returning nullptr", path);
+      spdlog::debug("'{}' has been deleted, returning nullptr", path);
       errno = ENOENT;
       return nullptr;
     }
@@ -429,7 +428,7 @@ VirtualFileTreeItem::findInternal(std::string_view path, bool includeDeleted) no
   // path is not in a subdirectory
   const auto it = m_children.find(path);
   if (it == m_children.end()) {
-    logger::debug("could not find '{}'", path);
+    spdlog::debug("could not find '{}'", path);
     errno = ENOENT;
     return nullptr;
   }
@@ -437,7 +436,7 @@ VirtualFileTreeItem::findInternal(std::string_view path, bool includeDeleted) no
   if (!it->second->isDeleted() || includeDeleted) {
     return it->second;
   }
-  logger::debug("'{}' has been deleted, returning nullptr", path);
+  spdlog::debug("'{}' has been deleted, returning nullptr", path);
   errno = ENOENT;
   return nullptr;
 }
@@ -464,7 +463,7 @@ VirtualFileTreeItem::addInternal(std::string_view path, std::string_view pathLc,
     auto foundEntry = m_children.find(subDirectory);
 
     if (foundEntry == m_children.end()) {
-      logger::error("subdirectory does not exist");
+      spdlog::error("subdirectory does not exist");
       errno = ENOENT;
       return nullptr;
     }
@@ -475,7 +474,7 @@ VirtualFileTreeItem::addInternal(std::string_view path, std::string_view pathLc,
   auto [it, wasInserted] = m_children.try_emplace(string(pathLc), nullptr);
   if (!wasInserted) {
     if (it->second->isDeleted()) {
-      logger::debug("marking item '{}' as not deleted, updating real path to '{}'",
+      spdlog::debug("marking item '{}' as not deleted, updating real path to '{}'",
                     path, realPath);
       it->second->setDeleted(false);
       it->second->m_realPath = realPath;
@@ -483,11 +482,11 @@ VirtualFileTreeItem::addInternal(std::string_view path, std::string_view pathLc,
       return it->second;
     }
     if (!updateExisting) {
-      logger::error("item '{}' already exists and should not be updated", path);
+      spdlog::error("item '{}' already exists and should not be updated", path);
       errno = EEXIST;
       return nullptr;
     }
-    logger::debug("setting real path of existing item '{}' to '{}'", path, realPath);
+    spdlog::debug("setting real path of existing item '{}' to '{}'", path, realPath);
     it->second->m_realPath = realPath;
 
     return it->second;
@@ -514,7 +513,7 @@ bool VirtualFileTreeItem::eraseInternal(std::string_view path,
 
     if (it == m_children.end()) {
       errno = ENOENT;
-      logger::debug("subdirectory {} not found", subDir);
+      spdlog::debug("subdirectory {} not found", subDir);
       return false;
     }
 
@@ -526,7 +525,7 @@ bool VirtualFileTreeItem::eraseInternal(std::string_view path,
   // check if the entry exists
   if (it == m_children.end()) {
     errno = ENOENT;
-    logger::debug("{} not found", path);
+    spdlog::debug("{} not found", path);
     return false;
   }
 
