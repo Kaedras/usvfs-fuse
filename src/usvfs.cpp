@@ -445,7 +445,7 @@ int usvfs_truncate(const char* path, off_t size, fuse_file_info* fi) noexcept
 
 int usvfs_open(const char* path, fuse_file_info* fi) noexcept
 {
-  logger::trace("usvfs_open(path='{}', flags={})", path, fi->flags);
+  logger::trace("usvfs_open(path='{}', flags={})", path, openFlagsToString(fi->flags));
   GET_STATE()
   FIND_ITEM()
   GET_PATHS()

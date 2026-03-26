@@ -2,6 +2,8 @@
 
 #include "../../src/utils.h"
 
+#include <fcntl.h>
+
 using namespace std;
 
 TEST(utils, iequals)
@@ -118,4 +120,13 @@ TEST(utils, relativePath)
   EXPECT_EQ(relativePath("/a/bc/", "/a"), "bc");
   EXPECT_EQ(relativePath("/a/bc", "/a/"), "bc");
   EXPECT_EQ(relativePath("/a/bc/", "/a/"), "bc");
+}
+
+TEST(utils, openFlagsToString)
+{
+  EXPECT_EQ(openFlagsToString(0), "");
+  EXPECT_EQ(openFlagsToString(O_APPEND), "O_APPEND");
+  EXPECT_EQ(openFlagsToString(O_APPEND | O_CREAT), "O_APPEND | O_CREAT");
+  EXPECT_EQ(openFlagsToString(O_APPEND | O_CREAT | O_DIRECT | O_EXCL),
+            "O_APPEND | O_CREAT | O_DIRECT | O_EXCL");
 }

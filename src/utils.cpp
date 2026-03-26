@@ -229,6 +229,55 @@ std::string_view relativePath(std::string_view path, std::string_view base) noex
   return relative;
 }
 
+string openFlagsToString(int flags) noexcept
+{
+#define CHECK_FLAG(flag)                                                               \
+  if (flags & flag) {                                                                  \
+    flagStrings.emplace_back(#flag);                                                   \
+  }
+
+  static constexpr int maxFlagCount = 18;
+
+  vector<string> flagStrings;
+  flagStrings.reserve(maxFlagCount);
+
+  CHECK_FLAG(O_APPEND)
+  CHECK_FLAG(O_ASYNC)
+  CHECK_FLAG(O_CLOEXEC)
+  CHECK_FLAG(O_CREAT)
+  CHECK_FLAG(O_DIRECT)
+  CHECK_FLAG(O_DIRECTORY)
+  CHECK_FLAG(O_DSYNC)
+  CHECK_FLAG(O_EXCL)
+  CHECK_FLAG(O_LARGEFILE)
+  CHECK_FLAG(O_NOATIME)
+  CHECK_FLAG(O_NOCTTY)
+  CHECK_FLAG(O_NOFOLLOW)
+  CHECK_FLAG(O_NONBLOCK)
+  CHECK_FLAG(O_NDELAY)
+  CHECK_FLAG(O_PATH)
+  CHECK_FLAG(O_SYNC)
+  CHECK_FLAG(O_TMPFILE)
+  CHECK_FLAG(O_TRUNC)
+
+  if (flagStrings.empty()) {
+    return {};
+  }
+
+  if (flagStrings.size() == 1) {
+    return flagStrings.front();
+  }
+
+  string result;
+  for (size_t i = 0; i < flagStrings.size() - 1; ++i) {
+    result += flagStrings.at(i) + " | ";
+  }
+  result += flagStrings.at(flagStrings.size() - 1);
+
+  return result;
+#undef CHECK_FLAG
+}
+
 std::vector<std::string_view> createEnv() noexcept
 {
   // determine vector size
