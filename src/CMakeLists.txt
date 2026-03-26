@@ -12,7 +12,6 @@ target_sources(usvfs-fuse
         PRIVATE
             fdmap.cpp
             fdmap.h
-            logger.h
             loghelpers.cpp
             loghelpers.h
             mountstate.cpp
