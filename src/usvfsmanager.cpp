@@ -626,19 +626,16 @@ void UsvfsManager::setLogFile(const std::string& logFile) noexcept
 {
   scoped_lock lock(m_mtx);
 
-  if (m_fileSink == nullptr) {
-    shared_ptr<spdlog::logger> logger = spdlog::get("usvfs");
-    vector<spdlog::sink_ptr> sinks    = logger->sinks();
+  auto logger = spdlog::get("usvfs");
+  auto sinks  = logger->sinks();
 
-    m_fileSink = make_shared<spdlog::sinks::rotating_file_sink_mt>(
-        logFile, maxLogFileSize, maxLogFileCount, true);
-    m_fileSink->set_level(spdlog::level::debug);
-    sinks.emplace_back(m_fileSink);
+  auto fileSink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(logFile);
+  fileSink->set_level(spdlog::level::trace);
+  sinks.emplace_back(fileSink);
 
-    logger = make_shared<spdlog::logger>("usvfs", sinks.begin(), sinks.end());
+  auto newLogger = make_shared<spdlog::logger>("usvfs", sinks.begin(), sinks.end());
 
-    spdlog::register_or_replace(logger);
-  }
+  spdlog::register_or_replace(newLogger);
 }
 
 const char* UsvfsManager::usvfsVersionString() noexcept

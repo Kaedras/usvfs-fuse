@@ -7,16 +7,6 @@
 // forward declarations
 struct MountState;
 
-namespace spdlog
-{
-class logger;
-namespace sinks
-{
-  template <typename Mutex>
-  class rotating_file_sink;
-}  // namespace sinks
-}  // namespace spdlog
-
 namespace linkFlag
 {
 static constexpr unsigned int CREATE_TARGET =
@@ -223,5 +213,4 @@ private:
   std::vector<std::unique_ptr<MountState>> m_mounts;
   std::vector<std::unique_ptr<MountState>> m_pendingMounts;
   std::vector<pid_t> m_spawnedProcesses;
-  std::shared_ptr<spdlog::sinks::rotating_file_sink<std::mutex>> m_fileSink;
 };
