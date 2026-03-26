@@ -451,36 +451,11 @@ int usvfs_open(const char* path, fuse_file_info* fi) noexcept
 {
   spdlog::trace("usvfs_open(path='{}', flags={})", path, openFlagsToString(fi->flags));
   GET_STATE()
+  FIND_ITEM()
+  GET_PATHS()
 
-  string realPath;
-
-  auto item = state->fileTree->find(path);
-  if (item == nullptr) {
-    if (fi->flags & O_CREAT) {
-      if (state->upperDir.empty()) {
-        auto parentPath = getParentPath(path);
-        auto parentItem = state->fileTree->find(parentPath);
-        if (parentItem == nullptr) {
-          spdlog::error(
-              "usvfs_create(path='{}'): target parent directory '{}' does not "
-              "exist in file tree",
-              path, parentPath);
-          return -ENOENT;
-        }
-        realPath = parentItem->realPath() + path;
-      } else {
-        realPath = state->upperDir + path;
-      }
-    } else {
-      return -ENOENT;
-    }
-  } else {
-    realPath = item->realPath();
-  }
-
-  const string parentPath = getParentPath(realPath);
-  const string fileName   = getFileNameFromPath(realPath);
-
+  spdlog::trace("openat(fdPath='{}', path='{}', flags='{}')", path, fileName,
+                openFlagsToString(fi->flags));
   const int result = openat(state->fdMap.at(parentPath), fileName.c_str(), fi->flags);
   if (result == -1) {
     const int e = errno;
@@ -489,21 +464,6 @@ int usvfs_open(const char* path, fuse_file_info* fi) noexcept
   }
 
   fi->fh = result;
-
-  // add the file to the file tree if `O_CREAT` is set and it does not exist
-  if (fi->flags & O_CREAT) {
-    // try to undelete item
-    if (item != nullptr && item->isDeleted()) {
-      item->setDeleted(false);
-    }
-    // try creating a new item
-    else if (state->fileTree->add(path, realPath) == nullptr) {
-      const int e = errno;
-      spdlog::error(
-          "usvfs_open(path='{}', O_CREAT): error adding item to file tree: {}", path,
-          strerror(e));
-    }
-  }
 
   return 0;
 }
@@ -644,24 +604,45 @@ int usvfs_fsyncdir(const char* path, int, fuse_file_info* fi) noexcept
 
 int usvfs_create(const char* path, mode_t mode, fuse_file_info* fi) noexcept
 {
-  spdlog::trace("usvfs_create(path='{}', mode={})", path, mode);
+  spdlog::trace("usvfs_create(path='{}', mode=0{:o}, flags='{}')", path, mode,
+                openFlagsToString(fi->flags));
   GET_STATE()
 
-  const string fileName   = getFileNameFromPath(path);
-  const string parentPath = getParentPath(path);
+  string fileName;
   string realParentPath;
-  if (state->upperDir.empty()) {
-    auto parentItem = state->fileTree->find(parentPath);
-    if (parentItem == nullptr) {
-      spdlog::error("usvfs_create(path='{}'): target parent directory '{}' does not "
-                    "exist in file tree",
-                    path, parentPath);
-      return -ENOENT;
+
+  // check if there is a deleted item with this path
+  auto item = state->fileTree->find(path);
+  if (item != nullptr) {
+    // sanity check, this should not happen because `getattr` is usually called before
+    // this
+    if (!item->isDeleted()) {
+      spdlog::error("usvfs_create(path='{}'): File exists", path);
+      return -EEXIST;
     }
-    realParentPath = parentItem->realPath();
+
+    spdlog::debug("Rerouting file creation to original location of deleted file: {}",
+                  item->realPath());
+    fileName       = item->fileName();
+    realParentPath = getParentPath(item->realPath());
+
   } else {
-    realParentPath = state->upperDir + parentPath;
+    fileName                = getFileNameFromPath(path);
+    const string parentPath = getParentPath(path);
+    if (state->upperDir.empty()) {
+      auto parentItem = state->fileTree->find(parentPath);
+      if (parentItem == nullptr) {
+        spdlog::error("usvfs_create(path='{}'): target parent directory '{}' does not "
+                      "exist in file tree",
+                      path, parentPath);
+        return -ENOENT;
+      }
+      realParentPath = parentItem->realPath();
+    } else {
+      realParentPath = state->upperDir + parentPath;
+    }
   }
+
   int parentFd = state->fdMap.at(realParentPath);
   if (parentFd == -1 && !state->upperDir.empty()) {
     // parent path does not exist, this should only happen when upperDir is used
@@ -671,6 +652,8 @@ int usvfs_create(const char* path, mode_t mode, fuse_file_info* fi) noexcept
     }
   }
 
+  spdlog::trace("openat(fdPath='{}', path='{}', flags='{}')", realParentPath, fileName,
+                openFlagsToString(fi->flags));
   const int fd = openat(parentFd, fileName.c_str(), fi->flags, mode);
   if (fd < 0) {
     const int e = errno;
@@ -681,7 +664,6 @@ int usvfs_create(const char* path, mode_t mode, fuse_file_info* fi) noexcept
 
   fi->fh = fd;
 
-  auto item = state->fileTree->find(path);
   if (item == nullptr) {
     const auto newItem =
         state->fileTree->add(path, realParentPath + "/" + fileName, file);
@@ -691,6 +673,8 @@ int usvfs_create(const char* path, mode_t mode, fuse_file_info* fi) noexcept
                     path, strerror(e));
       return -e;
     }
+  } else {
+    item->setDeleted(false);
   }
 
   return 0;
