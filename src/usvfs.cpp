@@ -447,8 +447,35 @@ int usvfs_open(const char* path, fuse_file_info* fi) noexcept
 {
   logger::trace("usvfs_open(path='{}', flags={})", path, openFlagsToString(fi->flags));
   GET_STATE()
-  FIND_ITEM()
-  GET_PATHS()
+
+  string realPath;
+
+  auto item = state->fileTree->find(path);
+  if (item == nullptr) {
+    if (fi->flags & O_CREAT) {
+      if (state->upperDir.empty()) {
+        auto parentPath = getParentPath(path);
+        auto parentItem = state->fileTree->find(parentPath);
+        if (parentItem == nullptr) {
+          logger::error(
+              "usvfs_create(path='{}'): target parent directory '{}' does not "
+              "exist in file tree",
+              path, parentPath);
+          return -ENOENT;
+        }
+        realPath = parentItem->realPath() + path;
+      } else {
+        realPath = state->upperDir + path;
+      }
+    } else {
+      return -ENOENT;
+    }
+  } else {
+    realPath = item->realPath();
+  }
+
+  const string parentPath = getParentPath(realPath);
+  const string fileName   = getFileNameFromPath(realPath);
 
   const int result = openat(state->fdMap.at(parentPath), fileName.c_str(), fi->flags);
   if (result == -1) {
@@ -458,6 +485,21 @@ int usvfs_open(const char* path, fuse_file_info* fi) noexcept
   }
 
   fi->fh = result;
+
+  // add the file to the file tree if `O_CREAT` is set and it does not exist
+  if (fi->flags & O_CREAT) {
+    // try to undelete item
+    if (item != nullptr && item->isDeleted()) {
+      item->setDeleted(false);
+    }
+    // try creating a new item
+    else if (state->fileTree->add(path, realPath) == nullptr) {
+      const int e = errno;
+      logger::error(
+          "usvfs_open(path='{}', O_CREAT): error adding item to file tree: {}", path,
+          strerror(e));
+    }
+  }
 
   return 0;
 }

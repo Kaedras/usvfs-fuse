@@ -494,6 +494,10 @@ TEST_F(UsvfsTest, create)
   ASSERT_GT(fd = open((mnt / "new_dir/testfile.txt").c_str(), oflags, mode), -1)
       << "error: " << strerror(errno);
   EXPECT_EQ(close(fd), 0);
+
+  // try to delete and recreate a file
+  ASSERT_EQ(unlink((mnt / "new_file.txt").c_str()), 0) << "error: " << strerror(errno);
+  createFile(mnt / "new_file.txt");
 }
 
 TEST_F(UsvfsTest, createCaseInsensitive)
@@ -518,6 +522,10 @@ TEST_F(UsvfsTest, createCaseInsensitive)
   ASSERT_GT(fd = open((mnt / "new_dir/testfile.txt").c_str(), oflags, mode), -1)
       << "error: " << strerror(errno);
   EXPECT_EQ(close(fd), 0);
+
+  // try to delete and recreate a file
+  ASSERT_EQ(unlink((mnt / "new_file.txt").c_str()), 0) << "error: " << strerror(errno);
+  createFile(mnt / "new_file.txt", mnt / "NEW_FILE.TXT");
 }
 
 TEST_F(UsvfsTest, statfs)
