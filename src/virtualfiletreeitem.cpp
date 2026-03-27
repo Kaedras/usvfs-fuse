@@ -407,7 +407,7 @@ VirtualFileTreeItem::findInternal(std::string_view path, bool includeDeleted) no
     const string_view subDirectory = path.substr(0, pos);
     const auto it                  = m_children.find(subDirectory);
     if (it == m_children.end()) {
-      spdlog::debug("could not find '{}'", path);
+      spdlog::trace("could not find '{}'", path);
       errno = ENOENT;
       return nullptr;
     }
@@ -418,7 +418,7 @@ VirtualFileTreeItem::findInternal(std::string_view path, bool includeDeleted) no
       if (!it->second->isDeleted() || includeDeleted) {
         return it->second;
       }
-      spdlog::debug("'{}' has been deleted, returning nullptr", path);
+      spdlog::trace("'{}' has been deleted, returning nullptr", path);
       errno = ENOENT;
       return nullptr;
     }
@@ -428,7 +428,7 @@ VirtualFileTreeItem::findInternal(std::string_view path, bool includeDeleted) no
   // path is not in a subdirectory
   const auto it = m_children.find(path);
   if (it == m_children.end()) {
-    spdlog::debug("could not find '{}'", path);
+    spdlog::trace("could not find '{}'", path);
     errno = ENOENT;
     return nullptr;
   }
@@ -436,7 +436,7 @@ VirtualFileTreeItem::findInternal(std::string_view path, bool includeDeleted) no
   if (!it->second->isDeleted() || includeDeleted) {
     return it->second;
   }
-  spdlog::debug("'{}' has been deleted, returning nullptr", path);
+  spdlog::trace("'{}' has been deleted, returning nullptr", path);
   errno = ENOENT;
   return nullptr;
 }
