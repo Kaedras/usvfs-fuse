@@ -612,7 +612,7 @@ int usvfs_create(const char* path, mode_t mode, fuse_file_info* fi) noexcept
   string realParentPath;
 
   // check if there is a deleted item with this path
-  auto item = state->fileTree->find(path);
+  auto item = state->fileTree->find(path, true);
   if (item != nullptr) {
     // sanity check, this should not happen because `getattr` is usually called before
     // this
