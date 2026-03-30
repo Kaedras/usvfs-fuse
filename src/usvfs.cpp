@@ -206,7 +206,10 @@ int usvfs_mkdir(const char* path, mode_t mode) noexcept
   // add the directory to the file tree
   const auto newItem = state->fileTree->add(path, realPath, dir);
   if (newItem == nullptr) {
-    return -EIO;
+    const int e = errno;
+    spdlog::error("usvfs_mkdir(path='{}'): error adding item to file tree: {}", path,
+                  strerror(e));
+    return -e;
   }
 
   return 0;
