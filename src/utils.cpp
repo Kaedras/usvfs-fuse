@@ -210,20 +210,20 @@ bool isParentPathOf(std::string_view parentPath, std::string_view path) noexcept
   }
 }
 
-std::string_view relativePath(std::string_view path, std::string_view base) noexcept
+std::string_view relativePath(std::string_view p, std::string_view base) noexcept
 {
-  if (path == base) {
+  if (p == base) {
     return {};
   }
   // remove trailing slashes
-  if (path.ends_with('/')) {
-    path.remove_suffix(1);
+  if (p.ends_with('/')) {
+    p.remove_suffix(1);
   }
   if (base.ends_with('/')) {
     base.remove_suffix(1);
   }
 
-  string_view relative = path;
+  string_view relative = p;
   relative.remove_prefix(base.size() + 1);
 
   return relative;
