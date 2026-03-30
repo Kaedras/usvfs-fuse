@@ -98,14 +98,6 @@ static void getFileNameFromPath(benchmark::State& state)
   }
 }
 
-static void createEnv(benchmark::State& state)
-{
-  for (auto _ : state) {
-    auto result = ::createEnv();
-    benchmark::DoNotOptimize(result);
-  }
-}
-
 BENCHMARK_CAPTURE(iequals, ascii, "abc", "aBC")->Name("utils/iequals/ascii");
 BENCHMARK_CAPTURE(iequals, unicode, "テストtest", "テストtESt")
     ->Name("utils/iequals/unicode");
@@ -135,6 +127,5 @@ BENCHMARK_CAPTURE(toUpperInplace, unicode, "ÄÜöabC/テスト/жзИЙ/Աբգ�
     ->UseManualTime();
 BENCHMARK(getParentPath)->Name("utils/getParentPath");
 BENCHMARK(getFileNameFromPath)->Name("utils/getFileNameFromPath");
-BENCHMARK(createEnv)->Name("utils/createEnv");
 
 }  // namespace benchmarks

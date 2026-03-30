@@ -2,7 +2,6 @@
 
 #include <string>
 #include <string_view>
-#include <vector>
 
 bool iequals(std::string_view lhs, std::string_view rhs) noexcept;
 bool iendsWith(std::string_view lhs, std::string_view rhs) noexcept;
@@ -27,5 +26,3 @@ bool isParentPathOf(std::string_view parentPath, std::string_view path) noexcept
 std::string_view relativePath(std::string_view p, std::string_view base) noexcept;
 
 std::string openFlagsToString(int flags) noexcept;
-
-std::vector<std::string_view> createEnv() noexcept;
