@@ -157,8 +157,6 @@ int usvfs_mkdir(const char* path, mode_t mode) noexcept
     if (!existing->isDeleted()) {
       return -EEXIST;
     }
-    // spdlog::get("hooks")->info("Rerouting file creation to original location of
-    // deleted file: {}", existing->filePath());
     spdlog::info("Rerouting file creation to original location of deleted file: {}",
                  existing->filePath());
     existing->setDeleted(false);
