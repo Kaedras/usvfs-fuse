@@ -1,7 +1,6 @@
 #include "utils.h"
 
 using namespace std;
-using namespace icu;
 
 bool iequals(const std::string_view lhs, const std::string_view rhs) noexcept
 {
@@ -12,10 +11,10 @@ bool iequals(const std::string_view lhs, const std::string_view rhs) noexcept
   // try a fast ASCII comparison first
   bool isAscii = true;
   for (size_t i = 0; i < lhs.length(); ++i) {
-    const auto a = static_cast<unsigned char>(lhs[i]);
-    const auto b = static_cast<unsigned char>(rhs[i]);
+    const char a = lhs[i];
+    const char b = rhs[i];
 
-    if (a > 127 || b > 127) {
+    if (!isascii(a) || !isascii(b)) {
       isAscii = false;
       break;
     }
@@ -27,10 +26,11 @@ bool iequals(const std::string_view lhs, const std::string_view rhs) noexcept
   if (isAscii) {
     return true;
   }
-  const auto a = UnicodeString::fromUTF8(lhs);
-  const auto b = UnicodeString::fromUTF8(rhs);
 
-  return a.caseCompare(b, 0) == 0;
+  const auto a = QString::fromUtf8(lhs);
+  const auto b = QString::fromUtf8(rhs);
+
+  return a.compare(b, Qt::CaseInsensitive) == 0;
 }
 
 bool iendsWith(const std::string_view lhs, const std::string_view rhs) noexcept
@@ -63,16 +63,15 @@ std::string toLower(const std::string_view str) noexcept
 {
   // try using ASCII first
   bool isAscii = true;
-  for (const unsigned char c : str) {
-    if (c > 127) {
+  for (const char c : str) {
+    if (!isascii(c)) {
       isAscii = false;
       break;
     }
   }
 
-  string result;
-
   if (isAscii) {
+    string result;
     result.reserve(str.length());
     for (const char c : str) {
       result.push_back(static_cast<char>(tolower(c)));
@@ -80,24 +79,24 @@ std::string toLower(const std::string_view str) noexcept
     return result;
   }
 
-  auto unicodeStr = UnicodeString::fromUTF8(str);
-  unicodeStr.toLower();
+  QString qstr = QString::fromLocal8Bit(str);
+  for (auto& c : qstr) {
+    c = c.toLower();
+  }
 
-  unicodeStr.toUTF8String(result);
-  return result;
+  return qstr.toStdString();
 }
 
 void toLowerInplace(std::string& str) noexcept
 {
   // try using ASCII first
   bool isAscii = true;
-  for (const unsigned char c : str) {
-    if (c > 127) {
+  for (const char c : str) {
+    if (!isascii(c)) {
       isAscii = false;
       break;
     }
   }
-
   if (isAscii) {
     for (char& c : str) {
       c = static_cast<char>(tolower(c));
@@ -105,27 +104,26 @@ void toLowerInplace(std::string& str) noexcept
     return;
   }
 
-  auto unicodeStr = UnicodeString::fromUTF8(str);
-  unicodeStr.toLower();
-
-  str.clear();
-  unicodeStr.toUTF8String(str);
+  QString qstr = QString::fromLocal8Bit(str);
+  for (auto& c : qstr) {
+    c = c.toLower();
+  }
+  str = qstr.toStdString();
 }
 
 std::string toUpper(const std::string_view str) noexcept
 {
   // try using ASCII first
   bool isAscii = true;
-  for (const unsigned char c : str) {
-    if (c > 127) {
+  for (const char c : str) {
+    if (!isascii(c)) {
       isAscii = false;
       break;
     }
   }
 
-  string result;
-
   if (isAscii) {
+    string result;
     result.reserve(str.length());
     for (const char c : str) {
       result.push_back(static_cast<char>(toupper(c)));
@@ -133,24 +131,24 @@ std::string toUpper(const std::string_view str) noexcept
     return result;
   }
 
-  auto unicodeStr = UnicodeString::fromUTF8(str);
-  unicodeStr.toUpper();
+  QString qstr = QString::fromLocal8Bit(str);
+  for (auto& c : qstr) {
+    c = c.toUpper();
+  }
 
-  unicodeStr.toUTF8String(result);
-  return result;
+  return qstr.toStdString();
 }
 
 void toUpperInplace(std::string& str) noexcept
 {
   // try using ASCII first
   bool isAscii = true;
-  for (const unsigned char c : str) {
-    if (c > 127) {
+  for (const char c : str) {
+    if (!isascii(c)) {
       isAscii = false;
       break;
     }
   }
-
   if (isAscii) {
     for (char& c : str) {
       c = static_cast<char>(toupper(c));
@@ -158,11 +156,11 @@ void toUpperInplace(std::string& str) noexcept
     return;
   }
 
-  auto unicodeStr = UnicodeString::fromUTF8(str);
-  unicodeStr.toUpper();
-
-  str.clear();
-  unicodeStr.toUTF8String(str);
+  QString qstr = QString::fromLocal8Bit(str);
+  for (auto& c : qstr) {
+    c = c.toUpper();
+  }
+  str = qstr.toStdString();
 }
 
 std::string getFileNameFromPath(const std::string_view path) noexcept

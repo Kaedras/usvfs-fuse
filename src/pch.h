@@ -37,8 +37,8 @@ extern "C"
 #include <sys/pidfd.h>
 }
 
-// icu
-#include <unicode/unistr.h>
+// qt
+#include <QString>
 
 // spdlog
 #include <spdlog/sinks/basic_file_sink.h>

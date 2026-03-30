@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.28)
 find_package(PkgConfig)
 pkg_check_modules(FUSE3 REQUIRED IMPORTED_TARGET fuse3)
 
-find_package(ICU REQUIRED COMPONENTS data uc)
+find_package(Qt6 REQUIRED COMPONENTS Core)
 find_package(spdlog CONFIG REQUIRED)
 
 add_library(usvfs-fuse SHARED)
@@ -38,4 +38,4 @@ if(ENABLE_ASAN)
 endif()
 
 target_compile_options(usvfs-fuse PRIVATE -Wall -Wextra -Wpedantic)
-target_link_libraries(usvfs-fuse PRIVATE PkgConfig::FUSE3 spdlog::spdlog ICU::data ICU::uc)
+target_link_libraries(usvfs-fuse PRIVATE PkgConfig::FUSE3 spdlog::spdlog Qt::Core)
