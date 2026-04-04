@@ -8,6 +8,7 @@ on:
 
 env:
   VCPKG_BINARY_SOURCES: ${{ vars.AZ_BLOB_VCPKG_URL != '' && format('clear;x-azblob,{0},{1},readwrite', vars.AZ_BLOB_VCPKG_URL, secrets.AZ_BLOB_SAS) || '' }}
+  QT_VERSION: 6.7.3
 
 jobs:
   build:
@@ -29,7 +30,7 @@ jobs:
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
         with:
-          version: 6.7.3
+          version: ${{ env.QT_VERSION }}
           arch: linux_gcc_64
           cache: true
 
@@ -66,6 +67,13 @@ jobs:
         with:
           key: usvfs-fuse-build-${{ github.sha }}
           path: build
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          arch: linux_gcc_64
+          cache: true
 
       - name: Debug environment
         run: |
