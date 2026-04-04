@@ -26,6 +26,13 @@ jobs:
           sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 10
           sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-14 10
 
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: 6.7.3
+          arch: linux_gcc_64
+          cache: true
+
       - uses: actions/checkout@v4
 
       - name: Configure usvfs-fuse build
