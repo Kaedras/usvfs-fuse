@@ -8,7 +8,7 @@ using [libfuse](https://github.com/libfuse/libfuse) for use on Linux.
 - CMake >=3.31
 - GCC >=14.2
 - libfuse >=3.14
-- icu
+- Qt6 core
 - spdlog
 - gtest (when building unit tests)
 - google benchmark (when building performance tests)
