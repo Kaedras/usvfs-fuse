@@ -33,7 +33,7 @@ jobs:
           arch: linux_gcc_64
           cache: true
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Configure usvfs-fuse build
         run: |
