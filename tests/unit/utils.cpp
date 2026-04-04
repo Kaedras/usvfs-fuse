@@ -11,6 +11,9 @@ TEST(utils, iequals)
   // ascii
   EXPECT_TRUE(iequals("tEsT", "test"));
   EXPECT_TRUE(iequals("TEST", "test"));
+  EXPECT_TRUE(iequals("", ""));
+  EXPECT_FALSE(iequals("", "a"));
+  EXPECT_FALSE(iequals("a", ""));
   // extended ascii
   EXPECT_TRUE(iequals("TêśT", "tÊŚt"));
   // umlaut
@@ -32,6 +35,9 @@ TEST(utils, istartsWith)
   // ascii
   EXPECT_TRUE(istartsWith("tEsT", "Te"));
   EXPECT_TRUE(istartsWith("TEST", "te"));
+  EXPECT_TRUE(istartsWith("a", ""));
+  EXPECT_TRUE(istartsWith("", ""));
+  EXPECT_FALSE(istartsWith("", "a"));
   // extended ascii
   EXPECT_TRUE(istartsWith("tÊśt", "tê"));
   // umlaut
@@ -51,6 +57,9 @@ TEST(utils, iendsWith)
   // ascii
   EXPECT_TRUE(iendsWith("tEsT", "St"));
   EXPECT_TRUE(iendsWith("TEST", "sT"));
+  EXPECT_TRUE(iendsWith("a", ""));
+  EXPECT_TRUE(iendsWith("", ""));
+  EXPECT_FALSE(iendsWith("", "a"));
   // extended ascii
   EXPECT_TRUE(iendsWith("tÊśt", "Śt"));
   // umlaut
@@ -69,6 +78,7 @@ TEST(utils, toLower)
 {
   // ascii
   EXPECT_EQ(toLower("tEsT"), "test");
+  EXPECT_EQ(toLower(""), "");
   // extended ascii
   EXPECT_EQ(toLower("TÊŚT"), "têśt");
   // umlaut
@@ -93,6 +103,7 @@ TEST(utils, toLowerInplace)
 
   // ascii
   test("tEsT", "test");
+  test("", "");
   // extended ascii
   test("tÊśt", "têśt");
   // umlaut
@@ -111,6 +122,7 @@ TEST(utils, toUpper)
 {
   // ascii
   EXPECT_EQ(toUpper("tEsT"), "TEST");
+  EXPECT_EQ(toUpper(""), "");
   // extended ascii
   EXPECT_EQ(toUpper("tÊśt"), "TÊŚT");
   // umlaut
@@ -135,6 +147,7 @@ TEST(utils, toUpperInplace)
 
   // ascii
   test("tEsT", "TEST");
+  test("", "");
   // extended ascii
   test("tÊśt", "TÊŚT");
   // umlaut
@@ -151,6 +164,7 @@ TEST(utils, toUpperInplace)
 
 TEST(utils, getParentPath)
 {
+  EXPECT_EQ(getParentPath("/"), "");
   EXPECT_EQ(getParentPath("/a"), "");
   EXPECT_EQ(getParentPath("/a/b"), "/a");
   EXPECT_EQ(getParentPath("/a/b/c"), "/a/b");
@@ -158,6 +172,7 @@ TEST(utils, getParentPath)
 
 TEST(utils, getFileNameFromPath)
 {
+  EXPECT_EQ(getFileNameFromPath("/"), "");
   EXPECT_EQ(getFileNameFromPath("/a"), "a");
   EXPECT_EQ(getFileNameFromPath("/a/b"), "b");
   EXPECT_EQ(getFileNameFromPath("/a/b/c"), "c");
@@ -165,6 +180,10 @@ TEST(utils, getFileNameFromPath)
 
 TEST(utils, isParentPathOf)
 {
+  EXPECT_TRUE(isParentPathOf("", ""));
+  EXPECT_TRUE(isParentPathOf("", "/"));
+  EXPECT_TRUE(isParentPathOf("/", ""));
+  EXPECT_TRUE(isParentPathOf("/", "/"));
   EXPECT_TRUE(isParentPathOf("/", "/a"));
   EXPECT_TRUE(isParentPathOf("/a", "/a"));
   EXPECT_TRUE(isParentPathOf("/a", "/a/"));
@@ -188,12 +207,14 @@ TEST(utils, relativePath)
   EXPECT_EQ(relativePath("/a/bc/", "/a"), "bc");
   EXPECT_EQ(relativePath("/a/bc", "/a/"), "bc");
   EXPECT_EQ(relativePath("/a/bc/", "/a/"), "bc");
+  EXPECT_EQ(relativePath("/a/b/c", "/a/b"), "c");
 }
 
 TEST(utils, openFlagsToString)
 {
   EXPECT_EQ(openFlagsToString(0), "");
   EXPECT_EQ(openFlagsToString(O_APPEND), "O_APPEND");
+  EXPECT_EQ(openFlagsToString(O_TRUNC), "O_TRUNC");
   EXPECT_EQ(openFlagsToString(O_APPEND | O_CREAT), "O_APPEND | O_CREAT");
   EXPECT_EQ(openFlagsToString(O_APPEND | O_CREAT | O_DIRECT | O_EXCL),
             "O_APPEND | O_CREAT | O_DIRECT | O_EXCL");
