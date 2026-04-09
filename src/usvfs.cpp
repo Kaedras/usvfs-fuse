@@ -547,11 +547,19 @@ int usvfs_flush(const char* path, fuse_file_info* fi) noexcept
 
 int usvfs_fsync(const char* path, int isdatasync, fuse_file_info* fi) noexcept
 {
-#warning STUB
-  (void)isdatasync;
-  (void)fi;
-  spdlog::warn("usvfs_fsync(path='{}') - STUB!", path);
-  return -ENOSYS;
+  spdlog::trace("usvfs_fsync(path='{}')", path);
+
+  int res;
+  if (isdatasync) {
+    res = fdatasync(static_cast<int>(fi->fh));
+  } else {
+    res = fsync(static_cast<int>(fi->fh));
+  }
+  if (res == -1) {
+    return -errno;
+  }
+
+  return 0;
 }
 
 int usvfs_readdir(const char* path, void* buf, const fuse_fill_dir_t filler,
