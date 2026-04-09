@@ -285,7 +285,7 @@ int usvfs_releasedir(const char* path, fuse_file_info* fi) noexcept;
  * If the datasync parameter is non-zero, then only the user data
  * should be flushed, not the meta data
  */
-int usvfs_fsyncdir(const char* path, int, fuse_file_info* fi) noexcept;
+int usvfs_fsyncdir(const char* path, int datasync, fuse_file_info* fi) noexcept;
 
 /**
  * Initialize filesystem

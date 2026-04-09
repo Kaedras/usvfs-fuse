@@ -610,12 +610,25 @@ int usvfs_readdir(const char* path, void* buf, const fuse_fill_dir_t filler,
   return 0;
 }
 
-int usvfs_fsyncdir(const char* path, int, fuse_file_info* fi) noexcept
+int usvfs_fsyncdir(const char* path, int datasync, fuse_file_info*) noexcept
 {
-#warning STUB
-  (void)fi;
-  spdlog::warn("usvfs_fsyncdir(path='{}') - STUB!", path);
-  return -ENOSYS;
+  spdlog::trace("usvfs_fsyncdir(path='{}', datasync={})", path, datasync);
+  GET_STATE()
+  int fd = state->fdMap.at(path);
+  int res;
+  if (datasync) {
+    res = fdatasync(fd);
+  } else {
+    res = fsync(fd);
+  }
+  if (res == -1) {
+    const int e = errno;
+    spdlog::error("usvfs_fsyncdir(path='{}', datasync={}) error: {}", path, datasync,
+                  strerror(e));
+    return -e;
+  }
+
+  return 0;
 }
 
 int usvfs_create(const char* path, mode_t mode, fuse_file_info* fi) noexcept
