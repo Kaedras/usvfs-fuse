@@ -11,9 +11,15 @@ TEST(utils, iequals)
   // ascii
   EXPECT_TRUE(iequals("tEsT", "test"));
   EXPECT_TRUE(iequals("TEST", "test"));
+  EXPECT_TRUE(iequals("TEST123!@#", "test123!@#"));
+  EXPECT_TRUE(iequals("   \t\n  ", "   \t\n  "));
   EXPECT_TRUE(iequals("", ""));
   EXPECT_FALSE(iequals("", "a"));
   EXPECT_FALSE(iequals("a", ""));
+  // different lengths
+  EXPECT_FALSE(iequals("test", "testing"));
+  EXPECT_FALSE(iequals("testing", "test"));
+
   // extended ascii
   EXPECT_TRUE(iequals("TêśT", "tÊŚt"));
   // umlaut
@@ -38,6 +44,11 @@ TEST(utils, istartsWith)
   EXPECT_TRUE(istartsWith("a", ""));
   EXPECT_TRUE(istartsWith("", ""));
   EXPECT_FALSE(istartsWith("", "a"));
+  // longer prefix than string
+  EXPECT_FALSE(istartsWith("test", "testing"));
+  // empty prefix
+  EXPECT_TRUE(istartsWith("test", ""));
+
   // extended ascii
   EXPECT_TRUE(istartsWith("tÊśt", "tê"));
   // umlaut
@@ -60,6 +71,11 @@ TEST(utils, iendsWith)
   EXPECT_TRUE(iendsWith("a", ""));
   EXPECT_TRUE(iendsWith("", ""));
   EXPECT_FALSE(iendsWith("", "a"));
+  // longer suffix than string
+  EXPECT_FALSE(iendsWith("test", "testing"));
+  // empty suffix
+  EXPECT_TRUE(iendsWith("test", ""));
+
   // extended ascii
   EXPECT_TRUE(iendsWith("tÊśt", "Śt"));
   // umlaut
@@ -78,6 +94,8 @@ TEST(utils, toLower)
 {
   // ascii
   EXPECT_EQ(toLower("tEsT"), "test");
+  EXPECT_EQ(toLower("TEST123!@#"), "test123!@#");
+  EXPECT_EQ(toLower("   \t\n  "), "   \t\n  ");
   EXPECT_EQ(toLower(""), "");
   // extended ascii
   EXPECT_EQ(toLower("TÊŚT"), "têśt");
@@ -95,33 +113,38 @@ TEST(utils, toLower)
 
 TEST(utils, toLowerInplace)
 {
-  auto test = [](const char* testString, const char* result) {
-    string str = testString;
-    toLowerInplace(str);
-    EXPECT_EQ(str, result);
-  };
-
+#define RUN(testString, result)                                                        \
+  {                                                                                    \
+    string str = testString;                                                           \
+    toLowerInplace(str);                                                               \
+    EXPECT_EQ(str, result);                                                            \
+  }
   // ascii
-  test("tEsT", "test");
-  test("", "");
+  RUN("tEsT", "test");
+  RUN("TEST123!@#", "test123!@#");
+  RUN("   \t\n  ", "   \t\n  ");
+  RUN("", "");
   // extended ascii
-  test("tÊśt", "têśt");
+  RUN("tÊśt", "têśt");
   // umlaut
-  test("ÄÜö", "äüö");
+  RUN("ÄÜö", "äüö");
   // japanese
-  test("テスト", "テスト");
+  RUN("テスト", "テスト");
   // cyrillic
-  test("ЖЗИЙ", "жзий");
+  RUN("ЖЗИЙ", "жзий");
   // armenian
-  test("ԱԲԳԴ", "աբգդ");
+  RUN("ԱԲԳԴ", "աբգդ");
   // extended greek
-  test("Ἀ Ὥ Ἒ Ἧ", "ἀ ὥ ἒ ἧ");
+  RUN("Ἀ Ὥ Ἒ Ἧ", "ἀ ὥ ἒ ἧ");
+#undef RUN
 }
 
 TEST(utils, toUpper)
 {
   // ascii
   EXPECT_EQ(toUpper("tEsT"), "TEST");
+  EXPECT_EQ(toUpper("test123!@#"), "TEST123!@#");
+  EXPECT_EQ(toUpper("   \t\n  "), "   \t\n  ");
   EXPECT_EQ(toUpper(""), "");
   // extended ascii
   EXPECT_EQ(toUpper("tÊśt"), "TÊŚT");
@@ -139,27 +162,30 @@ TEST(utils, toUpper)
 
 TEST(utils, toUpperInplace)
 {
-  auto test = [](const char* testString, const char* result) {
-    string str = testString;
-    toUpperInplace(str);
-    EXPECT_EQ(str, result);
-  };
-
+#define RUN(testString, result)                                                        \
+  {                                                                                    \
+    string str = testString;                                                           \
+    toUpperInplace(str);                                                               \
+    EXPECT_EQ(str, result);                                                            \
+  }
   // ascii
-  test("tEsT", "TEST");
-  test("", "");
+  RUN("tEsT", "TEST");
+  RUN("test123!@#", "TEST123!@#");
+  RUN("   \t\n  ", "   \t\n  ");
+  RUN("", "");
   // extended ascii
-  test("tÊśt", "TÊŚT");
+  RUN("tÊśt", "TÊŚT");
   // umlaut
-  test("äÜö", "ÄÜÖ");
+  RUN("äÜö", "ÄÜÖ");
   // japanese
-  test("テスト", "テスト");
+  RUN("テスト", "テスト");
   // cyrillic
-  test("жзий", "ЖЗИЙ");
+  RUN("жзий", "ЖЗИЙ");
   // armenian
-  test("աբգդ", "ԱԲԳԴ");
+  RUN("աբգդ", "ԱԲԳԴ");
   // extended greek
-  test("ἀ ὥ ἒ ἧ", "Ἀ Ὥ Ἒ Ἧ");
+  RUN("ἀ ὥ ἒ ἧ", "Ἀ Ὥ Ἒ Ἧ");
+#undef RUN
 }
 
 TEST(utils, getParentPath)
@@ -168,14 +194,19 @@ TEST(utils, getParentPath)
   EXPECT_EQ(getParentPath("/a"), "");
   EXPECT_EQ(getParentPath("/a/b"), "/a");
   EXPECT_EQ(getParentPath("/a/b/c"), "/a/b");
+  EXPECT_EQ(getParentPath("a/b/c"), "a/b");
+  EXPECT_EQ(getParentPath("/a/b/c/d"), "/a/b/c");
+  EXPECT_EQ(getParentPath("/a/b/c/d/"), "/a/b/c/d");
 }
 
 TEST(utils, getFileNameFromPath)
 {
   EXPECT_EQ(getFileNameFromPath("/"), "");
+  EXPECT_EQ(getFileNameFromPath(""), "");
   EXPECT_EQ(getFileNameFromPath("/a"), "a");
   EXPECT_EQ(getFileNameFromPath("/a/b"), "b");
   EXPECT_EQ(getFileNameFromPath("/a/b/c"), "c");
+  EXPECT_EQ(getFileNameFromPath("a/b/c"), "c");
 }
 
 TEST(utils, isParentPathOf)
@@ -203,11 +234,14 @@ TEST(utils, isParentPathOf)
 
 TEST(utils, relativePath)
 {
+  EXPECT_EQ(relativePath("", ""), "");
+  EXPECT_EQ(relativePath("/", "/"), "");
   EXPECT_EQ(relativePath("/a", "/a"), "");
-  EXPECT_EQ(relativePath("/a/bc/", "/a"), "bc");
-  EXPECT_EQ(relativePath("/a/bc", "/a/"), "bc");
-  EXPECT_EQ(relativePath("/a/bc/", "/a/"), "bc");
+  EXPECT_EQ(relativePath("/a/b", "/a"), "b");
+  EXPECT_EQ(relativePath("/a/b/", "/a"), "b");
   EXPECT_EQ(relativePath("/a/b/c", "/a/b"), "c");
+  EXPECT_EQ(relativePath("/a/b/c/", "/a/b"), "c");
+  EXPECT_EQ(relativePath("/a/b/c", "/a"), "b/c");
 }
 
 TEST(utils, openFlagsToString)
