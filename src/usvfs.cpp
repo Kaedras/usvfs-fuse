@@ -532,10 +532,17 @@ int usvfs_statfs(const char* path, struct statvfs* stbuf) noexcept
 
 int usvfs_flush(const char* path, fuse_file_info* fi) noexcept
 {
-#warning STUB
-  (void)fi;
-  spdlog::warn("usvfs_flush(path='{}') - STUB!", path);
-  return -ENOSYS;
+  spdlog::trace("usvfs_flush(path='{}')", path);
+  /* This is called from every close on an open file, so call the
+     close on the underlying filesystem.	But since flush may be
+     called multiple times for an open file, this must not really
+     close the file.  This is important if used on a network
+     filesystem like NFS which flush the data/metadata on close() */
+  if (close(dup(static_cast<int>(fi->fh))) == -1) {
+    return -errno;
+  }
+
+  return 0;
 }
 
 int usvfs_fsync(const char* path, int isdatasync, fuse_file_info* fi) noexcept
