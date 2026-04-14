@@ -25,21 +25,45 @@ FdMap::~FdMap() noexcept
   }
 }
 
-int FdMap::at(const std::string_view path, const bool doNotLogOnFail) const noexcept
-{
-  try {
-    return m_map.at(toLower(path));
-  } catch (const std::out_of_range&) {
-    if (!doNotLogOnFail) {
-      spdlog::error("error geting dirFd for '{}'", path);
-    }
-    return -1;
-  }
-}
-
 int& FdMap::operator[](const std::string_view path) noexcept
 {
   return m_map[toLower(path)];
+}
+
+int FdMap::at(const std::string_view path, const bool doNotLogOnFail) const noexcept
+{
+  const auto result = m_map.find(toLower(path));
+  if (result != m_map.end()) {
+    return result->second;
+  }
+
+  if (!doNotLogOnFail) {
+    spdlog::error("error getting dirFd for '{}'", path);
+  }
+  return -1;
+}
+
+int FdMap::atLc(std::string_view lcPath, bool doNotLogOnFail) const noexcept
+{
+  const auto result = m_map.find(lcPath);
+  if (result != m_map.end()) {
+    return result->second;
+  }
+
+  if (!doNotLogOnFail) {
+    spdlog::error("error getting dirFd for '{}'", lcPath);
+  }
+  return -1;
+}
+
+bool FdMap::add(const std::string_view path, int fd) noexcept
+{
+  return m_map.emplace(toLower(path), fd).second;
+}
+
+bool FdMap::addLc(std::string_view lcPath, int fd) noexcept
+{
+  return m_map.emplace(lcPath, fd).second;
 }
 
 void FdMap::merge(FdMap& other) noexcept
