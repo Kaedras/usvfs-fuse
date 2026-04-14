@@ -55,7 +55,7 @@ std::shared_ptr<VirtualFileTreeItem> VirtualFileTreeItem::createFileTree(
 
     string_view relative = relativePath(entryPath, path);
 
-    spdlog::debug("adding '{}' to file tree", relative);
+    spdlog::trace("adding '{}' to file tree", relative);
     auto newItem = fileTree->add(relative, entryPath, isDirectory ? dir : file);
     if (newItem == nullptr) {
       throw runtime_error(
