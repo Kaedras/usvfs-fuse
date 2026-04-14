@@ -33,14 +33,13 @@ MountState* getState()
   return static_cast<MountState*>(context ? context->private_data : nullptr);
 }
 
-int createParentDir(MountState* state, string_view realParentPath, string_view fileName,
-                    mode_t mode)
+int createParentDir(MountState* state, string_view realParentPath, string_view fileName)
 {
   // create parent directory
   string parentName = getFileNameFromPath(realParentPath);
   int grandParentFd = state->fdMap.at(getParentPath(realParentPath));
   spdlog::trace("creating parent directory {}", getParentPath(realParentPath));
-  if (mkdirat(grandParentFd, parentName.c_str(), mode) == -1) {
+  if (mkdirat(grandParentFd, parentName.c_str(), 0755) == -1) {
     const int e = errno;
     spdlog::error("error creating parent directory, mkdirat failed: {}", realParentPath,
                   fileName, strerror(e));
@@ -185,7 +184,7 @@ int usvfs_mkdir(const char* path, mode_t mode) noexcept
   int parentFd = state->fdMap.at(realParentPath, true);
   if (parentFd == -1) {
     // parent path does not exist
-    parentFd = createParentDir(state, realParentPath, fileName, mode);
+    parentFd = createParentDir(state, realParentPath, fileName);
     if (parentFd < 0) {
       return parentFd;
     }
@@ -683,7 +682,7 @@ int usvfs_create(const char* path, mode_t mode, fuse_file_info* fi) noexcept
   int parentFd = state->fdMap.at(realParentPath, true);
   if (parentFd == -1) {
     // parent path does not exist
-    parentFd = createParentDir(state, realParentPath, fileName, mode);
+    parentFd = createParentDir(state, realParentPath, fileName);
     if (parentFd < 0) {
       return parentFd;
     }
