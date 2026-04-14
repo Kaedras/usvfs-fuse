@@ -25,12 +25,14 @@ FdMap::~FdMap() noexcept
   }
 }
 
-int FdMap::at(const std::string_view path) const noexcept
+int FdMap::at(const std::string_view path, const bool doNotLogOnFail) const noexcept
 {
   try {
     return m_map.at(toLower(path));
   } catch (const std::out_of_range&) {
-    spdlog::error("error geting dirFd for '{}'", path);
+    if (!doNotLogOnFail) {
+      spdlog::error("error geting dirFd for '{}'", path);
+    }
     return -1;
   }
 }

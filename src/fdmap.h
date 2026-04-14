@@ -14,7 +14,7 @@ public:
   FdMap(const FdMap&)            = delete;
   FdMap& operator=(const FdMap&) = delete;
 
-  int at(std::string_view path) const noexcept;
+  int at(std::string_view path, bool doNotLogOnFail = false) const noexcept;
   int& operator[](std::string_view path) noexcept;
   /**
    * @brief Merge another fd map into this one and invalidate other file descriptors so
