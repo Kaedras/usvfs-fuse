@@ -419,8 +419,8 @@ pid_t UsvfsManager::usvfsCreateProcessHooked(
     }
 
     // handle wine dll overrides
-    const bool wine = file.ends_with("wine") || file.ends_with("wine-staging") ||
-                      file.ends_with("wine64") || file.ends_with("wine64-staging");
+    const bool wine   = file.ends_with("wine") || file.ends_with("wine-staging") ||
+                        file.ends_with("wine64") || file.ends_with("wine64-staging");
     const bool proton = file.ends_with("proton");
 
     if (wine || proton) {
