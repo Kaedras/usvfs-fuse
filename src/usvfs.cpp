@@ -33,33 +33,54 @@ MountState* getState()
   return static_cast<MountState*>(context ? context->private_data : nullptr);
 }
 
-int createParentDir(MountState* state, string_view realParentPath, string_view fileName)
+/**
+ * @brief Recursively create directories and add them to the fd map.
+ * @param fdMap File descriptor map to use.
+ * @param path Path to create. Must be inside the upper dir.
+ * @return File descriptor, or negative error code on error
+ * @note Assumes that `path` is inside the upper dir and the upper dir is inside the fd
+ * map to prevent endless recursion
+ */
+int createDirs(FdMap& fdMap, string_view path)
 {
-  // create parent directory
-  string parentName = getFileNameFromPath(realParentPath);
-  int grandParentFd = state->fdMap.at(getParentPath(realParentPath));
-  spdlog::trace("creating parent directory {}", getParentPath(realParentPath));
-  if (mkdirat(grandParentFd, parentName.c_str(), 0755) == -1) {
-    const int e = errno;
-    spdlog::error("error creating parent directory, mkdirat failed: {}", realParentPath,
-                  fileName, strerror(e));
-    return -e;
+  // check if path exists
+  int fd = fdMap.at(path, true);
+  if (fd != -1) {
+    return fd;
   }
 
-  // open parent directory
-  int parentFd = openat(grandParentFd, parentName.c_str(), OPEN_FLAGS);
+  // check if parent path exists
+  const string parentPath = getParentPath(path);
+  int parentFd            = fdMap.at(parentPath, true);
   if (parentFd == -1) {
+    // create parent path
+    parentFd = createDirs(fdMap, parentPath);
+    // check for error
+    if (parentFd < 0) {
+      return parentFd;
+    }
+  }
+
+  const string name = getFileNameFromPath(path);
+  // create directory
+  if (mkdirat(parentFd, name.c_str(), 0755) == -1) {
     const int e = errno;
-    spdlog::error("error opening parent directory '{}': {}", realParentPath,
-                  strerror(e));
+    spdlog::error("createDirs('{}'): openat failed: {}", path, strerror(e));
     return -e;
   }
 
-  // insert fd into fd map
-  spdlog::trace("adding fd {} for '{}'", parentFd, realParentPath);
-  state->fdMap[realParentPath] = parentFd;
+  // open directory
+  fd = openat(parentFd, name.c_str(), OPEN_FLAGS);
+  if (fd == -1) {
+    const int e = errno;
+    spdlog::error("createDirs('{}'): openat failed: {}", path, strerror(e));
+    return -e;
+  }
 
-  return parentFd;
+  // add directory to fd map
+  fdMap.add(path, fd);
+
+  return fd;
 }
 }  // namespace
 
@@ -173,38 +194,15 @@ int usvfs_mkdir(const char* path, mode_t mode) noexcept
     return -errno;
   }
 
-  const string realParentPath = state->upperDir.empty()
-                                    ? parentItem->realPath()
-                                    : state->upperDir + parentItem->filePath();
-  const string realPath       = realParentPath + "/" + fileName;
+  const string realPath = state->upperDir + path;
 
-  spdlog::trace("usvfs_mkdir, path={}: creating directory in {}", path, realParentPath);
+  spdlog::trace("usvfs_mkdir, path={}: creating directory {}", path, realPath);
 
   // create the directory on disk
-  int parentFd = state->fdMap.at(realParentPath, true);
-  if (parentFd == -1) {
-    // parent path does not exist
-    parentFd = createParentDir(state, realParentPath, fileName);
-    if (parentFd < 0) {
-      return parentFd;
-    }
+  int res = createDirs(state->fdMap, realPath);
+  if (res < 0) {
+    return res;
   }
-
-  if (mkdirat(parentFd, fileName.c_str(), mode) < 0) {
-    const int e = errno;
-    spdlog::error("usvfs_mkdir(path='{}'): mkdirat failed: {}", path, strerror(e));
-    return -e;
-  }
-
-  // open and save the file descriptor
-  int fd = openat(parentFd, fileName.c_str(), OPEN_FLAGS);
-  if (fd < 0) {
-    const int e = errno;
-    spdlog::error("usvfs_mkdir(path='{}'): openat failed: {}", path, strerror(e));
-    return -e;
-  }
-  spdlog::trace("adding fd {} for {}", fd, realPath);
-  state->fdMap[realPath] = fd;
 
   // add the directory to the file tree
   const auto newItem = state->fileTree->add(path, realPath, dir);
@@ -663,26 +661,14 @@ int usvfs_create(const char* path, mode_t mode, fuse_file_info* fi) noexcept
       return -EROFS;
     }
 
-    fileName                = getFileNameFromPath(path);
-    const string parentPath = getParentPath(path);
-    if (state->upperDir.empty()) {
-      auto parentItem = state->fileTree->find(parentPath);
-      if (parentItem == nullptr) {
-        spdlog::error("usvfs_create(path='{}'): target parent directory '{}' does not "
-                      "exist in file tree",
-                      path, parentPath);
-        return -ENOENT;
-      }
-      realParentPath = parentItem->realPath();
-    } else {
-      realParentPath = state->upperDir + parentPath;
-    }
+    fileName       = getFileNameFromPath(path);
+    realParentPath = state->upperDir + getParentPath(path);
   }
 
   int parentFd = state->fdMap.at(realParentPath, true);
   if (parentFd == -1) {
     // parent path does not exist
-    parentFd = createParentDir(state, realParentPath, fileName);
+    parentFd = createDirs(state->fdMap, realParentPath);
     if (parentFd < 0) {
       return parentFd;
     }

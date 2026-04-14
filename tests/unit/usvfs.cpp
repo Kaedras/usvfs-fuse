@@ -542,6 +542,14 @@ TEST_F(UsvfsTest, statfs)
   EXPECT_GT(statvfs(mnt.c_str(), &buf), -1) << "error: " << strerror(errno);
 }
 
+TEST_F(UsvfsTest, createMissingParentDirInUpperDir)
+{
+  int fd;
+  EXPECT_GT(fd = open((mnt / "empty_dir/test").c_str(), O_CREAT | O_EXCL, mode), -1)
+      << "error: " << strerror(errno);
+  EXPECT_EQ(close(fd), 0);
+}
+
 TEST(usvfs, MergeModDirectories)
 {
   initLogging();
