@@ -182,7 +182,7 @@ int usvfs_mkdir(const char* path, mode_t mode) noexcept
   spdlog::trace("usvfs_mkdir, path={}: creating directory in {}", path, realParentPath);
 
   // create the directory on disk
-  int parentFd = state->fdMap.at(realParentPath);
+  int parentFd = state->fdMap.at(realParentPath, true);
   if (parentFd == -1) {
     // parent path does not exist
     parentFd = createParentDir(state, realParentPath, fileName, mode);
@@ -680,7 +680,7 @@ int usvfs_create(const char* path, mode_t mode, fuse_file_info* fi) noexcept
     }
   }
 
-  int parentFd = state->fdMap.at(realParentPath);
+  int parentFd = state->fdMap.at(realParentPath, true);
   if (parentFd == -1) {
     // parent path does not exist
     parentFd = createParentDir(state, realParentPath, fileName, mode);
