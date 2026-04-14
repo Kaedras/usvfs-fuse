@@ -164,6 +164,10 @@ int usvfs_mkdir(const char* path, mode_t mode) noexcept
     return 0;
   }
 
+  if (state->upperDir.empty()) {
+    return -EROFS;
+  }
+
   // get parent item
   const auto parentItem = state->fileTree->find(getParentPath(path));
   if (parentItem == nullptr) {
@@ -179,8 +183,8 @@ int usvfs_mkdir(const char* path, mode_t mode) noexcept
 
   // create the directory on disk
   int parentFd = state->fdMap.at(realParentPath);
-  if (parentFd == -1 && !state->upperDir.empty()) {
-    // parent path does not exist, this should only happen when upperDir is used
+  if (parentFd == -1) {
+    // parent path does not exist
     parentFd = createParentDir(state, realParentPath, fileName, mode);
     if (parentFd < 0) {
       return parentFd;
@@ -656,6 +660,10 @@ int usvfs_create(const char* path, mode_t mode, fuse_file_info* fi) noexcept
     realParentPath = getParentPath(item->realPath());
 
   } else {
+    if (state->upperDir.empty()) {
+      return -EROFS;
+    }
+
     fileName                = getFileNameFromPath(path);
     const string parentPath = getParentPath(path);
     if (state->upperDir.empty()) {
@@ -673,8 +681,8 @@ int usvfs_create(const char* path, mode_t mode, fuse_file_info* fi) noexcept
   }
 
   int parentFd = state->fdMap.at(realParentPath);
-  if (parentFd == -1 && !state->upperDir.empty()) {
-    // parent path does not exist, this should only happen when upperDir is used
+  if (parentFd == -1) {
+    // parent path does not exist
     parentFd = createParentDir(state, realParentPath, fileName, mode);
     if (parentFd < 0) {
       return parentFd;
