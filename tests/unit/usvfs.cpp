@@ -554,6 +554,7 @@ TEST(usvfs, MergeModDirectories)
   ASSERT_TRUE(fs::create_directories(src / "mod3"));
   ASSERT_TRUE(fs::create_directories(src / "mod4"));
   ASSERT_TRUE(fs::create_directories(src / "profile"));
+  ASSERT_TRUE(fs::create_directories(src / "overwrite"));
 
   ASSERT_TRUE(fs::create_directories(mnt));
   ASSERT_TRUE(fs::create_directories(mnt2));
@@ -576,6 +577,8 @@ TEST(usvfs, MergeModDirectories)
       usvfs->usvfsVirtualLinkDirectoryStatic((src / "mod3").string(), mnt.string()));
   ASSERT_TRUE(
       usvfs->usvfsVirtualLinkDirectoryStatic((src / "mod4").string(), mnt.string()));
+  ASSERT_TRUE(usvfs->usvfsVirtualLinkDirectoryStatic(
+      (src / "overwrite").string(), mnt.string(), linkFlag::CREATE_TARGET));
 
   ASSERT_TRUE(usvfs->usvfsVirtualLinkFile((src / "profile/Plugins.txt").string(),
                                           (mnt2 / "plugins.txt").string()));
