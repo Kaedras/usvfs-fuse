@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.28)
 
 include(CMakePackageConfigHelpers)
 
-project(usvfs-fuse)
+project(usvfs-fuse VERSION 0.7.0)
 
 set(CMAKE_CXX_STANDARD 23)
 

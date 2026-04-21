@@ -8,6 +8,7 @@ find_package(spdlog CONFIG REQUIRED)
 
 add_library(usvfs-fuse SHARED)
 target_precompile_headers(usvfs-fuse PRIVATE pch.h)
+configure_file(${PROJECT_SOURCE_DIR}/include/usvfs-fuse/usvfs_version.h.in ${PROJECT_SOURCE_DIR}/include/usvfs-fuse/usvfs_version.h)
 target_sources(usvfs-fuse
         PRIVATE
             fdmap.cpp

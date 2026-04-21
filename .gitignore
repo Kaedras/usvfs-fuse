@@ -40,5 +40,8 @@
 # Build directory
 build/
 
+# cmake-configured version header
+include/usvfs-fuse/usvfs_version.h
+
 # jetbrains ide files
 .idea/

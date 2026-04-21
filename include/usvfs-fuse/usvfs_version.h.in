@@ -1,0 +1,12 @@
+#pragma once
+
+#define USVFS_VERSION_MAJOR @usvfs-fuse_VERSION_MAJOR@
+#define USVFS_VERSION_MINOR @usvfs-fuse_VERSION_MINOR@
+#define USVFS_VERSION_BUILD @usvfs-fuse_VERSION_BUILD@
+#define USVFS_VERSION_REVISION 0
+
+#define USVFS_BUILD_STRING ""
+#define USVFS_BUILD_WSTRING L""
+
+#define USVFS_VERSION_STRING "@usvfs-fuse_VERSION@"
+#define USVFS_VERSION_WSTRING L"@usvfs-fuse_VERSION@"
