@@ -40,6 +40,9 @@
 # Build directory
 build/
 
+# Install directory
+install/
+
 # cmake-configured version header
 include/usvfs-fuse/usvfs_version.h
 
