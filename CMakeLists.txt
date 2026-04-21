@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.28)
 
 include(CMakePackageConfigHelpers)
+include(GNUInstallDirs)
 
 project(usvfs-fuse VERSION 0.7.0)
 
@@ -18,9 +19,11 @@ if (BUILD_TESTING OR BUILD_PERF_TESTS)
     add_subdirectory(tests)
 endif()
 
+set(export_dst_dir "${CMAKE_INSTALL_LIBDIR}/cmake/usvfs-fuse")
+
 configure_package_config_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake/config.cmake.in
         "${CMAKE_CURRENT_BINARY_DIR}/usvfs-fuseConfig.cmake"
-        INSTALL_DESTINATION "lib/cmake/usvfs-fuse"
+        INSTALL_DESTINATION "${export_dst_dir}"
         NO_SET_AND_CHECK_MACRO
         NO_CHECK_REQUIRED_COMPONENTS_MACRO
 )
@@ -28,10 +31,10 @@ configure_package_config_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake/config.cmake.in
 install(TARGETS usvfs-fuse EXPORT usvfs-fuseTargets FILE_SET HEADERS)
 install(EXPORT usvfs-fuseTargets
         FILE usvfs-fuseTargets.cmake
-        DESTINATION lib/cmake/usvfs-fuse
+        DESTINATION "${export_dst_dir}"
 )
 
 install(FILES
         ${CMAKE_CURRENT_BINARY_DIR}/usvfs-fuseConfig.cmake
-        DESTINATION lib/cmake/usvfs-fuse
+        DESTINATION "${export_dst_dir}"
 )
