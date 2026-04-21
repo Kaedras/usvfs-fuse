@@ -291,7 +291,7 @@ bool UsvfsManager::usvfsVirtualLinkDirectoryStatic(const std::string& source,
 
     fs::path relative = fs::relative(entry.path(), src);
 
-    spdlog::debug("adding '{}' to file tree", relative.string());
+    spdlog::trace("adding '{}' to file tree", relative.string());
     auto newItem = sourceFileTree->add(
         relative.string(), entry.path().string(),
         entry.status().type() == filesystem::file_type::directory ? dir : file);
