@@ -32,6 +32,7 @@ VirtualFileTreeItem::create(std::string path, std::string realPath,
     return nullptr;
   }
 }
+
 std::shared_ptr<VirtualFileTreeItem> VirtualFileTreeItem::createFileTree(
     const std::string& path,
     std::optional<std::reference_wrapper<FdMap>> fdMap) noexcept(false)
