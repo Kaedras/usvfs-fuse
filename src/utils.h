@@ -38,3 +38,5 @@ std::string_view relativePath(std::string_view p, std::string_view base) noexcep
  * @brief Creates a string to describe the flags passed to `open()`.
  */
 std::string openFlagsToString(int flags) noexcept;
+
+void maximizeFdLimit();

@@ -275,3 +275,18 @@ string openFlagsToString(int flags) noexcept
   return result;
 #undef CHECK_FLAG
 }
+
+void maximizeFdLimit()
+{
+  rlimit lim{};
+  auto res = getrlimit(RLIMIT_NOFILE, &lim);
+  if (res != 0) {
+    spdlog::warn("getrlimit() failed with {}", strerror(errno));
+    return;
+  }
+  lim.rlim_cur = lim.rlim_max;
+  res          = setrlimit(RLIMIT_NOFILE, &lim);
+  if (res != 0) {
+    spdlog::warn("setrlimit() failed with {}", strerror(errno));
+  }
+}
