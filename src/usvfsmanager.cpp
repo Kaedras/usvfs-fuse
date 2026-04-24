@@ -288,18 +288,19 @@ bool UsvfsManager::usvfsVirtualLinkDirectoryStatic(const std::string& source,
         (!entry.is_directory() && fileNameInSkipSuffixes(fileName))) {
       continue;
     }
+    const string entryPath = entry.path().string();
+    const bool isDirectory = entry.is_directory();
 
-    fs::path relative = fs::relative(entry.path(), src);
+    string_view relative = relativePath(entryPath, src);
 
-    spdlog::trace("adding '{}' to file tree", relative.string());
-    auto newItem = sourceFileTree->add(
-        relative.string(), entry.path().string(),
-        entry.status().type() == filesystem::file_type::directory ? dir : file);
+    spdlog::trace("adding '{}' to file tree", relative);
+    auto newItem =
+        sourceFileTree->add(relative, entry.path().string(), isDirectory ? dir : file);
     if (newItem == nullptr) {
-      spdlog::error("error adding '{}' to file tree", relative.string());
+      spdlog::error("error adding '{}' to file tree", relative);
       return false;
     }
-    if (entry.is_directory()) {
+    if (isDirectory) {
       int fd = open(entry.path().string().c_str(), OPEN_FLAGS);
       if (fd == -1) {
         spdlog::error("open('{}') failed: {}", entry.path().string(), strerror(errno));
@@ -826,6 +827,9 @@ bool UsvfsManager::anyProcessRunning() const noexcept
 
 std::string UsvfsManager::findCaseInsensitive(const std::string& path) noexcept
 {
+  if (fs::exists(path)) {
+    return path;
+  }
   auto parentPath = getParentPath(path);
   auto fileName   = getFileNameFromPath(path);
   for (const auto& entry : fs::directory_iterator(parentPath)) {
