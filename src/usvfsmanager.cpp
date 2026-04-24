@@ -826,28 +826,6 @@ bool UsvfsManager::anyProcessRunning() const noexcept
   });
 }
 
-std::string UsvfsManager::findCaseInsensitive(const std::string& path) noexcept
-{
-  if (fs::exists(path)) {
-    return path;
-  }
-  auto parentPath = getParentPath(path);
-  auto fileName   = getFileNameFromPath(path);
-  for (const auto& entry : fs::directory_iterator(parentPath)) {
-    const auto entryFileName = entry.path().filename().string();
-    if (iequals(entryFileName, fileName)) {
-      if (entryFileName != fileName) {
-        spdlog::trace("case insensitive lookup for '{}' replaced '{}' with '{}'", path,
-                      fileName, entryFileName);
-      }
-      return entry.path().string();
-    }
-  }
-
-  // return the original path as fallback
-  return path;
-}
-
 bool UsvfsManager::mountInternal() noexcept
 {
   if (m_pendingMounts.empty()) {

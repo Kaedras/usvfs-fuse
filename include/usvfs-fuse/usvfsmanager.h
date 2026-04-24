@@ -191,12 +191,6 @@ private:
    */
   bool anyProcessRunning() const noexcept;
 
-  /**
-   * @brief Look up a file or directory name case-insensitively. Parent path will be
-   * used as-is
-   */
-  static std::string findCaseInsensitive(const std::string& path) noexcept;
-
   // mount function without locking for internal use
   bool mountInternal() noexcept;
 

@@ -1,6 +1,7 @@
 #include "utils.h"
 
 using namespace std;
+namespace fs = std::filesystem;
 
 bool iequals(const std::string_view lhs, const std::string_view rhs) noexcept
 {
@@ -225,6 +226,30 @@ std::string_view relativePath(std::string_view p, std::string_view base) noexcep
   relative.remove_prefix(base.size() + 1);
 
   return relative;
+}
+
+std::string findCaseInsensitive(const std::string& path) noexcept
+{
+  // don't do anything if the path exists
+  if (fs::exists(path)) {
+    return path;
+  }
+
+  auto parentPath = getParentPath(path);
+  auto fileName   = getFileNameFromPath(path);
+  for (const auto& entry : fs::directory_iterator(parentPath)) {
+    const auto entryFileName = entry.path().filename().string();
+    if (iequals(entryFileName, fileName)) {
+      if (entryFileName != fileName) {
+        spdlog::trace("case insensitive lookup for '{}' replaced '{}' with '{}'", path,
+                      fileName, entryFileName);
+      }
+      return entry.path().string();
+    }
+  }
+
+  // return the original path as fallback
+  return path;
 }
 
 string openFlagsToString(int flags) noexcept

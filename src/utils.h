@@ -35,6 +35,12 @@ filesystem.
 std::string_view relativePath(std::string_view p, std::string_view base) noexcept;
 
 /**
+ * @brief Look up a file or directory name case-insensitively. Parent path will be
+ * used as-is
+ */
+std::string findCaseInsensitive(const std::string& path) noexcept;
+
+/**
  * @brief Creates a string to describe the flags passed to `open()`.
  */
 std::string openFlagsToString(int flags) noexcept;
