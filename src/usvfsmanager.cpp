@@ -710,6 +710,7 @@ void UsvfsManager::setUseMountNamespace(bool value) noexcept
 UsvfsManager::UsvfsManager() noexcept
 {
   umask(0);
+  maximizeFdLimit();
 
   auto logger = spdlog::create<spdlog::sinks::stdout_color_sink_mt>("usvfs");
   logger->set_pattern(logPattern);
