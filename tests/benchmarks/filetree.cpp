@@ -104,22 +104,7 @@ static void addMultipleModsFromDisk(benchmark::State& state)
 
   // create files
   const fs::path baseDir = fs::temp_directory_path() / "usvfs-fuse-benchmark";
-  function<void(const fs::path&, int)> addLevel = [&](const fs::path& dir,
-                                                      const int currentDepth) {
-    if (currentDepth >= depth) {
-      return;
-    }
-
-    for (int i = 0; i < width; ++i) {
-      fs::path childPath = dir / to_string(i);
-
-      create_directories(childPath);
-      addLevel(childPath, currentDepth + 1);
-    }
-  };
-  for (int i = 0; i < count; ++i) {
-    addLevel(baseDir / to_string(i), 0);
-  }
+  createModFilesOnDisk(baseDir, width, depth, count);
 
   for (auto _ : state) {
     auto tree = VirtualFileTreeItem::createFileTree(baseDir.string());

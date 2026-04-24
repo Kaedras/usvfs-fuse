@@ -12,10 +12,12 @@ add_subdirectory(src)
 option(ENABLE_ASAN "Enable address sanitizer" OFF)
 
 set(BUILD_TESTING ${BUILD_TESTING} CACHE BOOL "build unit tests for usvfs-fuse")
-set(BUILD_PERF_TESTS ${BUILD_PERF_TESTS} CACHE BOOL "build performance tests for usvfs-fuse")
+set(BUILD_BENCHMARKS ${BUILD_BENCHMARKS} CACHE BOOL "build benchmarks for usvfs-fuse")
 
-if (BUILD_TESTING OR BUILD_PERF_TESTS)
-    enable_testing()
+if (BUILD_TESTING OR BUILD_BENCHMARKS)
+    if(BUILD_TESTING)
+        enable_testing()
+    endif()
     add_subdirectory(tests)
 endif()
 

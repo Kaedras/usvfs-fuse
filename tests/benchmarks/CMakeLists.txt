@@ -3,18 +3,19 @@ cmake_minimum_required(VERSION 3.31)
 find_package(benchmark REQUIRED)
 
 add_executable(
-        usvfs-performance-tests
+        usvfs-benchmarks
         usvfs.cpp
         utils.cpp
         filetree.cpp
         benchmark_utils.h
+        benchmark_utils.cpp
 )
-set_target_properties(usvfs-performance-tests PROPERTIES CXX_STANDARD 23)
+set_target_properties(usvfs-benchmarks PROPERTIES CXX_STANDARD 23)
 target_link_libraries(
-        usvfs-performance-tests
+        usvfs-benchmarks
         PRIVATE
         benchmark::benchmark
         benchmark::benchmark_main
         usvfs-fuse
 )
-target_compile_options(usvfs-performance-tests PRIVATE -Wall -Wextra -Wpedantic)
+target_compile_options(usvfs-benchmarks PRIVATE -Wall -Wextra -Wpedantic)

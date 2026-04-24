@@ -4,6 +4,6 @@ if (BUILD_TESTING)
     add_subdirectory(unit)
 endif()
 
-if (BUILD_PERF_TESTS)
-    add_subdirectory(performance)
+if (BUILD_BENCHMARKS)
+    add_subdirectory(benchmarks)
 endif()
