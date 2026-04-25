@@ -203,36 +203,24 @@ bool UsvfsManager::usvfsVirtualLinkFile(const std::string& source,
       const string relative = destination.substr(state->mountpoint.length());
       auto result           = state->fileTree->add(relative, src, file, true);
       if (result != nullptr) {
-        int fd = open(srcParentDir.c_str(), OPEN_FLAGS);
-        if (fd == -1) {
-          spdlog::error("open() failed for {}: {}", srcParentDir, strerror(errno));
+        if (state->fdMap.add(srcParentDir) == -1) {
           return false;
         }
-        spdlog::trace("adding fd {} for {}", fd, srcParentDir);
-        state->fdMap[srcParentDir] = fd;
       }
       return result != nullptr;
     }
   }
 
   // open a file descriptor for the source parent directory
-  int fd = open(srcParentDir.c_str(), OPEN_FLAGS);
-  if (fd == -1) {
-    spdlog::error("open() failed for {}: {}", srcParentDir, strerror(errno));
+  FdMap fdMap;
+  if (fdMap.add(srcParentDir) == -1) {
     return false;
   }
-  spdlog::trace("adding fd {} for {}", fd, srcParentDir);
-  FdMap fdMap;
-  fdMap[srcParentDir] = fd;
 
   // open a file descriptor for the destination parent directory
-  fd = open(dstParentDir.c_str(), OPEN_FLAGS);
-  if (fd == -1) {
-    spdlog::error("open() failed for {}: {}", dstParentDir, strerror(errno));
+  if (fdMap.add(dstParentDir) == -1) {
     return false;
   }
-  spdlog::trace("adding fd {} for {}", fd, dstParentDir);
-  fdMap[dstParentDir] = fd;
 
   // create the file tree for existing files
   shared_ptr<VirtualFileTreeItem> destinationFileTree =
@@ -265,13 +253,9 @@ bool UsvfsManager::usvfsVirtualLinkDirectoryStatic(const std::string& source,
   const auto dst = findCaseInsensitive(destination);
 
   FdMap fdMap;
-  int srcFd = open(src.c_str(), OPEN_FLAGS);
-  if (srcFd == -1) {
-    spdlog::error("error opening {}: {}", src, strerror(errno));
+  if (fdMap.add(src) == -1) {
     return false;
   }
-  spdlog::trace("adding fd {} for {}", srcFd, src);
-  fdMap[src] = srcFd;
 
   // create the file tree
   auto sourceFileTree = VirtualFileTreeItem::create("/", src, dir);
@@ -301,14 +285,9 @@ bool UsvfsManager::usvfsVirtualLinkDirectoryStatic(const std::string& source,
       return false;
     }
     if (isDirectory) {
-      int fd = open(entry.path().string().c_str(), OPEN_FLAGS);
-      if (fd == -1) {
-        spdlog::error("open('{}') failed: {}", entry.path().string(), strerror(errno));
+      if (fdMap.add(entry.path().string()) == -1) {
         return false;
       }
-      fdMap[entry.path().string()] = fd;
-      spdlog::trace("adding fd {} for {}, real path: {}", fd, fileName,
-                    newItem->realPath());
     }
   }
 

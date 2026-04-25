@@ -37,6 +37,15 @@ public:
   bool addLc(std::string_view lcPath, int fd) noexcept;
 
   /**
+   * @brief Open and add a file descriptor for the specified directory
+   * @param path Directory to open
+   * @return File descriptor for the provided directory, or -1 on error
+   * @note When the provided path already exists in the map, it will only return the
+   * file descriptor and not do anything else
+   */
+  int add(const std::string& path) noexcept;
+
+  /**
    * @brief Merge another fd map into this one and invalidate other file descriptors so
    * they are not closed on destruction
    */

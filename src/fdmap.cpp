@@ -2,6 +2,8 @@
 
 #include "utils.h"
 
+using namespace std;
+
 FdMap::FdMap() noexcept = default;
 
 FdMap::FdMap(FdMap&& other) noexcept
@@ -64,6 +66,29 @@ bool FdMap::add(const std::string_view path, int fd) noexcept
 bool FdMap::addLc(std::string_view lcPath, int fd) noexcept
 {
   return m_map.emplace(lcPath, fd).second;
+}
+
+int FdMap::add(const std::string& path) noexcept
+{
+  string pathLc = toLower(path);
+  const auto it = m_map.find(pathLc);
+  if (it != m_map.end()) {
+    return it->second;
+  }
+
+  int fd = open(path.c_str(), O_DIRECTORY | O_PATH);
+  if (fd == -1) {
+    spdlog::error("error opening directory {}: {}", path, strerror(errno));
+    return -1;
+  }
+  if (!m_map.emplace(std::move(pathLc), fd).second) {
+    spdlog::error("error adding fd for '{}'", path);
+    close(fd);
+    return -1;
+  }
+
+  spdlog::trace("added fd {} for '{}'", fd, path);
+  return fd;
 }
 
 void FdMap::merge(FdMap& other) noexcept
