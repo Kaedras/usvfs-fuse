@@ -65,7 +65,7 @@ int createDirs(FdMap& fdMap, string_view path)
   // create directory
   if (mkdirat(parentFd, name.c_str(), 0755) == -1) {
     const int e = errno;
-    spdlog::error("createDirs('{}'): openat failed: {}", path, strerror(e));
+    spdlog::error("createDirs('{}'): mkdirat failed: {}", path, strerror(e));
     return -e;
   }
 
