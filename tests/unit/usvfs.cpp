@@ -150,7 +150,8 @@ void openFileWithFailure(const string& path, int error)
 
 void createDir(const string& path)
 {
-  EXPECT_EQ(mkdir(path.c_str(), mode), 0) << "error: " << strerror(errno);
+  EXPECT_EQ(mkdir(path.c_str(), mode), 0)
+      << "error creating " << path << ": " << strerror(errno);
 }
 
 void createDirWithFailure(const string& path, int error)
