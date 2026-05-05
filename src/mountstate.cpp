@@ -1,5 +1,8 @@
 #include "mountstate.h"
 
+#include <spdlog/spdlog.h>
+#include <sys/mman.h>
+
 MountState::~MountState()
 {
   spdlog::trace("deleting status data");

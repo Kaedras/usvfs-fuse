@@ -1,5 +1,9 @@
 #pragma once
 
+#include <string>
+#include <string_view>
+#include <unordered_map>
+
 // wrapper class for std::unordered_map that returns an invalid file descriptor instead
 // of throwing std::out_of_range, converts keys to lower case, and closes file
 // descriptors on destruction

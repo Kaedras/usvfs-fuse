@@ -1,6 +1,9 @@
 #pragma once
 
 #include "fdmap.h"
+#include <condition_variable>
+#include <mutex>
+#include <string>
 
 struct fuse;
 class VirtualFileTreeItem;

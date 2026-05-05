@@ -1,15 +1,14 @@
 #include "../../src/utils.h"
 #include "benchmark_utils.h"
 
+#include "usvfs-fuse/usvfsmanager.h"
 #include <benchmark/benchmark.h>
+#include <cmath>
 #include <fcntl.h>
 #include <filesystem>
 #include <fstream>
 #include <thread>
-
-#include "usvfs-fuse/usvfsmanager.h"
-
-#include <cmath>
+#include <unistd.h>
 
 using namespace std;
 namespace fs = std::filesystem;

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "pch.h"
+
 #define OPEN_FLAGS (O_PATH | O_DIRECTORY)
 
 /** Get file attributes.

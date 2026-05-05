@@ -1,6 +1,10 @@
 #include "fdmap.h"
 
 #include "utils.h"
+#include <fcntl.h>
+#include <ranges>
+#include <spdlog/spdlog.h>
+#include <unistd.h>
 
 using namespace std;
 

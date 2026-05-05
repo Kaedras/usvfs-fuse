@@ -1,8 +1,12 @@
 #pragma once
 
 #include "logging.h"
+#include <memory>
+#include <optional>
+#include <set>
 #include <shared_mutex>
 #include <string>
+#include <vector>
 
 // forward declarations
 struct MountState;

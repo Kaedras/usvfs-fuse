@@ -1,5 +1,11 @@
 #include "utils.h"
 
+#include <QString>
+#include <fcntl.h>
+#include <filesystem>
+#include <spdlog/spdlog.h>
+#include <sys/resource.h>
+
 using namespace std;
 namespace fs = std::filesystem;
 
