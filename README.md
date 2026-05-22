@@ -11,25 +11,24 @@ using [libfuse](https://github.com/libfuse/libfuse) for use on Linux.
 - Qt6 core
 - spdlog
 - gtest (when building unit tests)
-- google benchmark (when building performance tests)
+- google benchmark (when building benchmarks)
 
 ## Building
 
 ```shell
-mkdir build && cd build
-cmake .. # optionally add e.g. -DBUILD_TESTING=ON
-make -j$(nproc)
+cmake -B build # optionally add e.g. -DBUILD_TESTING=ON
+cmake --build build -j$(nproc)
 ```
 
 optional build options:
 
 - BUILD_TESTING=ON/OFF: build unit tests
-- BUILD_PERF_TESTS=ON/OFF: build performance tests
+- BUILD_BENCHMARKS=ON/OFF: build benchmarks
 
 ## Known issues/limitations
 
 - Some functions haven’t been implemented yet (they may not even be required)
-- There may be much room for performance optimisation
+- There may be much room for performance optimization
 - Unit tests need to be expanded
 - Mounting in a separate user namespace by calling `UsvfsManager::setUseMountNamespace(true)` may require an AppArmor
   rule
