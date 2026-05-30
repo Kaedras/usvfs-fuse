@@ -1,5 +1,7 @@
 #include "usvfs-fuse/usvfsmanager.h"
 
+#include <QDir>
+
 #include "fdmap.h"
 #include "loghelpers.h"
 #include "mountstate.h"
@@ -341,7 +343,7 @@ const std::vector<pid_t>& UsvfsManager::usvfsGetVFSProcessList() const noexcept
 
 pid_t UsvfsManager::usvfsCreateProcessHooked(
     const std::string& file, const std::string& arg, const std::string& workDir,
-    std::optional<std::reference_wrapper<std::vector<std::string>>> env) noexcept
+    const std::vector<std::string>& env) noexcept
 {
   scoped_lock lock(m_mtx);
 
@@ -423,10 +425,8 @@ pid_t UsvfsManager::usvfsCreateProcessHooked(
       }
     }
 
-    if (env.has_value()) {
-      for (const auto& entry : env.value().get()) {
-        putenv(const_cast<char*>(entry.c_str()));
-      }
+    for (const string& entry : env) {
+      putenv(const_cast<char*>(entry.c_str()));
     }
 
     execl("/bin/sh", "/bin/sh", "-c", cmd.c_str(), nullptr);
@@ -460,6 +460,26 @@ pid_t UsvfsManager::usvfsCreateProcessHooked(
 
   spdlog::error("execl failed: {}", strerror(error));
   return -1;
+}
+
+pid_t UsvfsManager::usvfsCreateProcessHooked(const QString& file,
+                                             const QString& arg) noexcept
+{
+  return usvfsCreateProcessHooked(file, arg, QDir::currentPath());
+}
+
+pid_t UsvfsManager::usvfsCreateProcessHooked(const QString& file, const QString& arg,
+                                             const QString& workDir,
+                                             const QStringList& env) noexcept
+{
+  vector<string> env_;
+  env_.reserve(env.size());
+  for (const QString& value : env) {
+    env_.emplace_back(value.toStdString());
+  }
+
+  return usvfsCreateProcessHooked(file.toStdString(), arg.toStdString(),
+                                  workDir.toStdString(), env_);
 }
 
 pid_t UsvfsManager::usvfsCreateProcessHooked(const std::string& file,

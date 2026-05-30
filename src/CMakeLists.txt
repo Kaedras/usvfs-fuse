@@ -39,4 +39,4 @@ if(ENABLE_ASAN)
 endif()
 
 target_compile_options(usvfs-fuse PRIVATE -Wall -Wextra -Wpedantic)
-target_link_libraries(usvfs-fuse PRIVATE PkgConfig::FUSE3 spdlog::spdlog Qt::Core)
+target_link_libraries(usvfs-fuse PRIVATE PkgConfig::FUSE3 spdlog::spdlog PUBLIC Qt::Core)

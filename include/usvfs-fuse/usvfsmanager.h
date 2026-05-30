@@ -1,6 +1,8 @@
 #pragma once
 
 #include "logging.h"
+#include <QString>
+#include <QStringList>
 #include <memory>
 #include <optional>
 #include <set>
@@ -63,15 +65,30 @@ public:
 
   /**
    * @brief spawn a new process that can see the virtual file system.
-   * @param env Environment variables to add to the process
    */
-  pid_t usvfsCreateProcessHooked(
-      const std::string& file, const std::string& arg, const std::string& workDir,
-      std::optional<std::reference_wrapper<std::vector<std::string>>> env =
-          std::nullopt) noexcept;
-
   pid_t usvfsCreateProcessHooked(const std::string& file,
                                  const std::string& arg) noexcept;
+
+  /**
+   * @brief spawn a new process that can see the virtual file system.
+   * @param env Environment variables to add to the process
+   */
+  pid_t usvfsCreateProcessHooked(const std::string& file, const std::string& arg,
+                                 const std::string& workDir,
+                                 const std::vector<std::string>& env = {}) noexcept;
+
+  /**
+   * @brief spawn a new process that can see the virtual file system.
+   */
+  pid_t usvfsCreateProcessHooked(const QString& file, const QString& arg) noexcept;
+
+  /**
+   * @brief spawn a new process that can see the virtual file system.
+   * @param env Environment variables to add to the process
+   */
+  pid_t usvfsCreateProcessHooked(const QString& file, const QString& arg,
+                                 const QString& workDir,
+                                 const QStringList& env = {}) noexcept;
 
   /**
    * retrieve a single log message.
