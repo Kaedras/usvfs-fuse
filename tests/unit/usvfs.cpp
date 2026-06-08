@@ -1,3 +1,5 @@
+#include "../../src/utils.h"
+
 #include <fcntl.h>
 #include <filesystem>
 #include <fstream>
@@ -659,6 +661,37 @@ TEST(usvfs, CreateProcessHooked_WithMountNamespace)
   EXPECT_GE(waitpid(pid, &status, 0), 0) << "error: " << strerror(errno);
   EXPECT_TRUE(WIFEXITED(status));
   EXPECT_EQ(WEXITSTATUS(status), 0);
+
+  EXPECT_TRUE(cleanup());
+}
+
+TEST(Usvfs, linkDirectoryMountpointCaseInsensitivity)
+{
+  initLogging();
+  ASSERT_TRUE(createTmpDirs());
+
+  auto usvfs = UsvfsManager::instance();
+
+  ASSERT_NO_THROW(usvfs->usvfsVirtualLinkDirectoryStatic(
+      (src / "a").string(), mnt.parent_path() / toUpper(mnt.filename().string()), 0));
+  ASSERT_TRUE(usvfs->mount());
+  ASSERT_TRUE(usvfs->unmount());
+
+  EXPECT_TRUE(cleanup());
+}
+
+TEST(Usvfs, linkFileMountpointCaseInsensitivity)
+{
+  initLogging();
+  ASSERT_TRUE(createTmpDirs());
+
+  auto usvfs = UsvfsManager::instance();
+
+  ASSERT_NO_THROW(usvfs->usvfsVirtualLinkFile(
+      (src / "a/a.txt").string(),
+      mnt.parent_path() / toUpper(mnt.filename().string()) / "a.txt"));
+  ASSERT_TRUE(usvfs->mount());
+  ASSERT_TRUE(usvfs->unmount());
 
   EXPECT_TRUE(cleanup());
 }
