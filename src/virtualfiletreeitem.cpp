@@ -264,7 +264,8 @@ void VirtualFileTreeItem::setName(std::string name) noexcept
 void VirtualFileTreeItem::setRealPath(std::string realPath) noexcept
 {
   if (realPath.empty()) {
-    spdlog::error("attempted to call {} with an empty parameter", __FUNCTION__);
+    spdlog::error(
+        "VirtualFileTreeItem::setRealPath() was called with an empty parameter");
     errno = EINVAL;
     return;
   }
@@ -363,7 +364,7 @@ VirtualFileTreeItem::VirtualFileTreeItem(
     : m_fileName(std::move(path)), m_realPath(std::move(realPath)),
       m_parent(std::move(parent)), m_type(type), m_deleted(false)
 {
-  spdlog::trace("VirtualFileTreeItem(path='{}', realPath= '{}')", m_fileName,
+  spdlog::trace("VirtualFileTreeItem(path='{}', realPath='{}')", m_fileName,
                 m_realPath);
   if (m_fileName.empty()) {
     errno = EINVAL;

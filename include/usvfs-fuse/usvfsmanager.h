@@ -45,18 +45,20 @@ public:
 
   /**
    * @brief link a file virtually
+   * @throw std::runtime_error
    * @note: the directory the destination file resides in has to exist - at least
    * virtually.
    */
-  bool usvfsVirtualLinkFile(const std::string& source,
-                            const std::string& destination) noexcept;
+  void usvfsVirtualLinkFile(const std::string& source,
+                            const std::string& destination) noexcept(false);
 
   /**
    * @brief link a directory virtually
+   * @throw std::runtime_error
    */
-  bool usvfsVirtualLinkDirectoryStatic(const std::string& source,
+  void usvfsVirtualLinkDirectoryStatic(const std::string& source,
                                        const std::string& destination,
-                                       unsigned int flags = 0) noexcept;
+                                       unsigned int flags = 0) noexcept(false);
 
   /**
    * @brief retrieve a list of all processes connected to the vfs

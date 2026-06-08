@@ -180,16 +180,17 @@ void UsvfsManager::usvfsClearVirtualMappings() noexcept
   m_pendingMounts.clear();
 }
 
-bool UsvfsManager::usvfsVirtualLinkFile(const std::string& source,
-                                        const std::string& destination) noexcept
+void UsvfsManager::usvfsVirtualLinkFile(const std::string& source,
+                                        const std::string& destination) noexcept(false)
 {
   scoped_lock lock(m_mtx);
 
-  spdlog::trace("{}, source: {}, destination: {}", __FUNCTION__, source, destination);
+  spdlog::trace("usvfsVirtualLinkFile(source='{}', destination='{}')", source,
+                destination);
 
   if (fileNameInSkipSuffixes(getFileNameFromPath(source))) {
     spdlog::debug("file {} should be skipped", source);
-    return true;
+    return;
   }
 
   const string src          = findCaseInsensitive(source);
@@ -206,22 +207,27 @@ bool UsvfsManager::usvfsVirtualLinkFile(const std::string& source,
       auto result           = state->fileTree->add(relative, src, file, true);
       if (result != nullptr) {
         if (state->fdMap.add(srcParentDir) == -1) {
-          return false;
+          throw runtime_error("error adding file descriptor for " + srcParentDir);
         }
       }
-      return result != nullptr;
+      if (result == nullptr) {
+        const int e = errno;
+        spdlog::error(format("error adding '{}' ({}) to file tree : ", relative, src,
+                             strerror(e)));
+      }
+      return;
     }
   }
 
   // open a file descriptor for the source parent directory
   FdMap fdMap;
   if (fdMap.add(srcParentDir) == -1) {
-    return false;
+    throw runtime_error("error adding file descriptor for " + srcParentDir);
   }
 
   // open a file descriptor for the destination parent directory
   if (fdMap.add(dstParentDir) == -1) {
-    return false;
+    throw runtime_error("error adding file descriptor for " + dstParentDir);
   }
 
   // create the file tree for existing files
@@ -230,7 +236,9 @@ bool UsvfsManager::usvfsVirtualLinkFile(const std::string& source,
 
   auto result = destinationFileTree->add(dstFileName, source, file, true);
   if (result == nullptr) {
-    return false;
+    const int e = errno;
+    spdlog::error(format("error adding '{}' ({}) to file tree : ", dstFileName, source,
+                         strerror(e)));
   }
 
   // prepare state and enqueue to the pending list (no mounting yet)
@@ -239,24 +247,23 @@ bool UsvfsManager::usvfsVirtualLinkFile(const std::string& source,
   state->mountpoint = dstParentDir;
   state->fdMap      = std::move(fdMap);
   m_pendingMounts.emplace_back(std::move(state));
-
-  return true;
 }
 
-bool UsvfsManager::usvfsVirtualLinkDirectoryStatic(const std::string& source,
+void UsvfsManager::usvfsVirtualLinkDirectoryStatic(const std::string& source,
                                                    const std::string& destination,
-                                                   unsigned int flags) noexcept
+                                                   unsigned int flags) noexcept(false)
 {
   scoped_lock lock(m_mtx);
 
-  spdlog::trace("{}, source: {}, destination: {}", __FUNCTION__, source, destination);
+  spdlog::trace("usvfsVirtualLinkDirectoryStatic(source='{}', destination='{}')",
+                source, destination);
 
   const auto src = findCaseInsensitive(source);
   const auto dst = findCaseInsensitive(destination);
 
   FdMap fdMap;
   if (fdMap.add(src) == -1) {
-    return false;
+    throw runtime_error("error adding file descriptor for " + src);
   }
 
   // create the file tree
@@ -264,8 +271,8 @@ bool UsvfsManager::usvfsVirtualLinkDirectoryStatic(const std::string& source,
   error_code ec;
   fs::recursive_directory_iterator iter(src, ec);
   if (ec) {
-    spdlog::error("error creating recursive_directory_iterator: {}", ec.message());
-    return false;
+    throw runtime_error("error creating recursive_directory_iterator: "s +
+                        ec.message());
   }
   for (const fs::directory_entry& entry : iter) {
     // check if the directory should be skipped
@@ -283,12 +290,14 @@ bool UsvfsManager::usvfsVirtualLinkDirectoryStatic(const std::string& source,
     auto newItem =
         sourceFileTree->add(relative, entry.path().string(), isDirectory ? dir : file);
     if (newItem == nullptr) {
-      spdlog::error("error adding '{}' to file tree", relative);
-      return false;
+      const int e = errno;
+      throw runtime_error(
+          format("error adding '{}' to file tree: {}", relative, strerror(e)));
     }
     if (isDirectory) {
       if (fdMap.add(entry.path().string()) == -1) {
-        return false;
+        throw runtime_error("error adding file descriptor for " +
+                            entry.path().string());
       }
     }
   }
@@ -300,9 +309,10 @@ bool UsvfsManager::usvfsVirtualLinkDirectoryStatic(const std::string& source,
       const string relative = destination.substr(state->mountpoint.length());
       auto existingItem     = state->fileTree->find(relative);
       if (existingItem == nullptr) {
-        spdlog::error("Error merging destination '{}' into existing file tree",
-                      destination);
-        return false;
+        const int e = errno;
+        throw runtime_error(
+            format("Error merging destination '{}' into existing file tree: {}",
+                   destination, strerror(e)));
       }
       existingItem->merge(sourceFileTree);
       state->fdMap.merge(fdMap);
@@ -310,7 +320,7 @@ bool UsvfsManager::usvfsVirtualLinkDirectoryStatic(const std::string& source,
       if (flags & linkFlag::CREATE_TARGET) {
         state->upperDir = source;
       }
-      return true;
+      return;
     }
   }
 
@@ -331,8 +341,6 @@ bool UsvfsManager::usvfsVirtualLinkDirectoryStatic(const std::string& source,
   }
 
   m_pendingMounts.emplace_back(std::move(state));
-
-  return true;
 }
 
 const std::vector<pid_t>& UsvfsManager::usvfsGetVFSProcessList() const noexcept
@@ -353,7 +361,8 @@ pid_t UsvfsManager::usvfsCreateProcessHooked(
     return false;
   }
 
-  spdlog::trace("{}: {}, {}, {}", __FUNCTION__, file, arg, workDir);
+  spdlog::trace("usvfsCreateProcessHooked(file='{}', arg='{}', workdir='{}')", file,
+                arg, workDir);
 
   if (!m_executableBlacklist.contains(file)) {
     if (!mountInternal()) {
@@ -362,7 +371,7 @@ pid_t UsvfsManager::usvfsCreateProcessHooked(
   }
 
   const string cmd = "'" + file + "' " + arg;
-  spdlog::debug("{}: command string: {}", __FUNCTION__, cmd);
+  spdlog::debug("usvfsCreateProcessHooked: command string: {}", cmd);
 
   int pipefd[2];
 

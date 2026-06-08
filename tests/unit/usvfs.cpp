@@ -254,14 +254,14 @@ protected:
     const auto usvfs = UsvfsManager::instance();
     usvfs->setDebugMode(enableDebugMode);
 
-    ASSERT_TRUE(
+    ASSERT_NO_THROW(
         usvfs->usvfsVirtualLinkDirectoryStatic((src / "a").string(), mnt.string()));
-    ASSERT_TRUE(
+    ASSERT_NO_THROW(
         usvfs->usvfsVirtualLinkDirectoryStatic((src / "b").string(), mnt.string()));
-    ASSERT_TRUE(usvfs->usvfsVirtualLinkDirectoryStatic(upper, mnt.string(),
-                                                       linkFlag::CREATE_TARGET));
+    ASSERT_NO_THROW(usvfs->usvfsVirtualLinkDirectoryStatic(upper, mnt.string(),
+                                                           linkFlag::CREATE_TARGET));
 
-    ASSERT_TRUE(usvfs->usvfsVirtualLinkFile(src / "c/c.txt", mnt2 / "c.txt"));
+    ASSERT_NO_THROW(usvfs->usvfsVirtualLinkFile(src / "c/c.txt", mnt2 / "c.txt"));
 
     ASSERT_NO_THROW(usvfs->mount());
     dumpUsvfs();
@@ -576,21 +576,21 @@ TEST(usvfs, MergeModDirectories)
 
   auto usvfs = UsvfsManager::instance();
   usvfs->setProcessDelay(10ms);
-  ASSERT_TRUE(
+  ASSERT_NO_THROW(
       usvfs->usvfsVirtualLinkDirectoryStatic((src / "mod0").string(), mnt.string()));
-  ASSERT_TRUE(
+  ASSERT_NO_THROW(
       usvfs->usvfsVirtualLinkDirectoryStatic((src / "mod1").string(), mnt.string()));
-  ASSERT_TRUE(
+  ASSERT_NO_THROW(
       usvfs->usvfsVirtualLinkDirectoryStatic((src / "mod2").string(), mnt.string()));
-  ASSERT_TRUE(
+  ASSERT_NO_THROW(
       usvfs->usvfsVirtualLinkDirectoryStatic((src / "mod3").string(), mnt.string()));
-  ASSERT_TRUE(
+  ASSERT_NO_THROW(
       usvfs->usvfsVirtualLinkDirectoryStatic((src / "mod4").string(), mnt.string()));
-  ASSERT_TRUE(usvfs->usvfsVirtualLinkDirectoryStatic(
+  ASSERT_NO_THROW(usvfs->usvfsVirtualLinkDirectoryStatic(
       (src / "overwrite").string(), mnt.string(), linkFlag::CREATE_TARGET));
 
-  ASSERT_TRUE(usvfs->usvfsVirtualLinkFile((src / "profile/Plugins.txt").string(),
-                                          (mnt2 / "plugins.txt").string()));
+  ASSERT_NO_THROW(usvfs->usvfsVirtualLinkFile((src / "profile/Plugins.txt").string(),
+                                              (mnt2 / "plugins.txt").string()));
 
   ASSERT_TRUE(usvfs->mount());
 
@@ -618,11 +618,11 @@ TEST(usvfs, CreateProcessHooked)
   auto usvfs = UsvfsManager::instance();
   usvfs->setProcessDelay(10ms);
 
-  ASSERT_TRUE(
+  ASSERT_NO_THROW(
       usvfs->usvfsVirtualLinkDirectoryStatic((src / "a").string(), mnt.string()));
-  ASSERT_TRUE(
+  ASSERT_NO_THROW(
       usvfs->usvfsVirtualLinkDirectoryStatic((src / "b").string(), mnt.string()));
-  ASSERT_TRUE(usvfs->usvfsVirtualLinkFile(src / "c/c.txt", mnt / "c.txt"));
+  ASSERT_NO_THROW(usvfs->usvfsVirtualLinkFile(src / "c/c.txt", mnt / "c.txt"));
 
   pid_t pid = usvfs->usvfsCreateProcessHooked("tree", ".", mnt.string());
   ASSERT_GE(pid, 0);
@@ -646,11 +646,11 @@ TEST(usvfs, CreateProcessHooked_WithMountNamespace)
   usvfs->setProcessDelay(10ms);
   usvfs->setUseMountNamespace(true);
 
-  ASSERT_TRUE(
+  ASSERT_NO_THROW(
       usvfs->usvfsVirtualLinkDirectoryStatic((src / "a").string(), mnt.string(), 0));
-  ASSERT_TRUE(
+  ASSERT_NO_THROW(
       usvfs->usvfsVirtualLinkDirectoryStatic((src / "b").string(), mnt.string(), 0));
-  ASSERT_TRUE(usvfs->usvfsVirtualLinkFile(src / "c/c.txt", mnt / "c.txt"));
+  ASSERT_NO_THROW(usvfs->usvfsVirtualLinkFile(src / "c/c.txt", mnt / "c.txt"));
 
   pid_t pid = usvfs->usvfsCreateProcessHooked("tree", ".", mnt.string());
   ASSERT_GE(pid, 0);
