@@ -195,7 +195,7 @@ void UsvfsManager::usvfsVirtualLinkFile(const std::string& source,
 
   const string src          = findCaseInsensitive(source);
   const string srcParentDir = getParentPath(source);
-  const string dstParentDir = getParentPath(destination);
+  const string dstParentDir = findCaseInsensitive(getParentPath(destination));
   const string dstFileName  = getFileNameFromPath(destination);
 
   // check if destination exists in pending mounts
@@ -333,7 +333,7 @@ void UsvfsManager::usvfsVirtualLinkDirectoryStatic(const std::string& source,
   // prepare state and add to the pending list (no mounting yet)
   auto state        = make_unique<MountState>();
   state->fileTree   = std::move(destinationFileTree);
-  state->mountpoint = destination;
+  state->mountpoint = dst;
   state->fdMap      = std::move(fdMap);
 
   if (flags & linkFlag::CREATE_TARGET) {
