@@ -243,17 +243,19 @@ std::string findCaseInsensitive(const std::string& path) noexcept
 
   auto parentPath = getParentPath(path);
   auto fileName   = getFileNameFromPath(path);
-  for (const auto& entry : fs::directory_iterator(parentPath)) {
-    const auto entryFileName = entry.path().filename().string();
-    if (iequals(entryFileName, fileName)) {
-      if (entryFileName != fileName) {
-        spdlog::trace("case insensitive lookup for '{}' replaced '{}' with '{}'", path,
-                      fileName, entryFileName);
+  try {
+    for (const auto& entry : fs::directory_iterator(parentPath)) {
+      const auto entryFileName = entry.path().filename().string();
+      if (iequals(entryFileName, fileName)) {
+        if (entryFileName != fileName) {
+          spdlog::trace("case insensitive lookup for '{}' replaced '{}' with '{}'",
+                        path, fileName, entryFileName);
+        }
+        return entry.path().string();
       }
-      return entry.path().string();
     }
+  } catch (...) {
   }
-
   // return the original path as fallback
   return path;
 }
