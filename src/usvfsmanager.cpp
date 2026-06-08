@@ -234,10 +234,10 @@ void UsvfsManager::usvfsVirtualLinkFile(const std::string& source,
   shared_ptr<VirtualFileTreeItem> destinationFileTree =
       VirtualFileTreeItem::createFileTree(dstParentDir, fdMap);
 
-  auto result = destinationFileTree->add(dstFileName, source, file, true);
+  auto result = destinationFileTree->add(dstFileName, src, file, true);
   if (result == nullptr) {
     const int e = errno;
-    spdlog::error(format("error adding '{}' ({}) to file tree : ", dstFileName, source,
+    spdlog::error(format("error adding '{}' ({}) to file tree : ", dstFileName, src,
                          strerror(e)));
   }
 
@@ -304,21 +304,21 @@ void UsvfsManager::usvfsVirtualLinkDirectoryStatic(const std::string& source,
 
   // check if destination exists in pending mounts
   for (const auto& state : m_pendingMounts) {
-    if (isParentPathOf(state->mountpoint, destination)) {
+    if (isParentPathOf(state->mountpoint, dst)) {
       // destination exists, merge file trees
-      const string relative = destination.substr(state->mountpoint.length());
+      const string relative = dst.substr(state->mountpoint.length());
       auto existingItem     = state->fileTree->find(relative);
       if (existingItem == nullptr) {
         const int e = errno;
         throw runtime_error(
-            format("Error merging destination '{}' into existing file tree: {}",
-                   destination, strerror(e)));
+            format("Error merging destination '{}' into existing file tree: {}", dst,
+                   strerror(e)));
       }
       existingItem->merge(sourceFileTree);
       state->fdMap.merge(fdMap);
 
       if (flags & linkFlag::CREATE_TARGET) {
-        state->upperDir = source;
+        state->upperDir = src;
       }
       return;
     }
@@ -326,7 +326,7 @@ void UsvfsManager::usvfsVirtualLinkDirectoryStatic(const std::string& source,
 
   // create the file tree for existing files
   shared_ptr<VirtualFileTreeItem> destinationFileTree =
-      VirtualFileTreeItem::createFileTree(destination, fdMap);
+      VirtualFileTreeItem::createFileTree(dst, fdMap);
 
   destinationFileTree->merge(sourceFileTree);
 
@@ -337,7 +337,7 @@ void UsvfsManager::usvfsVirtualLinkDirectoryStatic(const std::string& source,
   state->fdMap      = std::move(fdMap);
 
   if (flags & linkFlag::CREATE_TARGET) {
-    state->upperDir = source;
+    state->upperDir = src;
   }
 
   m_pendingMounts.emplace_back(std::move(state));
