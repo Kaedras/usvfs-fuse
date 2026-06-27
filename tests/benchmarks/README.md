@@ -7,19 +7,21 @@ See [here](https://github.com/google/benchmark/blob/main/docs/reducing_variance.
 ## Command:
 
 ```shell
-# set cpu governor to performance
+# (when using amd-pstate) set amd-pstate mode to passive. when set to active or guided the firmware controls the cpu frequency
+echo passive | sudo tee /sys/devices/system/cpu/amd_pstate/status
+# set cpu governor
 sudo cpupower frequency-set -g performance
 # disable cpu boosting
 echo 0 | sudo tee /sys/devices/system/cpu/cpufreq/boost
 # run benchmark on cpu 0
-taskset -c 0 ./usvfs-performance-tests --benchmark_repetitions=20 --benchmark_min_warmup_time=2 --benchmark_report_aggregates_only=true
+taskset -c 0 ./usvfs-benchmarks --benchmark_repetitions=20 --benchmark_min_warmup_time=2 --benchmark_report_aggregates_only=true
 ```
 
 ## Output
 
 ```
 2025-12-27T16:37:01+01:00
-Running ./usvfs-performance-tests
+Running ./usvfs-benchmarks
 Run on (32 X 4340.27 MHz CPU s)
 CPU Caches:
   L1 Data 48 KiB (x16)
