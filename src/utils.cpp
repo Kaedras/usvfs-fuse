@@ -236,14 +236,14 @@ std::string_view relativePath(std::string_view p, std::string_view base) noexcep
 
 std::string findCaseInsensitive(const std::string& path) noexcept
 {
-  // don't do anything if the path exists
-  if (fs::exists(path)) {
-    return path;
-  }
-
-  auto parentPath = getParentPath(path);
-  auto fileName   = getFileNameFromPath(path);
   try {
+    // don't do anything if the path exists
+    if (fs::exists(path)) {
+      return path;
+    }
+
+    auto parentPath = getParentPath(path);
+    auto fileName   = getFileNameFromPath(path);
     for (const auto& entry : fs::directory_iterator(parentPath)) {
       const auto entryFileName = entry.path().filename().string();
       if (iequals(entryFileName, fileName)) {
