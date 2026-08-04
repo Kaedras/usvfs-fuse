@@ -82,11 +82,23 @@ int createDirs(FdMap& fdMap, string_view path)
 
   return fd;
 }
+
+std::string fuseReaddirFlagsToString(fuse_readdir_flags flags) noexcept
+{
+  switch (flags) {
+  case FUSE_READDIR_DEFAULTS:
+    return "DEFAULTS";
+  case FUSE_READDIR_PLUS:
+    return "PLUS";
+  [[unlikely]] default:
+    return "INVALID FLAG";
+  }
+}
 }  // namespace
 
 int usvfs_getattr(const char* path, struct stat* stbuf, fuse_file_info* fi) noexcept
 {
-  spdlog::trace("usvfs_getattr(path={})", path);
+  spdlog::trace("usvfs_getattr(path='{}')", path);
 
   // try to use existing fd
   if (fi != nullptr && fi->fh > 0) {
@@ -142,7 +154,7 @@ int usvfs_getattr(const char* path, struct stat* stbuf, fuse_file_info* fi) noex
 
 int usvfs_readlink(const char* path, char* buf, size_t size) noexcept
 {
-  spdlog::trace("usvfs_readlink(path='{}',buf={},size={})", path,
+  spdlog::trace("usvfs_readlink(path='{}', buf={}, size={})", path,
                 reinterpret_cast<long>(buf), size);
   GET_STATE()
   FIND_ITEM()
@@ -166,7 +178,7 @@ int usvfs_readlink(const char* path, char* buf, size_t size) noexcept
 
 int usvfs_mkdir(const char* path, mode_t mode) noexcept
 {
-  spdlog::trace("usvfs_mkdir(path='{}', mode={})", path, mode);
+  spdlog::trace("usvfs_mkdir(path='{}', mode=0{:o})", path, mode);
   GET_STATE()
 
   const string fileName = getFileNameFromPath(path);
@@ -196,7 +208,7 @@ int usvfs_mkdir(const char* path, mode_t mode) noexcept
 
   const string realPath = state->upperDir + path;
 
-  spdlog::trace("usvfs_mkdir, path={}: creating directory {}", path, realPath);
+  spdlog::trace("usvfs_mkdir: creating directory '{}'", path, realPath);
 
   // create the directory on disk
   int res = createDirs(state->fdMap, realPath);
@@ -292,14 +304,14 @@ int usvfs_rename(const char* from, const char* to, const unsigned int flags) noe
   // get old item
   const auto oldItem = state->fileTree->find(from);
   if (oldItem == nullptr) {
-    spdlog::error("usvfs_rename(from='{}',to='{}'): could not find item to rename",
+    spdlog::error("usvfs_rename(from='{}', to='{}'): could not find item to rename",
                   from, to);
     return -ENOENT;
   }
 
   // look for existing item
   if (state->fileTree->find(to) != nullptr && flags & RENAME_NOREPLACE) {
-    spdlog::error("usvfs_rename(from='{}',to='{}'): target path exists", from, to);
+    spdlog::error("usvfs_rename(from='{}', to='{}'): target path exists", from, to);
     return -EEXIST;
   }
 
@@ -308,7 +320,7 @@ int usvfs_rename(const char* from, const char* to, const unsigned int flags) noe
   const auto newParentItem   = state->fileTree->find(newParentPath);
   if (newParentItem == nullptr) {
     spdlog::error(
-        "usvfs_rename(from='{}',to='{}'): target parent directory '{}' does not exist",
+        "usvfs_rename(from='{}', to='{}'): target parent directory '{}' does not exist",
         from, to, newParentPath);
     return -ENOENT;
   }
@@ -324,7 +336,7 @@ int usvfs_rename(const char* from, const char* to, const unsigned int flags) noe
 
   if (renameat2(oldFd, oldItem->fileName().c_str(), newFd, newFileName.c_str(),
                 flags & RENAME_EXCHANGE ? RENAME_EXCHANGE : 0) != 0) {
-    spdlog::error("usvfs_rename(from='{}',to='{}'): renameat2({}:'{}', {}, {}:'{}', "
+    spdlog::error("usvfs_rename(from='{}', to='{}'): renameat2({}:'{}', {}, {}:'{}', "
                   "{}) failed: {}",
                   from, to, oldFd, oldRealParentPath, oldItem->fileName(), newFd,
                   newRealParentPath, newFileName, strerror(errno));
@@ -336,15 +348,16 @@ int usvfs_rename(const char* from, const char* to, const unsigned int flags) noe
       state->fileTree->add(to, newRealParentPath + to, oldItem->getType());
   if (newItem == nullptr) {
     spdlog::error(
-        "usvfs_rename(from='{}',to='{}'): error inserting new path to file tree", from,
+        "usvfs_rename(from='{}', to='{}'): error inserting new path to file tree", from,
         to);
     return -errno;
   }
 
   // remove old item
   if (!state->fileTree->erase(from)) {
-    spdlog::error("usvfs_rename(from='{}',to='{}'): error removing '{}' from file tree",
-                  from, to, from);
+    spdlog::error(
+        "usvfs_rename(from='{}', to='{}'): error removing '{}' from file tree", from,
+        to, from);
     return -errno;
   }
 
@@ -360,7 +373,7 @@ int usvfs_link(const char* from, const char* to) noexcept
 
 int usvfs_chmod(const char* path, mode_t mode, fuse_file_info* fi) noexcept
 {
-  spdlog::trace("usvfs_chmod(path='{}', mode='{}')", path, mode);
+  spdlog::trace("usvfs_chmod(path='{}', mode=0{:o})", path, mode);
 
   if (fi != nullptr && fi->fh != 0) {
     if (fchmod(static_cast<int>(fi->fh), mode) != 0) {
@@ -375,7 +388,7 @@ int usvfs_chmod(const char* path, mode_t mode, fuse_file_info* fi) noexcept
   FIND_ITEM()
   GET_PATHS()
 
-  spdlog::trace("fchmodat(fdPath='{}', file='{}', mode={})", parentPath, fileName,
+  spdlog::trace("fchmodat(fdPath='{}', file='{}', mode=0{:o})", parentPath, fileName,
                 mode);
   if (fchmodat(state->fdMap.at(parentPath), fileName.c_str(), mode, 0) == -1) {
     const int e = errno;
@@ -451,7 +464,8 @@ int usvfs_truncate(const char* path, off_t size, fuse_file_info* fi) noexcept
 
 int usvfs_open(const char* path, fuse_file_info* fi) noexcept
 {
-  spdlog::trace("usvfs_open(path='{}', flags={})", path, openFlagsToString(fi->flags));
+  spdlog::trace("usvfs_open(path='{}', flags='{}')", path,
+                openFlagsToString(fi->flags));
   GET_STATE()
   FIND_ITEM()
   GET_PATHS()
@@ -567,7 +581,8 @@ int usvfs_readdir(const char* path, void* buf, const fuse_fill_dir_t filler,
                   off_t /*offset*/, fuse_file_info* /*fi*/,
                   fuse_readdir_flags flags) noexcept
 {
-  spdlog::trace("usvfs_readdir(path='{}', flags={})", path, static_cast<int>(flags));
+  spdlog::trace("usvfs_readdir(path='{}', flags='{}')", path,
+                fuseReaddirFlagsToString(flags));
 
   GET_STATE()
 

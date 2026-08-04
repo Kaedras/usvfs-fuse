@@ -189,7 +189,7 @@ void UsvfsManager::usvfsVirtualLinkFile(const std::string& source,
                 destination);
 
   if (fileNameInSkipSuffixes(getFileNameFromPath(source))) {
-    spdlog::debug("file {} should be skipped", source);
+    spdlog::debug("file '{}' should be skipped", source);
     return;
   }
 
