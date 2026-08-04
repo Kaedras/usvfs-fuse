@@ -695,3 +695,35 @@ TEST(Usvfs, linkFileMountpointCaseInsensitivity)
 
   EXPECT_TRUE(cleanup());
 }
+
+TEST(Usvfs, LinkDirectoryIntoNestedVirtualDirectory_SourceParentLinkedFirst)
+{
+  initLogging();
+  ASSERT_TRUE(createTmpDirs());
+
+  auto usvfs = UsvfsManager::instance();
+
+  ASSERT_NO_THROW(usvfs->usvfsVirtualLinkDirectoryStatic((src / "a").string(), mnt, 0));
+  ASSERT_NO_THROW(usvfs->usvfsVirtualLinkDirectoryStatic((src / "b").string(),
+                                                         mnt / "empty_dir", 0));
+  ASSERT_TRUE(usvfs->mount());
+  ASSERT_TRUE(usvfs->unmount());
+
+  EXPECT_TRUE(cleanup());
+}
+
+TEST(Usvfs, LinkDirectoryIntoNestedVirtualDirectory_NestedLinkRegisteredFirst)
+{
+  initLogging();
+  ASSERT_TRUE(createTmpDirs());
+
+  auto usvfs = UsvfsManager::instance();
+
+  ASSERT_NO_THROW(usvfs->usvfsVirtualLinkDirectoryStatic((src / "b").string(),
+                                                         mnt / "empty_dir", 0));
+  ASSERT_NO_THROW(usvfs->usvfsVirtualLinkDirectoryStatic((src / "a").string(), mnt, 0));
+  ASSERT_TRUE(usvfs->mount());
+  ASSERT_TRUE(usvfs->unmount());
+
+  EXPECT_TRUE(cleanup());
+}

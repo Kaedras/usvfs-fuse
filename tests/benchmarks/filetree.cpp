@@ -154,7 +154,7 @@ static void mergeFiletrees(benchmark::State& state)
   for (auto _ : state) {
     auto merged = a->clone();
     START();
-    *merged += *b;
+    merged->merge(b);
     benchmark::DoNotOptimize(merged);
     END();
   }

@@ -314,8 +314,11 @@ void UsvfsManager::usvfsVirtualLinkDirectoryStatic(const std::string& source,
 
   // check if destination exists in pending mounts
   for (const auto& state : m_pendingMounts) {
+    // check if dst is inside the mountpoint
     if (isParentPathOf(state->mountpoint, dst)) {
       // destination exists, merge file trees
+      spdlog::trace("merging destination '{}' into mountpoint '{}'", dst,
+                    state->mountpoint);
       const string relative = dst.substr(state->mountpoint.length());
       auto existingItem     = state->fileTree->find(relative);
       if (existingItem == nullptr) {
@@ -325,6 +328,31 @@ void UsvfsManager::usvfsVirtualLinkDirectoryStatic(const std::string& source,
                    strerror(e)));
       }
       existingItem->merge(sourceFileTree);
+      state->fdMap.merge(fdMap);
+
+      if (flags & linkFlag::CREATE_TARGET) {
+        state->upperDir = src;
+      }
+      return;
+    }
+    // check if the mountpoint is inside dst
+    if (isParentPathOf(dst, state->mountpoint)) {
+      spdlog::trace("mountpoint '{}' is inside dst '{}'", state->mountpoint, dst);
+
+      // create a new destination file tree
+      shared_ptr<VirtualFileTreeItem> destinationFileTree =
+          VirtualFileTreeItem::createFileTree(dst, fdMap);
+
+      // merge old file tree into destination file tree
+      const string relative = state->mountpoint.substr(dst.length());
+      auto sourceItem       = destinationFileTree->find(relative);
+      sourceItem->merge(state->fileTree, false);
+      state->fileTree = std::move(destinationFileTree);
+
+      // update mountpoint
+      state->mountpoint = dst;
+
+      // merge fd maps
       state->fdMap.merge(fdMap);
 
       if (flags & linkFlag::CREATE_TARGET) {

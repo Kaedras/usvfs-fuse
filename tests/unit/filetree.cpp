@@ -284,7 +284,7 @@ TEST_F(FileTreeTest, MergeTrees)
     newFileTree->add("/4/4", "/tmp/4/4", dir);
     newFileTree->add("/4/4/4", "/tmp/4/4/4", dir);
 
-    *fileTree += *newFileTree;
+    fileTree->merge(newFileTree);
   }
 
   static const string expectedResult =

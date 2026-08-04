@@ -50,8 +50,6 @@ public:
 
   ~VirtualFileTreeItem() = default;
 
-  VirtualFileTreeItem& operator+=(const VirtualFileTreeItem& other) noexcept;
-
   /**
    * @brief Add a new item to the virtual file tree or update an existing item
    * @param path The path of the item to add or update
@@ -84,8 +82,11 @@ public:
 
   /**
    * @brief Merge another file tree item into this one
+   * @param other File tree to merge
+   * @param replaceRoot Whether to replace filename and real path of the root entry
    */
-  void merge(const std::shared_ptr<VirtualFileTreeItem>& other) noexcept;
+  void merge(const std::shared_ptr<VirtualFileTreeItem>& other,
+             bool replaceRoot = true) noexcept;
 
   /**
    * @brief Get the parent item
