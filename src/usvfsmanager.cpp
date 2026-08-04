@@ -198,6 +198,8 @@ void UsvfsManager::usvfsVirtualLinkFile(const std::string& source,
   const string dstParentDir = findCaseInsensitive(getParentPath(destination));
   const string dstFileName  = getFileNameFromPath(destination);
 
+  MountState* existingState = nullptr;
+
   // check if destination exists in pending mounts
   for (const auto& state : m_pendingMounts) {
     if (isParentPathOf(state->mountpoint, dstParentDir)) {
@@ -216,6 +218,14 @@ void UsvfsManager::usvfsVirtualLinkFile(const std::string& source,
                              strerror(e)));
       }
       return;
+    }
+    // check if the mountpoint is inside dstParentDir
+    if (isParentPathOf(dstParentDir, state->mountpoint)) {
+      spdlog::info("destination '{}' is a parent directory of existing mountpoint '{}'",
+                   dstParentDir, state->mountpoint);
+
+      existingState = state.get();
+      break;
     }
   }
 
@@ -241,12 +251,26 @@ void UsvfsManager::usvfsVirtualLinkFile(const std::string& source,
                          strerror(e)));
   }
 
-  // prepare state and enqueue to the pending list (no mounting yet)
-  auto state        = make_unique<MountState>();
-  state->fileTree   = std::move(destinationFileTree);
-  state->mountpoint = dstParentDir;
-  state->fdMap      = std::move(fdMap);
-  m_pendingMounts.emplace_back(std::move(state));
+  if (existingState == nullptr) {
+    // prepare state and enqueue to the pending list (no mounting yet)
+    auto state        = make_unique<MountState>();
+    state->fileTree   = std::move(destinationFileTree);
+    state->mountpoint = dstParentDir;
+    state->fdMap      = std::move(fdMap);
+    m_pendingMounts.emplace_back(std::move(state));
+  } else {
+    // merge old file tree into destination file tree
+    const string relative = existingState->mountpoint.substr(dstParentDir.length());
+    const auto sourceItem = destinationFileTree->find(relative);
+    sourceItem->merge(existingState->fileTree, false);
+    existingState->fileTree = std::move(destinationFileTree);
+
+    // update mountpoint
+    existingState->mountpoint = dstParentDir;
+
+    // merge fd maps
+    existingState->fdMap.merge(fdMap);
+  }
 }
 
 void UsvfsManager::usvfsVirtualLinkDirectoryStatic(const std::string& source,
