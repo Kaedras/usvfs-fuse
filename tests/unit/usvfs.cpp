@@ -744,3 +744,57 @@ TEST(Usvfs, LinkDirectoryIntoNestedVirtualDirectory_NestedLinkRegisteredFirst)
 
   EXPECT_TRUE(cleanup());
 }
+
+TEST(Usvfs, LinkFileIntoNestedVirtualDirectory_SourceParentLinkedFirst)
+{
+  initLogging();
+  ASSERT_TRUE(createTmpDirs());
+
+  auto usvfs = UsvfsManager::instance();
+
+  ASSERT_NO_THROW(usvfs->usvfsVirtualLinkDirectoryStatic((src / "a").string(), mnt, 0));
+  ASSERT_NO_THROW(
+      usvfs->usvfsVirtualLinkFile((src / "b/b.txt").string(), mnt / "b.txt"));
+  ASSERT_TRUE(usvfs->mount());
+
+  EXPECT_FILE_CONTENT(mnt / "a.txt", "test a");
+  EXPECT_FILE_CONTENT(mnt / "a/a.txt", "test a/a");
+  EXPECT_FILE_CONTENT(mnt / "already_existed.txt", "test already_existed");
+  EXPECT_FILE_CONTENT(mnt / "already_existing_dir/already_existed0.txt",
+                      "test already_existing_dir/already_existed0");
+  EXPECT_FILE_CONTENT(mnt / "b.txt", "test b");
+
+  EXPECT_DIRECTORY(mnt / "empty_dir");
+
+  EXPECT_TRUE(usvfs->unmount());
+
+  EXPECT_TRUE(cleanup());
+}
+
+TEST(Usvfs, LinkFileIntoNestedVirtualDirectory_NestedLinkRegisteredFirst)
+{
+  initLogging();
+  ASSERT_TRUE(createTmpDirs());
+
+  fs::create_directories(mnt / "empty_dir");
+
+  auto usvfs = UsvfsManager::instance();
+
+  ASSERT_NO_THROW(
+      usvfs->usvfsVirtualLinkFile((src / "b/b.txt").string(), mnt / "b.txt"));
+  ASSERT_NO_THROW(usvfs->usvfsVirtualLinkDirectoryStatic((src / "a").string(), mnt, 0));
+  ASSERT_TRUE(usvfs->mount());
+
+  EXPECT_FILE_CONTENT(mnt / "a.txt", "test a");
+  EXPECT_FILE_CONTENT(mnt / "a/a.txt", "test a/a");
+  EXPECT_FILE_CONTENT(mnt / "already_existed.txt", "test already_existed");
+  EXPECT_FILE_CONTENT(mnt / "already_existing_dir/already_existed0.txt",
+                      "test already_existing_dir/already_existed0");
+  EXPECT_FILE_CONTENT(mnt / "b.txt", "test b");
+
+  EXPECT_DIRECTORY(mnt / "empty_dir");
+
+  EXPECT_TRUE(usvfs->unmount());
+
+  EXPECT_TRUE(cleanup());
+}
