@@ -261,6 +261,17 @@ void UsvfsManager::usvfsVirtualLinkDirectoryStatic(const std::string& source,
   const auto src = findCaseInsensitive(source);
   const auto dst = findCaseInsensitive(destination);
 
+  error_code ec;
+
+  // create destination if it does not exist
+  if (!fs::exists(dst)) {
+    fs::create_directories(dst, ec);
+    if (ec) {
+      throw runtime_error(
+          format("error creating destination directory '{}': {}", dst, ec.message()));
+    }
+  }
+
   FdMap fdMap;
   if (fdMap.add(src) == -1) {
     throw runtime_error("error adding file descriptor for " + src);
@@ -268,7 +279,6 @@ void UsvfsManager::usvfsVirtualLinkDirectoryStatic(const std::string& source,
 
   // create the file tree
   auto sourceFileTree = VirtualFileTreeItem::create("/", src, dir);
-  error_code ec;
   fs::recursive_directory_iterator iter(src, ec);
   if (ec) {
     throw runtime_error("error creating recursive_directory_iterator: "s +
