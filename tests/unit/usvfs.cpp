@@ -193,40 +193,6 @@ void unlinkDirWithFailure(const string& path, int error)
                           << strerrorname_np(errno);
 }
 
-void statPath(const string& path)
-{
-  struct stat st{};
-  EXPECT_EQ(stat(path.c_str(), &st), 0)
-      << "error for '" << path << "': " << strerror(errno);
-}
-
-void statPathWithFailure(const string& path, int error)
-{
-  struct stat st{};
-  EXPECT_EQ(stat(path.c_str(), &st), -1);
-  EXPECT_EQ(errno, error) << "error for '" << path << "', expected "
-                          << strerrorname_np(error) << ", got "
-                          << strerrorname_np(errno);
-}
-
-void readFile(const string& path, const string& expectedContent)
-{
-  int fd;
-  ASSERT_NE(fd = open(path.c_str(), O_RDONLY), -1)
-      << "error opening file '" << path << "': " << strerror(errno);
-
-  array<char, 4096> buf{};
-  const ssize_t readBytes = read(fd, buf.data(), buf.size());
-  int closeResult         = close(fd);
-  EXPECT_NE(readBytes, -1) << "read error in file '" << path
-                           << "': " << strerror(errno);
-
-  EXPECT_EQ(closeResult, 0) << "error closing file '" << path
-                            << "': " << strerror(errno);
-
-  EXPECT_EQ(string(buf.data(), readBytes), expectedContent);
-}
-
 bool createFile(const string& path, const string& content)
 {
   try {
@@ -243,6 +209,67 @@ bool createFile(const string& path, const string& content)
 }
 
 }  // namespace
+
+#define EXPECT_FILE(pathExpr)                                                          \
+  do {                                                                                 \
+    const auto path_ = fs::path(pathExpr);                                             \
+                                                                                       \
+    struct stat st{};                                                                  \
+    EXPECT_EQ(stat(path_.c_str(), &st), 0)                                             \
+        << "stat failed for '" << path_ << "': " << strerror(errno);                   \
+    if (stat(path_.c_str(), &st) == 0) {                                               \
+      EXPECT_TRUE(S_ISREG(st.st_mode)) << "'" << path_ << "' is not a regular file";   \
+    }                                                                                  \
+  } while (false)
+
+#define EXPECT_FILE_CONTENT(pathExpr, expectedContentExpr)                             \
+  do {                                                                                 \
+    const auto path_     = fs::path(pathExpr);                                         \
+    const auto expected_ = std::string(expectedContentExpr);                           \
+                                                                                       \
+    struct stat st{};                                                                  \
+    EXPECT_EQ(stat(path_.c_str(), &st), 0)                                             \
+        << "stat failed for '" << path_ << "': " << strerror(errno);                   \
+    if (stat(path_.c_str(), &st) == 0) {                                               \
+      EXPECT_TRUE(S_ISREG(st.st_mode)) << "'" << path_ << "' is not a regular file";   \
+    }                                                                                  \
+                                                                                       \
+    int fd_ = open(path_.c_str(), O_RDONLY);                                           \
+    ASSERT_NE(fd_, -1) << "open failed for '" << path_ << "': " << strerror(errno);    \
+                                                                                       \
+    std::array<char, 4096> buf_{};                                                     \
+    const ssize_t readBytes_ = read(fd_, buf_.data(), buf_.size());                    \
+    const int closeResult_   = close(fd_);                                             \
+                                                                                       \
+    ASSERT_NE(readBytes_, -1) << "read failed for '" << path_                          \
+                              << "': " << strerror(errno);                             \
+    EXPECT_EQ(closeResult_, 0)                                                         \
+        << "close failed for '" << path_ << "': " << strerror(errno);                  \
+                                                                                       \
+    EXPECT_EQ(std::string(buf_.data(), static_cast<size_t>(readBytes_)), expected_)    \
+        << "content mismatch for '" << path_ << "'";                                   \
+  } while (false)
+
+#define EXPECT_DIRECTORY(pathExpr)                                                     \
+  do {                                                                                 \
+    const auto path_ = fs::path(pathExpr);                                             \
+    struct stat st{};                                                                  \
+    ASSERT_EQ(stat(path_.c_str(), &st), 0)                                             \
+        << "stat failed for '" << path_ << "': " << strerror(errno);                   \
+                                                                                       \
+    EXPECT_TRUE(S_ISDIR(st.st_mode)) << "'" << path_ << "' is not a directory";        \
+  } while (false)
+
+#define EXPECT_MISSING(pathExpr)                                                       \
+  do {                                                                                 \
+    const auto path_ = fs::path(pathExpr);                                             \
+    struct stat st{};                                                                  \
+    ASSERT_EQ(stat(path_.c_str(), &st), -1)                                            \
+        << "'" << path_ << "' unexpectedly exists";                                    \
+                                                                                       \
+    EXPECT_EQ(errno, ENOENT) << "expected ENOENT for '" << path_ << "', got "          \
+                             << strerror(errno);                                       \
+  } while (false)
 
 class UsvfsTest : public testing::Test
 {
@@ -285,44 +312,34 @@ TEST_F(UsvfsTest, CanMount)
 
 TEST_F(UsvfsTest, getattr)
 {
-  const vector pathsToStat = {
-      mnt / "a",
-      mnt / "a.txt",
-      mnt / "a/a.txt",
-      mnt / "b.txt",
-      mnt2 / "c.txt",
-      mnt / "empty_dir",
-      mnt / "already_existed.txt",
-      mnt / "already_existing_dir",
-      mnt / "already_existing_dir/already_existed0.txt",
-  };
+  EXPECT_FILE(mnt / "a.txt");
+  EXPECT_FILE(mnt / "b.txt");
+  EXPECT_FILE(mnt2 / "c.txt");
+  EXPECT_DIRECTORY(mnt / "a");
+  EXPECT_FILE(mnt / "a/a.txt");
+  EXPECT_DIRECTORY(mnt / "empty_dir");
 
-  for (const auto& filePath : pathsToStat) {
-    statPath(filePath);
-  }
+  EXPECT_FILE(mnt / "already_existed.txt");
+  EXPECT_DIRECTORY(mnt / "already_existing_dir");
+  EXPECT_FILE(mnt / "already_existing_dir/already_existed0.txt");
 
-  statPathWithFailure(mnt / "DOES_NOT_EXIST", ENOENT);
+  EXPECT_MISSING(mnt / "DOES_NOT_EXIST");
 }
 
 TEST_F(UsvfsTest, getattrCaseInsensitive)
 {
-  const vector pathsToStat = {
-      mnt / "A",
-      mnt / "A.txt",
-      mnt / "A/A.txt",
-      mnt / "B.txt",
-      mnt2 / "C.txt",
-      mnt / "EMPTY_DIR",
-      mnt / "ALREADY_EXISTED.txt",
-      mnt / "ALREADY_EXISTING_DIR",
-      mnt / "ALREADY_EXISTING_DIR/ALREADY_EXISTED0.txt",
-  };
+  EXPECT_FILE(mnt / "A.tXt");
+  EXPECT_FILE(mnt / "B.tXT");
+  EXPECT_FILE(mnt2 / "C.txT");
+  EXPECT_DIRECTORY(mnt / "A");
+  EXPECT_FILE(mnt / "A/A.tXT");
+  EXPECT_DIRECTORY(mnt / "EmpTy_dIr");
 
-  for (const auto& filePath : pathsToStat) {
-    statPath(filePath);
-  }
+  EXPECT_FILE(mnt / "alreADy_exiSteD.txt");
+  EXPECT_DIRECTORY(mnt / "aLreAdy_EXisTing_diR");
+  EXPECT_FILE(mnt / "ALREADY_EXISTING_DIR/ALREADY_EXISTED0.txt");
 
-  statPathWithFailure(mnt / "DOES_NOT_EXIST", ENOENT);
+  EXPECT_MISSING(mnt / "DOES_NOT_EXIST");
 }
 
 TEST_F(UsvfsTest, open)
@@ -373,14 +390,14 @@ TEST_F(UsvfsTest, mkdirCaseInsensitive)
 TEST_F(UsvfsTest, read)
 {
   for (const auto& [filePath, content] : filesToCheck) {
-    readFile(filePath, content);
+    EXPECT_FILE_CONTENT(filePath, content);
   }
 }
 
 TEST_F(UsvfsTest, readCaseInsensitive)
 {
   for (const auto& [filePath, content] : filesToCheckCaseInsensitive) {
-    readFile(filePath, content);
+    EXPECT_FILE_CONTENT(filePath, content);
   }
 }
 
@@ -415,7 +432,7 @@ TEST_F(UsvfsTest, rename)
   EXPECT_EQ(rename((mnt / "a.txt").c_str(), (mnt / "asdf.txt").c_str()), 0)
       << "error: " << strerror(errno);
 
-  readFile(mnt / "asdf.txt", "test a");
+  EXPECT_FILE_CONTENT(mnt / "asdf.txt", "test a");
 
   // opening the original file should fail with ENOENT
   openFileWithFailure(mnt / "a.txt", ENOENT);
@@ -426,7 +443,7 @@ TEST_F(UsvfsTest, renameCaseInsensitive)
   EXPECT_EQ(rename((mnt / "A.txt").c_str(), (mnt / "ASDF.txt").c_str()), 0)
       << "error: " << strerror(errno);
 
-  readFile(mnt / "asdf.TXT", "test a");
+  EXPECT_FILE_CONTENT(mnt / "asdf.TXT", "test a");
 
   // opening the original file should fail with ENOENT
   openFileWithFailure(mnt / "A.txT", ENOENT);
@@ -598,13 +615,13 @@ TEST(usvfs, MergeModDirectories)
 
   cout << usvfs->usvfsCreateVFSDump();
 
-  readFile(mnt / "a.txt", "mod1 a");
-  readFile(mnt / "A.txt", "mod1 a");
+  EXPECT_FILE_CONTENT(mnt / "a.txt", "mod1 a");
+  EXPECT_FILE_CONTENT(mnt / "A.txt", "mod1 a");
   ASSERT_TRUE(createFile(mnt / "daTA/TEST", "test"));
-  readFile(mnt / "data/TEst", "test");
+  EXPECT_FILE_CONTENT(mnt / "data/TEst", "test");
 
-  readFile(mnt2 / "plugins.txt", "mod0.esp\nmod1.esp");
-  readFile(mnt2 / "Plugins.txt", "mod0.esp\nmod1.esp");
+  EXPECT_FILE_CONTENT(mnt2 / "plugins.txt", "mod0.esp\nmod1.esp");
+  EXPECT_FILE_CONTENT(mnt2 / "Plugins.txt", "mod0.esp\nmod1.esp");
 
   EXPECT_TRUE(runCmd("tree "s + mnt.string()));
   EXPECT_TRUE(runCmd("tree "s + mnt2.string()));
