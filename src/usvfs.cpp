@@ -83,17 +83,6 @@ int createDirs(FdMap& fdMap, string_view path)
   return fd;
 }
 
-std::string fuseReaddirFlagsToString(fuse_readdir_flags flags) noexcept
-{
-  switch (flags) {
-  case FUSE_READDIR_DEFAULTS:
-    return "DEFAULTS";
-  case FUSE_READDIR_PLUS:
-    return "PLUS";
-  [[unlikely]] default:
-    return "INVALID FLAG";
-  }
-}
 }  // namespace
 
 int usvfs_getattr(const char* path, struct stat* stbuf, fuse_file_info* fi) noexcept
@@ -581,8 +570,7 @@ int usvfs_readdir(const char* path, void* buf, const fuse_fill_dir_t filler,
                   off_t /*offset*/, fuse_file_info* /*fi*/,
                   fuse_readdir_flags flags) noexcept
 {
-  spdlog::trace("usvfs_readdir(path='{}', flags='{}')", path,
-                fuseReaddirFlagsToString(flags));
+  spdlog::trace("usvfs_readdir(path='{}', flags='{}')", path, static_cast<int>(flags));
 
   GET_STATE()
 
