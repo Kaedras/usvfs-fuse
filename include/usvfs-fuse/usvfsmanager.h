@@ -185,6 +185,9 @@ public:
   // set whether to create mounts in a new user mount namespace
   void setUseMountNamespace(bool value) noexcept;
 
+  // set whether wine is used. Required to use WINEDLLOVERRIDES
+  void setWine(bool value) noexcept;
+
   static bool
   fileNameInSkipSuffixes(std::string_view fileName,
                          const std::set<std::string>& skipSuffixes) noexcept;
@@ -219,6 +222,7 @@ private:
 
   bool m_debugMode                         = false;
   bool m_useMountNamespace                 = false;
+  bool m_wine                              = false;
   std::chrono::milliseconds m_processDelay = std::chrono::milliseconds::zero();
   std::set<std::string> m_skipFileSuffixes;
   std::set<std::string> m_skipDirectories;

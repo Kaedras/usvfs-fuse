@@ -167,6 +167,81 @@ int childFunc(void* arg) noexcept
   return 0;
 }
 
+size_t getProcessNamePosition(const string_view str)
+{
+  // todo: handle version suffixes, e.g. wine-staging-11.15
+  constexpr array wineNames{"wine-staging"sv, "wine64-staging"sv, "wine"sv};
+
+  for (const auto& wine : wineNames) {
+    size_t position = str.find(wine);
+    if (position != string::npos) {
+      position += wine.length();
+      // check for unexpected name or logic error
+      if (str[position] != ' ') {
+        spdlog::error("error in getProcessNamePosition(), expected ' ', got '{}'. "
+                      "position: {}, found: {}, string: '{}'",
+                      str[position], position, wine, str);
+        return string::npos;
+      }
+      return position + 1;
+    }
+  }
+
+  constexpr auto protonCommand = "/proton\" waitforexitandrun"sv;
+
+  size_t position = str.find(protonCommand);
+  if (position != string::npos) {
+    position += protonCommand.length();
+    // check for unexpected name or logic error
+    if (str[position] != ' ') {
+      spdlog::error("error in getProcessNamePosition(), expected ' ', got '{}'. "
+                    "position: {}, string: '{}'",
+                    str[position], position, str);
+      return string::npos;
+    }
+    return position + 1;
+  }
+
+  return string::npos;
+}
+
+string_view getProcessName(string_view arg)
+{
+  // get start
+  const size_t start = getProcessNamePosition(arg);
+  if (start == string::npos) {
+    return {};
+  }
+
+  // start + 1 to remove leading '"'
+  arg.remove_prefix(start + 1);
+
+  // find first non-escaped '"'
+  size_t end = 0;
+  while (end != string_view::npos) {
+    end = arg.find('"', end);
+    if (arg[end] - 1 == '\\') {
+      ++end;
+    } else {
+      break;
+    }
+  }
+  if (end == string_view::npos) {
+    return {};
+  }
+
+  arg = arg.substr(0, end);
+
+  const size_t lastSlash = arg.find_last_of('/');
+  if (lastSlash == string::npos) {
+    return {};
+  }
+
+  arg.remove_prefix(lastSlash + 1);
+  spdlog::trace("using process name {}", arg);
+  return arg;
+}
+
 }  // namespace
 
 UsvfsManager::~UsvfsManager() noexcept
@@ -486,17 +561,15 @@ pid_t UsvfsManager::usvfsCreateProcessHooked(
     }
 
     // handle wine dll overrides
-    const bool wine   = file.ends_with("wine") || file.ends_with("wine-staging") ||
-                        file.ends_with("wine64") || file.ends_with("wine64-staging");
-    const bool proton = file.ends_with("proton");
-
-    if (wine || proton) {
+    if (m_wine) {
       if (!m_forceLoadLibraries.empty()) {
-        const size_t firstSpace = arg.find_first_of(' ');
-        const string processName =
-            wine ? arg.substr(0, firstSpace - 1)
-                 : arg.substr(firstSpace, arg.find_first_of(' ') - 1);
-        spdlog::trace("using process name {}", processName);
+        const string_view processName = getProcessName(arg);
+        if (processName.empty()) {
+          spdlog::error("error getting process name from '{}'", arg);
+          _exit(EXIT_FAILURE);
+        }
+        spdlog::debug("using process name {}", processName);
+
         const vector<string> applicableLibraries = librariesToForceLoad(processName);
         if (!applicableLibraries.empty()) {
           string dllOverrides = "WINEDLLOVERRIDES=\"";
@@ -789,6 +862,12 @@ void UsvfsManager::setUseMountNamespace(bool value) noexcept
 {
   scoped_lock lock(m_mtx);
   m_useMountNamespace = value;
+}
+
+void UsvfsManager::setWine(bool value) noexcept
+{
+  scoped_lock lock(m_mtx);
+  m_wine = value;
 }
 
 UsvfsManager::UsvfsManager() noexcept
