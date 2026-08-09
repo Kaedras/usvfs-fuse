@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.28)
 
-project(usvfs-fuse VERSION 0.9 LANGUAGES CXX)
+project(usvfs-fuse VERSION 0.10 LANGUAGES CXX)
 
 include(CMakePackageConfigHelpers)
 include(GNUInstallDirs)
