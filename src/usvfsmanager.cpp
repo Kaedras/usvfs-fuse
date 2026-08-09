@@ -810,46 +810,7 @@ bool UsvfsManager::mount() noexcept
 bool UsvfsManager::unmount() noexcept
 {
   scoped_lock lock(m_mtx);
-  if (m_mounts.empty()) {
-    return true;
-  }
-
-  spdlog::info("unmounting {} mounts", m_mounts.size());
-
-  if (anyProcessRunning()) {
-    spdlog::warn("there is still at least one process running, not unmounting");
-    return false;
-  }
-
-  for (std::unique_ptr<MountState>& mount : m_mounts) {
-    spdlog::debug("unmounting {}", mount->mountpoint);
-
-    // unmount fuse
-    if (m_useMountNamespace) {
-      if (mount->pidFd == -1) {
-        spdlog::warn("mount pidFd is -1");
-        return false;
-      }
-
-      siginfo_t info;
-      if (pidfd_send_signal(mount->pidFd, SIGINT, nullptr, 0) == -1) {
-        spdlog::error("pidfd_send_signal() failed: {}", strerror(errno));
-        return false;
-      }
-      // wait for the child to exit
-      if (waitid(P_PIDFD, mount->pidFd, &info, WEXITED) == -1) {
-        spdlog::error("waitid() failed: {}", strerror(errno));
-        return false;
-      }
-      spdlog::debug("usvfs exited with code {}", info.si_status);
-    } else {
-      fuse_unmount(mount->fusePtr);
-      fuse_destroy(mount->fusePtr);
-    }
-  }
-  m_mounts.clear();
-
-  return true;
+  return unmountInternal();
 }
 
 bool UsvfsManager::isMounted() const noexcept
@@ -993,117 +954,170 @@ bool UsvfsManager::anyProcessRunning() const noexcept
 
 bool UsvfsManager::mountInternal() noexcept
 {
-  if (m_pendingMounts.empty()) {
+  try {
+    if (m_pendingMounts.empty()) {
+      return true;
+    }
+
+    spdlog::info("mounting {} mount points", m_pendingMounts.size());
+
+    // move pending to a local list
+    vector<unique_ptr<MountState>> toMount;
+    toMount.swap(m_pendingMounts);
+
+    // start a thread or process for each pending mount
+    for (auto& state : toMount) {
+      MountState* raw = state.get();
+
+      raw->useMountNamespace = m_useMountNamespace;
+      raw->debugMode         = m_debugMode;
+
+      if (m_useMountNamespace) {
+        // create shared memory for status data.
+        raw->statusData = static_cast<MountState::StatusData*>(
+            mmap(nullptr, sizeof(MountState::StatusData), PROT_READ | PROT_WRITE,
+                 MAP_SHARED | MAP_ANONYMOUS, -1, 0));
+        if (raw->statusData == MAP_FAILED) {
+          throw runtime_error("error creating shared memory for mount state: "s +
+                              strerror(errno));
+        }
+
+        size_t stackSize;
+        rlimit limit;
+        if (getrlimit(RLIMIT_STACK, &limit) == 0) {
+          stackSize = min(limit.rlim_cur, defaultStackSize);
+          spdlog::trace("setting stack size to {}", stackSize);
+        } else {
+          stackSize = defaultStackSize;
+          spdlog::trace("error getting stack size limit: {}\nusing 8 MiB",
+                        strerror(errno));
+        }
+
+        // allocate memory to be used for the stack of the child.
+        state->stack =
+            static_cast<char*>(mmap(nullptr, stackSize, PROT_READ | PROT_WRITE,
+                                    MAP_PRIVATE | MAP_ANONYMOUS | MAP_STACK, -1, 0));
+        if (state->stack == MAP_FAILED) {
+          throw runtime_error("mmap() failed: "s + strerror(errno));
+        }
+
+        state->stackTop = state->stack + stackSize;  // assume stack grows downward
+
+        state->uid = getuid();
+        state->gid = getgid();
+
+        // only create a new namespace if m_nsPidFd == -1
+        int flags;
+        if (m_nsPidFd == -1) {
+          flags = CLONE_NEWUSER | CLONE_NEWNS;
+        } else {
+          flags       = 0;
+          state->nsFd = m_nsPidFd;
+        }
+
+        int result = clone(childFunc, state->stackTop,
+                           flags | SIGCHLD | CLONE_PIDFD | CLONE_FILES | CLONE_VM,
+                           state.get(), &state->pidFd);
+        if (state->pidFd == -1 || result == -1) {
+          throw runtime_error("clone() failed: "s + strerror(errno));
+        }
+
+        // check for error in child
+        unique_lock lock(raw->statusData->mtx);
+        raw->statusData->cv.wait(lock, [&] {
+          return raw->statusData->status != MountState::unknown;
+        });
+        if (raw->statusData->status == MountState::failure) {
+          throw runtime_error("error in mount process");
+        }
+
+        // store pid fd to access namespace
+        if (m_nsPidFd == -1) {
+          m_nsPidFd = state->pidFd;
+        }
+
+        spdlog::info("usvfs mounted in pid {}, mountpoint: '{}'",
+                     pidfd_getpid(state->pidFd), state->mountpoint);
+        m_mounts.emplace_back(std::move(state));
+      } else {
+        try {
+          raw->statusData = new MountState::StatusData();
+        } catch (const bad_alloc& ex) {
+          throw runtime_error("error allocating memory for mount state: "s + ex.what());
+        }
+        thread t([s = std::move(state), this]() mutable {
+          run_fuse(std::move(s));
+        });
+        t.detach();
+
+        // wait until mount state is no longer unknown
+        unique_lock lock(raw->statusData->mtx);
+        raw->statusData->cv.wait(lock, [&] {
+          return raw->statusData->status != MountState::unknown;
+        });
+        if (raw->statusData->status == MountState::failure) {
+          throw runtime_error("error in mount thread");
+        }
+
+        spdlog::info("successfully mounted {}", raw->mountpoint);
+      }
+    }
+    return true;
+  } catch (const runtime_error& e) {
+    spdlog::error("mount error: {}", e.what());
+
+    if (!m_mounts.empty()) {
+      spdlog::info("cleaning up partial mount");
+
+      if (!unmountInternal()) {
+        spdlog::critical("error cleaning up partial mount");
+      }
+    }
+
+    return false;
+  }
+}
+
+bool UsvfsManager::unmountInternal() noexcept
+{
+  if (m_mounts.empty()) {
     return true;
   }
 
-  spdlog::info("mounting {} mount points", m_pendingMounts.size());
+  spdlog::info("unmounting {} mounts", m_mounts.size());
 
-  // move pending to a local list
-  vector<unique_ptr<MountState>> toMount;
-  toMount.swap(m_pendingMounts);
+  if (anyProcessRunning()) {
+    spdlog::warn("there is still at least one process running, not unmounting");
+    return false;
+  }
 
-  // start a thread or process for each pending mount
-  for (auto& state : toMount) {
-    MountState* raw = state.get();
+  for (std::unique_ptr<MountState>& mount : m_mounts) {
+    spdlog::debug("unmounting {}", mount->mountpoint);
 
-    raw->useMountNamespace = m_useMountNamespace;
-    raw->debugMode         = m_debugMode;
-
+    // unmount fuse
     if (m_useMountNamespace) {
-      // create shared memory for status data.
-      raw->statusData = static_cast<MountState::StatusData*>(
-          mmap(nullptr, sizeof(MountState::StatusData), PROT_READ | PROT_WRITE,
-               MAP_SHARED | MAP_ANONYMOUS, -1, 0));
-      if (raw->statusData == MAP_FAILED) {
-        spdlog::error("error creating shared memory for mount state: {}",
-                      strerror(errno));
+      if (mount->pidFd == -1) {
+        spdlog::warn("mount pidFd is -1");
         return false;
       }
 
-      size_t stackSize;
-      rlimit limit;
-      if (getrlimit(RLIMIT_STACK, &limit) == 0) {
-        stackSize = min(limit.rlim_cur, defaultStackSize);
-        spdlog::trace("setting stack size to {}", stackSize);
-      } else {
-        stackSize = defaultStackSize;
-        spdlog::trace("error getting stack size limit: {}\nusing 8 MiB",
-                      strerror(errno));
-      }
-
-      // allocate memory to be used for the stack of the child.
-      state->stack =
-          static_cast<char*>(mmap(nullptr, stackSize, PROT_READ | PROT_WRITE,
-                                  MAP_PRIVATE | MAP_ANONYMOUS | MAP_STACK, -1, 0));
-      if (state->stack == MAP_FAILED) {
-        spdlog::error("mmap() failed: {}", strerror(errno));
+      siginfo_t info;
+      if (pidfd_send_signal(mount->pidFd, SIGINT, nullptr, 0) == -1) {
+        spdlog::error("pidfd_send_signal() failed: {}", strerror(errno));
         return false;
       }
-
-      state->stackTop = state->stack + stackSize;  // assume stack grows downward
-
-      state->uid = getuid();
-      state->gid = getgid();
-
-      // only create a new namespace if m_nsPidFd == -1
-      int flags;
-      if (m_nsPidFd == -1) {
-        flags = CLONE_NEWUSER | CLONE_NEWNS;
-      } else {
-        flags       = 0;
-        state->nsFd = m_nsPidFd;
-      }
-
-      int result = clone(childFunc, state->stackTop,
-                         flags | SIGCHLD | CLONE_PIDFD | CLONE_FILES | CLONE_VM,
-                         state.get(), &state->pidFd);
-      if (state->pidFd == -1 || result == -1) {
-        spdlog::error("clone() failed: {}", strerror(errno));
+      // wait for the child to exit
+      if (waitid(P_PIDFD, mount->pidFd, &info, WEXITED) == -1) {
+        spdlog::error("waitid() failed: {}", strerror(errno));
         return false;
       }
-
-      // check for error in child
-      unique_lock lock(raw->statusData->mtx);
-      raw->statusData->cv.wait(lock, [&] {
-        return raw->statusData->status != MountState::unknown;
-      });
-      if (raw->statusData->status == MountState::failure) {
-        spdlog::error("mount failed");
-        return false;
-      }
-
-      // store pid fd to access namespace
-      if (m_nsPidFd == -1) {
-        m_nsPidFd = state->pidFd;
-      }
-
-      spdlog::info("usvfs mounted in pid {}", pidfd_getpid(state->pidFd));
-      m_mounts.emplace_back(std::move(state));
+      spdlog::debug("usvfs exited with code {}", info.si_status);
     } else {
-      try {
-        raw->statusData = new MountState::StatusData();
-      } catch (const bad_alloc& ex) {
-        spdlog::error("error allocating memory for mount state: {}", ex.what());
-        return false;
-      }
-      thread t([s = std::move(state), this]() mutable {
-        run_fuse(std::move(s));
-      });
-      t.detach();
-
-      // wait until mount state is no longer unknown
-      unique_lock lock(raw->statusData->mtx);
-      raw->statusData->cv.wait(lock, [&] {
-        return raw->statusData->status != MountState::unknown;
-      });
-      if (raw->statusData->status == MountState::failure) {
-        spdlog::error("mount failed");
-        return false;
-      }
-
-      spdlog::info("successfully mounted {}", raw->mountpoint);
+      fuse_unmount(mount->fusePtr);
+      fuse_destroy(mount->fusePtr);
     }
   }
+  m_mounts.clear();
+
   return true;
 }

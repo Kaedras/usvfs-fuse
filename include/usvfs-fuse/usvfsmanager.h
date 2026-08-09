@@ -220,6 +220,8 @@ private:
 
   // mount function without locking for internal use
   bool mountInternal() noexcept;
+  // unmount function without locking for internal use
+  bool unmountInternal() noexcept;
 
   bool m_debugMode                         = false;
   bool m_useMountNamespace                 = false;
