@@ -120,7 +120,7 @@ int childFunc(void* arg) noexcept
     opts.append(",debug");
   }
   const char* argv[] = {"usvfs_fuse", "-o", opts.c_str()};
-  int argc           = 3;
+  constexpr int argc = sizeof(argv) / sizeof(const char*);
   fuse_args args     = FUSE_ARGS_INIT(argc, const_cast<char**>(argv));
 
   fuse_operations ops = createOperations();
@@ -809,7 +809,7 @@ void UsvfsManager::run_fuse(std::unique_ptr<MountState> state) noexcept
     opts.append(",debug");
   }
   const char* argv[] = {"usvfs_fuse", "-o", opts.c_str()};
-  int argc           = 3;
+  constexpr int argc = sizeof(argv) / sizeof(const char*);
   fuse_args args     = FUSE_ARGS_INIT(argc, const_cast<char**>(argv));
 
   fuse_operations ops = createOperations();
