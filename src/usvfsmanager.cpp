@@ -93,11 +93,11 @@ int childFunc(void* arg) noexcept
 
   try {
     // remap uid
-    writeToFile("/proc/self/uid_map", format("0 {} 1", state->uid));
+    writeToFile("/proc/self/uid_map", format("0 {} 1\n", state->uid));
     // deny setgroups (see user_namespaces(7))
-    writeToFile("/proc/self/setgroups", "deny");
+    writeToFile("/proc/self/setgroups", "deny\n");
     // remap gid
-    writeToFile("/proc/self/gid_map", format("0 {} 1", state->gid));
+    writeToFile("/proc/self/gid_map", format("0 {} 1\n", state->gid));
   } catch (const exception& e) {
     spdlog::error("failed to set up namespace, {}", e.what());
     fail();
