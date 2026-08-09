@@ -307,7 +307,7 @@ protected:
 
 TEST_F(UsvfsTest, CanMount)
 {
-  ASSERT_FALSE(HasFailure());
+  ASSERT_TRUE(UsvfsManager::instance()->isMounted());
 }
 
 TEST_F(UsvfsTest, getattr)
