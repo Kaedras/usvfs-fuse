@@ -216,9 +216,9 @@ bool createFile(const string& path, const string& content)
                                                                                        \
     struct stat st{};                                                                  \
     EXPECT_EQ(stat(path_.c_str(), &st), 0)                                             \
-        << "stat failed for '" << path_ << "': " << strerror(errno);                   \
+        << "stat failed for " << path_ << ": " << strerror(errno);                     \
     if (stat(path_.c_str(), &st) == 0) {                                               \
-      EXPECT_TRUE(S_ISREG(st.st_mode)) << "'" << path_ << "' is not a regular file";   \
+      EXPECT_TRUE(S_ISREG(st.st_mode)) << path_ << " is not a regular file";           \
     }                                                                                  \
   } while (false)
 
@@ -229,25 +229,25 @@ bool createFile(const string& path, const string& content)
                                                                                        \
     struct stat st{};                                                                  \
     EXPECT_EQ(stat(path_.c_str(), &st), 0)                                             \
-        << "stat failed for '" << path_ << "': " << strerror(errno);                   \
+        << "stat failed for " << path_ << ": " << strerror(errno);                     \
     if (stat(path_.c_str(), &st) == 0) {                                               \
-      EXPECT_TRUE(S_ISREG(st.st_mode)) << "'" << path_ << "' is not a regular file";   \
+      EXPECT_TRUE(S_ISREG(st.st_mode)) << path_ << " is not a regular file";           \
     }                                                                                  \
                                                                                        \
     int fd_ = open(path_.c_str(), O_RDONLY);                                           \
-    ASSERT_NE(fd_, -1) << "open failed for '" << path_ << "': " << strerror(errno);    \
+    ASSERT_NE(fd_, -1) << "open failed for " << path_ << ": " << strerror(errno);      \
                                                                                        \
     std::array<char, 4096> buf_{};                                                     \
     const ssize_t readBytes_ = read(fd_, buf_.data(), buf_.size());                    \
     const int closeResult_   = close(fd_);                                             \
                                                                                        \
-    ASSERT_NE(readBytes_, -1) << "read failed for '" << path_                          \
-                              << "': " << strerror(errno);                             \
+    ASSERT_NE(readBytes_, -1) << "read failed for " << path_ << ": "                   \
+                              << strerror(errno);                                      \
     EXPECT_EQ(closeResult_, 0)                                                         \
-        << "close failed for '" << path_ << "': " << strerror(errno);                  \
+        << "close failed for " << path_ << ": " << strerror(errno);                    \
                                                                                        \
     EXPECT_EQ(std::string(buf_.data(), static_cast<size_t>(readBytes_)), expected_)    \
-        << "content mismatch for '" << path_ << "'";                                   \
+        << "content mismatch for " << path_;                                           \
   } while (false)
 
 #define EXPECT_DIRECTORY(pathExpr)                                                     \
@@ -255,9 +255,9 @@ bool createFile(const string& path, const string& content)
     const auto path_ = fs::path(pathExpr);                                             \
     struct stat st{};                                                                  \
     ASSERT_EQ(stat(path_.c_str(), &st), 0)                                             \
-        << "stat failed for '" << path_ << "': " << strerror(errno);                   \
+        << "stat failed for " << path_ << ": " << strerror(errno);                     \
                                                                                        \
-    EXPECT_TRUE(S_ISDIR(st.st_mode)) << "'" << path_ << "' is not a directory";        \
+    EXPECT_TRUE(S_ISDIR(st.st_mode)) << path_ << " is not a directory";                \
   } while (false)
 
 #define EXPECT_MISSING(pathExpr)                                                       \
@@ -267,7 +267,7 @@ bool createFile(const string& path, const string& content)
     ASSERT_EQ(stat(path_.c_str(), &st), -1)                                            \
         << "'" << path_ << "' unexpectedly exists";                                    \
                                                                                        \
-    EXPECT_EQ(errno, ENOENT) << "expected ENOENT for '" << path_ << "', got "          \
+    EXPECT_EQ(errno, ENOENT) << "expected ENOENT for " << path_ << ", got "            \
                              << strerror(errno);                                       \
   } while (false)
 
