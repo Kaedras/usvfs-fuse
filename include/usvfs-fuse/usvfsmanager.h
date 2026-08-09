@@ -186,10 +186,10 @@ public:
   void setUseMountNamespace(bool value) noexcept;
 
   static bool
-  fileNameInSkipSuffixes(const std::string& fileName,
+  fileNameInSkipSuffixes(std::string_view fileName,
                          const std::set<std::string>& skipSuffixes) noexcept;
   static bool
-  fileNameInSkipDirectories(const std::string& directoryName,
+  fileNameInSkipDirectories(std::string_view directoryName,
                             const std::set<std::string>& skipDirectories) noexcept;
 
 private:
@@ -202,12 +202,12 @@ private:
   };
 
   void run_fuse(std::unique_ptr<MountState> state) noexcept;
-  [[nodiscard]] bool fileNameInSkipSuffixes(const std::string& fileName) const noexcept;
+  [[nodiscard]] bool fileNameInSkipSuffixes(std::string_view fileName) const noexcept;
   [[nodiscard]] bool
-  fileNameInSkipDirectories(const std::string& directoryName) const noexcept;
+  fileNameInSkipDirectories(std::string_view directoryName) const noexcept;
 
   [[nodiscard]] std::vector<std::string>
-  librariesToForceLoad(const std::string& processName) const noexcept;
+  librariesToForceLoad(std::string_view processName) const noexcept;
 
   /**
    * @brief check if any process in m_spawnedProcesses is still running

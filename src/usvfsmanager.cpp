@@ -851,13 +851,14 @@ void UsvfsManager::run_fuse(std::unique_ptr<MountState> state) noexcept
   fuse_loop(raw->fusePtr);
 }
 
-bool UsvfsManager::fileNameInSkipSuffixes(const std::string& fileName) const noexcept
+bool UsvfsManager::fileNameInSkipSuffixes(
+    const std::string_view fileName) const noexcept
 {
   return fileNameInSkipSuffixes(fileName, m_skipFileSuffixes);
 }
 
 bool UsvfsManager::fileNameInSkipSuffixes(
-    const std::string& fileName, const std::set<std::string>& skipSuffixes) noexcept
+    const std::string_view fileName, const std::set<std::string>& skipSuffixes) noexcept
 {
   return ranges::any_of(skipSuffixes, [&](const std::string& suffix) {
     if (iendsWith(fileName, suffix)) {
@@ -870,13 +871,13 @@ bool UsvfsManager::fileNameInSkipSuffixes(
 }
 
 bool UsvfsManager::fileNameInSkipDirectories(
-    const std::string& directoryName) const noexcept
+    const std::string_view directoryName) const noexcept
 {
   return fileNameInSkipDirectories(directoryName, m_skipDirectories);
 }
 
 bool UsvfsManager::fileNameInSkipDirectories(
-    const std::string& directoryName,
+    const std::string_view directoryName,
     const std::set<std::string>& skipDirectories) noexcept
 {
   return ranges::any_of(skipDirectories, [&](const std::string& suffix) {
@@ -889,7 +890,7 @@ bool UsvfsManager::fileNameInSkipDirectories(
 }
 
 std::vector<std::string>
-UsvfsManager::librariesToForceLoad(const std::string& processName) const noexcept
+UsvfsManager::librariesToForceLoad(const std::string_view processName) const noexcept
 {
   vector<string> result;
 
