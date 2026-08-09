@@ -247,8 +247,8 @@ void UsvfsManager::usvfsVirtualLinkFile(const std::string& source,
   auto result = destinationFileTree->add(dstFileName, src, file, true);
   if (result == nullptr) {
     const int e = errno;
-    spdlog::error(format("error adding '{}' ({}) to file tree : ", dstFileName, src,
-                         strerror(e)));
+    throw runtime_error(
+        format("error adding '{}' ({}) to file tree: ", dstFileName, src, strerror(e)));
   }
 
   if (existingState == nullptr) {
@@ -262,6 +262,13 @@ void UsvfsManager::usvfsVirtualLinkFile(const std::string& source,
     // merge old file tree into destination file tree
     const string relative = existingState->mountpoint.substr(dstParentDir.length());
     const auto sourceItem = destinationFileTree->find(relative);
+    if (!sourceItem) {
+      const int e = errno;
+      throw runtime_error(format("error merging destination '{}' with existing "
+                                 "mountpoint '{}' (search path: '{}'): {}",
+                                 destination, existingState->mountpoint, relative,
+                                 strerror(e)));
+    }
     sourceItem->merge(existingState->fileTree, false);
     existingState->fileTree = std::move(destinationFileTree);
 
@@ -370,6 +377,13 @@ void UsvfsManager::usvfsVirtualLinkDirectoryStatic(const std::string& source,
       // merge old file tree into destination file tree
       const string relative = state->mountpoint.substr(dst.length());
       auto sourceItem       = destinationFileTree->find(relative);
+      if (!sourceItem) {
+        const int e = errno;
+        throw runtime_error(format("error merging destination '{}' with existing "
+                                   "mountpoint '{}' (search path: '{}'): {}",
+                                   destination, state->mountpoint, relative,
+                                   strerror(e)));
+      }
       sourceItem->merge(state->fileTree, false);
       state->fileTree = std::move(destinationFileTree);
 
