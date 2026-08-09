@@ -856,7 +856,7 @@ bool UsvfsManager::isMounted() const noexcept
 {
   shared_lock lock(m_mtx);
 
-  return m_mounts.empty();
+  return !m_mounts.empty();
 }
 
 void UsvfsManager::setUseMountNamespace(bool value) noexcept
