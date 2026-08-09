@@ -449,9 +449,9 @@ pid_t UsvfsManager::usvfsCreateProcessHooked(
   const string cmd = "'" + file + "' " + arg;
   spdlog::debug("usvfsCreateProcessHooked: command string: {}", cmd);
 
-  int pipefd[2];
+  int pipeFd[2];
 
-  if (pipe(pipefd) == -1) {
+  if (pipe(pipeFd) == -1) {
     spdlog::error("pipe failed: {}", strerror(errno));
     return -1;
   }
@@ -460,8 +460,8 @@ pid_t UsvfsManager::usvfsCreateProcessHooked(
 
   // error
   if (pid == -1) {
-    close(pipefd[0]);
-    close(pipefd[1]);
+    close(pipeFd[0]);
+    close(pipeFd[1]);
 
     spdlog::error("fork failed: {}", strerror(errno));
     return -1;
@@ -470,9 +470,9 @@ pid_t UsvfsManager::usvfsCreateProcessHooked(
   // child
   if (pid == 0) {
     // close read end
-    close(pipefd[0]);
+    close(pipeFd[0]);
     // set CLOEXEC on write end
-    fcntl(pipefd[1], F_SETFD, FD_CLOEXEC);
+    fcntl(pipeFd[1], F_SETFD, FD_CLOEXEC);
 
     if (m_useMountNamespace) {
       if (setns(m_nsPidFd, CLONE_NEWUSER | CLONE_NEWNS) == -1) {
@@ -518,7 +518,7 @@ pid_t UsvfsManager::usvfsCreateProcessHooked(
 
     // write error to pipe
     const int error = errno;
-    if (write(pipefd[1], &error, sizeof(int)) == -1) {
+    if (write(pipeFd[1], &error, sizeof(int)) == -1) {
       spdlog::error("Error writing exec error to pipe: {}\n Exec error was {}",
                     strerror(errno), strerror(error));
     }
@@ -529,13 +529,13 @@ pid_t UsvfsManager::usvfsCreateProcessHooked(
   // parent
 
   // close write end
-  close(pipefd[1]);
+  close(pipeFd[1]);
 
   int error;
-  size_t count = read(pipefd[0], &error, sizeof(int));
+  size_t count = read(pipeFd[0], &error, sizeof(int));
 
   // close read end
-  close(pipefd[0]);
+  close(pipeFd[0]);
 
   // check result
   if (count == 0) {
