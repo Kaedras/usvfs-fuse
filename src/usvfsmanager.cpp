@@ -552,12 +552,13 @@ pid_t UsvfsManager::usvfsCreateProcessHooked(
     if (m_useMountNamespace) {
       if (setns(m_nsPidFd, CLONE_NEWUSER | CLONE_NEWNS) == -1) {
         spdlog::error("setns failed: {}", strerror(errno));
-        exit(EXIT_FAILURE);
+        _exit(EXIT_FAILURE);
       }
     }
 
     if (chdir(workDir.c_str()) == -1) {
-      spdlog::error("chdir failed: {}", strerror(errno));
+      spdlog::error("chdir('{}') failed: {}", workDir, strerror(errno));
+      _exit(EXIT_FAILURE);
     }
 
     // handle wine dll overrides
