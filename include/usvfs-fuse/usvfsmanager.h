@@ -201,7 +201,7 @@ private:
     const std::string libraryPath;
   };
 
-  void run_fuse(std::unique_ptr<MountState> state);
+  void run_fuse(std::unique_ptr<MountState> state) noexcept;
   [[nodiscard]] bool fileNameInSkipSuffixes(const std::string& fileName) const noexcept;
   [[nodiscard]] bool
   fileNameInSkipDirectories(const std::string& directoryName) const noexcept;

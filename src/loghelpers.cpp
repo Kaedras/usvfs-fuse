@@ -1,6 +1,6 @@
 #include "loghelpers.h"
 
-spdlog::level::level_enum ConvertLogLevel(LogLevel level)
+spdlog::level::level_enum ConvertLogLevel(LogLevel level) noexcept
 {
   switch (level) {
   case LogLevel::Trace:
@@ -18,7 +18,7 @@ spdlog::level::level_enum ConvertLogLevel(LogLevel level)
   }
 }
 
-LogLevel ConvertLogLevel(spdlog::level::level_enum level)
+LogLevel ConvertLogLevel(spdlog::level::level_enum level) noexcept
 {
   switch (level) {
   case spdlog::level::trace:

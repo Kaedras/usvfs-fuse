@@ -33,7 +33,7 @@ int usvfs_readlink(const char* path, char* buf, size_t size) noexcept;
  * nodes.  If the filesystem defines a create() method, then for
  * regular files that will be called instead.
  */
-int usvfs_mknod(const char* path, mode_t mode, dev_t);
+int usvfs_mknod(const char* path, mode_t mode, dev_t) noexcept;
 
 /** Create a directory
  *

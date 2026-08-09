@@ -802,7 +802,7 @@ UsvfsManager::UsvfsManager() noexcept
   spdlog::set_default_logger(logger);
 }
 
-void UsvfsManager::run_fuse(std::unique_ptr<MountState> state)
+void UsvfsManager::run_fuse(std::unique_ptr<MountState> state) noexcept
 {
   string opts = defaultMountOptions;
   if (state->debugMode) {
