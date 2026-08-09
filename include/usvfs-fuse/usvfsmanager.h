@@ -73,7 +73,8 @@ public:
 
   /**
    * @brief spawn a new process that can see the virtual file system.
-   * @param env Environment variables to add to the process
+   * @param env Environment variables to add to the process. Strings should be formatted
+   * as `KEY=VALUE`.
    */
   pid_t usvfsCreateProcessHooked(const std::string& file, const std::string& arg,
                                  const std::string& workDir,
