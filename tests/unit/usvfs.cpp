@@ -98,6 +98,7 @@ bool createTmpDirs()
 
 bool cleanup()
 {
+  UsvfsManager::instance()->reset();
   std::error_code ec;
   fs::remove_all(base, ec);
   if (ec) {

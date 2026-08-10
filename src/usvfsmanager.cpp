@@ -930,6 +930,32 @@ bool UsvfsManager::fileNameInSkipDirectories(
   });
 }
 
+void UsvfsManager::reset() noexcept
+{
+  scoped_lock lock(m_mtx);
+
+  unmountInternal();
+
+  m_debugMode         = false;
+  m_useMountNamespace = false;
+  m_wine              = false;
+  m_processDelay      = std::chrono::milliseconds::zero();
+
+  m_skipFileSuffixes.clear();
+  m_skipDirectories.clear();
+  m_executableBlacklist.clear();
+  m_forceLoadLibraries.clear();
+  m_pendingMounts.clear();
+
+  if (m_nsPidFd != -1) {
+    close(m_nsPidFd);
+    m_nsPidFd = -1;
+  }
+
+  m_spawnedProcesses.clear();
+  m_logLevel = LogLevel::Debug;
+}
+
 std::vector<std::string>
 UsvfsManager::librariesToForceLoad(const std::string_view processName) const noexcept
 {

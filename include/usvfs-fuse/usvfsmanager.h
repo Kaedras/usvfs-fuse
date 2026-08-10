@@ -196,6 +196,11 @@ public:
   fileNameInSkipDirectories(std::string_view directoryName,
                             const std::set<std::string>& skipDirectories) noexcept;
 
+  /**
+   * @brief Reset everything to default values and call unmount()
+   */
+  void reset() noexcept;
+
 private:
   UsvfsManager() noexcept;
 
