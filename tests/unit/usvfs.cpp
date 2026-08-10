@@ -402,6 +402,32 @@ TEST_F(UsvfsTest, readCaseInsensitive)
   }
 }
 
+TEST_F(UsvfsTest, write)
+{
+  char buffer[256];
+  memset(buffer, 'A', 256);
+  for (const auto& filePath : filesToCheck | views::keys) {
+    int fd = open(filePath.c_str(), O_WRONLY | O_TRUNC);
+    ASSERT_NE(fd, -1);
+    ssize_t size = write(fd, buffer, 256);
+    EXPECT_EQ(size, 256);
+    close(fd);
+  }
+}
+
+TEST_F(UsvfsTest, writeCaseInsensitive)
+{
+  char buffer[256];
+  memset(buffer, 'A', 256);
+  for (const auto& filePath : filesToCheckCaseInsensitive | views::keys) {
+    int fd = open(filePath.c_str(), O_WRONLY | O_TRUNC);
+    ASSERT_NE(fd, -1);
+    ssize_t size = write(fd, buffer, 256);
+    EXPECT_EQ(size, 256);
+    close(fd);
+  }
+}
+
 TEST_F(UsvfsTest, unlink)
 {
   unlinkFile(mnt / "a.txt");
