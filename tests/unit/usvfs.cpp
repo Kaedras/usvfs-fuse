@@ -571,7 +571,7 @@ TEST_F(UsvfsTest, createMissingParentDirInUpperDir)
   EXPECT_EQ(close(fd), 0);
 }
 
-TEST(usvfs, MergeModDirectories)
+TEST(Usvfs, MergeModDirectories)
 {
   initLogging();
 
@@ -630,7 +630,7 @@ TEST(usvfs, MergeModDirectories)
   EXPECT_TRUE(cleanup());
 }
 
-TEST(usvfs, CreateProcessHooked)
+TEST(Usvfs, CreateProcessHooked)
 {
   initLogging();
   ASSERT_TRUE(createTmpDirs());
@@ -657,7 +657,7 @@ TEST(usvfs, CreateProcessHooked)
   EXPECT_TRUE(cleanup());
 }
 
-TEST(usvfs, CreateProcessHooked_WithMountNamespace)
+TEST(Usvfs, CreateProcessHooked_WithMountNamespace)
 {
   initLogging();
   ASSERT_TRUE(createTmpDirs());
