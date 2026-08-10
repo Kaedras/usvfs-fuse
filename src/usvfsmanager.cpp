@@ -247,6 +247,9 @@ string_view getProcessName(string_view arg)
 UsvfsManager::~UsvfsManager() noexcept
 {
   unmount();
+  if (m_nsPidFd != -1) {
+    close(m_nsPidFd);
+  }
 }
 
 void UsvfsManager::usvfsClearVirtualMappings() noexcept
