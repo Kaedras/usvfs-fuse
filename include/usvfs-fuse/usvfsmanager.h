@@ -238,7 +238,7 @@ private:
   std::vector<ForcedLibrary> m_forceLoadLibraries;
 
   mutable std::shared_mutex m_mtx;
-  pid_t m_nsPidFd = -1;  // file descriptor to access the mount namespace
+  int m_nsPidFd = -1;  // file descriptor to access the mount namespace
   std::vector<std::unique_ptr<MountState>> m_mounts;
   std::vector<std::unique_ptr<MountState>> m_pendingMounts;
   std::vector<pid_t> m_spawnedProcesses;
