@@ -91,27 +91,29 @@ int childFunc(void* arg) noexcept
     state->statusData->cv.notify_all();
   };
 
-  // enter existing namespace
-  if (state->nsFd != -1) {
-    spdlog::debug("usvfs entering existing namespace, fd: {}", state->nsFd);
-    int result = setns(state->nsFd, CLONE_NEWUSER | CLONE_NEWNS);
-    if (result == -1) {
-      spdlog::error("setns() failed: {}", strerror(errno));
-      fail();
-      return 1;
-    }
-  } else {
-    try {
-      // remap uid
-      writeToFile("/proc/self/uid_map", format("0 {} 1\n", state->uid));
-      // deny setgroups (see user_namespaces(7))
-      writeToFile("/proc/self/setgroups", "deny\n");
-      // remap gid
-      writeToFile("/proc/self/gid_map", format("0 {} 1\n", state->gid));
-    } catch (const exception& e) {
-      spdlog::error("failed to set up namespace, {}", e.what());
-      fail();
-      return 1;
+  if (state->useMountNamespace) {
+    // enter existing namespace
+    if (state->nsFd != -1) {
+      spdlog::debug("usvfs entering existing namespace, fd: {}", state->nsFd);
+      int result = setns(state->nsFd, CLONE_NEWUSER | CLONE_NEWNS);
+      if (result == -1) {
+        spdlog::error("setns() failed: {}", strerror(errno));
+        fail();
+        return 1;
+      }
+    } else {
+      try {
+        // remap uid
+        writeToFile("/proc/self/uid_map", format("0 {} 1\n", state->uid));
+        // deny setgroups (see user_namespaces(7))
+        writeToFile("/proc/self/setgroups", "deny\n");
+        // remap gid
+        writeToFile("/proc/self/gid_map", format("0 {} 1\n", state->gid));
+      } catch (const exception& e) {
+        spdlog::error("failed to set up namespace, {}", e.what());
+        fail();
+        return 1;
+      }
     }
   }
 
@@ -846,55 +848,6 @@ UsvfsManager::UsvfsManager() noexcept
   spdlog::set_default_logger(logger);
 }
 
-void UsvfsManager::run_fuse(std::unique_ptr<MountState> state) noexcept
-{
-  string opts = defaultMountOptions;
-  if (state->debugMode) {
-    opts.append(",debug");
-  }
-  const char* argv[] = {"usvfs_fuse", "-o", opts.c_str()};
-  constexpr int argc = sizeof(argv) / sizeof(const char*);
-  fuse_args args     = FUSE_ARGS_INIT(argc, const_cast<char**>(argv));
-
-  fuse_operations ops = createOperations();
-
-  MountState* raw = state.get();
-
-  auto fail = [&]() {
-    {
-      scoped_lock lock(state->statusData->mtx);
-      raw->statusData->status = MountState::failure;
-    }
-    raw->statusData->cv.notify_all();
-  };
-
-  *raw->fusePtr = fuse_new(&args, &ops, sizeof(fuse_operations), raw);
-  fuse_opt_free_args(&args);
-  if (!raw->fusePtr) {
-    spdlog::error("fuse_new() failed for mountpoint {}", raw->mountpoint);
-    fail();
-    return;
-  }
-  if (fuse_mount(*raw->fusePtr, raw->mountpoint.c_str()) == -1) {
-    fuse_destroy(*raw->fusePtr);
-    raw->fusePtr = nullptr;
-    spdlog::error("fuse_mount() failed for mountpoint {}", raw->mountpoint);
-    fail();
-    return;
-  }
-
-  m_mounts.emplace_back(std::move(state));
-
-  {
-    scoped_lock lock(raw->statusData->mtx);
-    raw->statusData->status = MountState::success;
-  }
-  raw->statusData->cv.notify_all();
-
-  // Enter loop; this blocks until unmounted
-  fuse_loop(*raw->fusePtr);
-}
-
 bool UsvfsManager::fileNameInSkipSuffixes(
     const std::string_view fileName) const noexcept
 {
@@ -1001,105 +954,82 @@ bool UsvfsManager::mountInternal() noexcept
       raw->useMountNamespace = m_useMountNamespace;
       raw->debugMode         = m_debugMode;
 
-      if (m_useMountNamespace) {
-        // create shared memory for status data.
-        raw->statusData = static_cast<MountState::StatusData*>(
-            mmap(nullptr, sizeof(MountState::StatusData), PROT_READ | PROT_WRITE,
-                 MAP_SHARED | MAP_ANONYMOUS, -1, 0));
-        if (raw->statusData == MAP_FAILED) {
-          throw runtime_error("error creating shared memory for mount state: "s +
-                              strerror(errno));
-        }
+      // create shared memory for status data.
+      raw->statusData = static_cast<MountState::StatusData*>(
+          mmap(nullptr, sizeof(MountState::StatusData), PROT_READ | PROT_WRITE,
+               MAP_SHARED | MAP_ANONYMOUS, -1, 0));
+      if (raw->statusData == MAP_FAILED) {
+        throw runtime_error("error creating shared memory for mount state: "s +
+                            strerror(errno));
+      }
 
-        // create shared memory for fuse ptr.
-        raw->fusePtr =
-            static_cast<fuse**>(mmap(nullptr, sizeof(fuse*), PROT_READ | PROT_WRITE,
-                                     MAP_SHARED | MAP_ANONYMOUS, -1, 0));
-        if (raw->fusePtr == MAP_FAILED) {
-          throw runtime_error("error creating shared memory for mount state: "s +
-                              strerror(errno));
-        }
+      // create shared memory for fuse ptr.
+      raw->fusePtr =
+          static_cast<fuse**>(mmap(nullptr, sizeof(fuse*), PROT_READ | PROT_WRITE,
+                                   MAP_SHARED | MAP_ANONYMOUS, -1, 0));
+      if (raw->fusePtr == MAP_FAILED) {
+        throw runtime_error("error creating shared memory for mount state: "s +
+                            strerror(errno));
+      }
 
-        size_t stackSize;
-        rlimit limit;
-        if (getrlimit(RLIMIT_STACK, &limit) == 0) {
-          stackSize = min(limit.rlim_cur, defaultStackSize);
-          spdlog::trace("setting stack size to {}", stackSize);
-        } else {
-          stackSize = defaultStackSize;
-          spdlog::trace("error getting stack size limit: {}\nusing 8 MiB",
-                        strerror(errno));
-        }
+      size_t stackSize;
+      rlimit limit;
+      if (getrlimit(RLIMIT_STACK, &limit) == 0) {
+        stackSize = min(limit.rlim_cur, defaultStackSize);
+        spdlog::trace("setting stack size to {}", stackSize);
+      } else {
+        stackSize = defaultStackSize;
+        spdlog::trace("error getting stack size limit: {}\nusing 8 MiB",
+                      strerror(errno));
+      }
 
-        // allocate memory to be used for the stack of the child.
-        state->stack =
-            static_cast<char*>(mmap(nullptr, stackSize, PROT_READ | PROT_WRITE,
-                                    MAP_PRIVATE | MAP_ANONYMOUS | MAP_STACK, -1, 0));
-        if (state->stack == MAP_FAILED) {
-          throw runtime_error("mmap() failed: "s + strerror(errno));
-        }
+      // allocate memory to be used for the stack of the child.
+      state->stack =
+          static_cast<char*>(mmap(nullptr, stackSize, PROT_READ | PROT_WRITE,
+                                  MAP_PRIVATE | MAP_ANONYMOUS | MAP_STACK, -1, 0));
+      if (state->stack == MAP_FAILED) {
+        throw runtime_error("mmap() failed: "s + strerror(errno));
+      }
 
-        state->stackTop = state->stack + stackSize;  // assume stack grows downward
+      state->stackTop = state->stack + stackSize;  // assume stack grows downward
 
-        state->uid = getuid();
-        state->gid = getgid();
+      state->uid = getuid();
+      state->gid = getgid();
 
+      int flags = 0;
+      if (state->useMountNamespace) {
         // only create a new namespace if m_nsPidFd == -1
-        int flags;
         if (m_nsPidFd == -1) {
           flags = CLONE_NEWUSER | CLONE_NEWNS;
         } else {
-          flags       = 0;
           state->nsFd = m_nsPidFd;
         }
-
-        int result = clone(childFunc, state->stackTop,
-                           flags | SIGCHLD | CLONE_PIDFD | CLONE_FILES | CLONE_VM,
-                           state.get(), &state->pidFd);
-        if (state->pidFd == -1 || result == -1) {
-          throw runtime_error("clone() failed: "s + strerror(errno));
-        }
-
-        // check for error in child
-        unique_lock lock(raw->statusData->mtx);
-        raw->statusData->cv.wait(lock, [&] {
-          return raw->statusData->status != MountState::unknown;
-        });
-        if (raw->statusData->status == MountState::failure) {
-          throw runtime_error("error in mount process");
-        }
-
-        // store pid fd to access namespace
-        if (m_nsPidFd == -1) {
-          m_nsPidFd = state->pidFd;
-        }
-
-        spdlog::info("usvfs mounted in pid {}, mountpoint: '{}'",
-                     pidfd_getpid(state->pidFd), state->mountpoint);
-        m_mounts.emplace_back(std::move(state));
-      } else {
-        try {
-          raw->statusData = new MountState::StatusData();
-          raw->fusePtr    = new fuse*;
-        } catch (const bad_alloc& ex) {
-          throw runtime_error("error allocating memory for mount state: "s + ex.what());
-        }
-        thread t([s = std::move(state), this]() mutable {
-          run_fuse(std::move(s));
-        });
-        t.detach();
-
-        // wait until mount state is no longer unknown
-        unique_lock lock(raw->statusData->mtx);
-        raw->statusData->cv.wait(lock, [&] {
-          return raw->statusData->status != MountState::unknown;
-        });
-        if (raw->statusData->status == MountState::failure) {
-          throw runtime_error("error in mount thread");
-        }
-
-        spdlog::info("successfully mounted {}", raw->mountpoint);
       }
+
+      int result = clone(childFunc, state->stackTop,
+                         flags | SIGCHLD | CLONE_PIDFD | CLONE_FILES | CLONE_VM,
+                         state.get(), &state->pidFd);
+      if (state->pidFd == -1 || result == -1) {
+        throw runtime_error("clone() failed: "s + strerror(errno));
+      }
+
+      // check for error in child
+      unique_lock lock(raw->statusData->mtx);
+      raw->statusData->cv.wait(lock, [&] {
+        return raw->statusData->status != MountState::unknown;
+      });
+      if (raw->statusData->status == MountState::failure) {
+        throw runtime_error("error in mount process");
+      }
+
+      // store pid fd to access namespace
+      if (m_nsPidFd == -1) {
+        m_nsPidFd = state->pidFd;
+      }
+
+      spdlog::info("usvfs mounted in pid {}, mountpoint: '{}'",
+                   pidfd_getpid(state->pidFd), state->mountpoint);
+      m_mounts.emplace_back(std::move(state));
     }
     return true;
   } catch (const runtime_error& e) {
@@ -1134,29 +1064,31 @@ bool UsvfsManager::unmountInternal() noexcept
     spdlog::debug("unmounting {}", mount->mountpoint);
 
     // unmount fuse
-    if (m_useMountNamespace) {
-      if (mount->pidFd == -1) {
-        spdlog::warn("mount pidFd is -1");
-        return false;
-      }
+    if (mount->pidFd == -1) {
+      spdlog::warn("mount pidFd is -1");
+      return false;
+    }
 
-      pid_t pid = pidfd_getpid(mount->pidFd);
-      spdlog::trace("sending SIGINT to pid {}", pid);
-      if (pidfd_send_signal(mount->pidFd, SIGINT, nullptr, 0) == -1) {
-        spdlog::error("pidfd_send_signal() failed: {}", strerror(errno));
-        return false;
-      }
+    pid_t pid = pidfd_getpid(mount->pidFd);
+    spdlog::trace("sending SIGINT to pid {}", pid);
+    if (pidfd_send_signal(mount->pidFd, SIGINT, nullptr, 0) == -1) {
+      spdlog::error("pidfd_send_signal() failed: {}", strerror(errno));
+      return false;
+    }
 
-      fuse_exit(*mount->fusePtr);
+    fuse_exit(*mount->fusePtr);
 
-      // wait for the child to exit
-      spdlog::trace("waiting for pid {} to exit", pid);
-      siginfo_t info{};
-      if (waitid(P_PIDFD, mount->pidFd, &info, WEXITED | WSTOPPED) == -1) {
-        spdlog::error("waitid() failed: {}", strerror(errno));
-        return false;
-      }
+    // wait for the child to exit
+    spdlog::trace("waiting for pid {} to exit", pid);
+    siginfo_t info{};
+    if (waitid(P_PIDFD, mount->pidFd, &info, WEXITED | WSTOPPED) == -1) {
+      spdlog::error("waitid() failed: {}", strerror(errno));
+      return false;
+    }
 
+    if (info.si_code == CLD_EXITED && info.si_status != 0) {
+      spdlog::error("usvfs has exited with status {}", info.si_status);
+    } else {
       string action;
       switch (info.si_code) {
       case CLD_EXITED:
@@ -1171,12 +1103,7 @@ bool UsvfsManager::unmountInternal() noexcept
       default:
         action = "exited with code " + to_string(info.si_code) + " and";
       }
-
       spdlog::info("usvfs {} with status {}", action, info.si_status);
-    } else {
-      // fuse_exit(*mount->fusePtr);
-      fuse_unmount(*mount->fusePtr);
-      fuse_destroy(*mount->fusePtr);
     }
   }
   m_mounts.clear();
