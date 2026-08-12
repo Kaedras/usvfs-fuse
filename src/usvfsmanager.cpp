@@ -91,27 +91,27 @@ int childFunc(void* arg) noexcept
     state->statusData->cv.notify_all();
   };
 
-  try {
-    // remap uid
-    writeToFile("/proc/self/uid_map", format("0 {} 1\n", state->uid));
-    // deny setgroups (see user_namespaces(7))
-    writeToFile("/proc/self/setgroups", "deny\n");
-    // remap gid
-    writeToFile("/proc/self/gid_map", format("0 {} 1\n", state->gid));
-  } catch (const exception& e) {
-    spdlog::error("failed to set up namespace, {}", e.what());
-    fail();
-    return -1;
-  }
-
   // enter existing namespace
   if (state->nsFd != -1) {
-    spdlog::debug("usvfs entering existing namespace");
+    spdlog::debug("usvfs entering existing namespace, fd: {}", state->nsFd);
     int result = setns(state->nsFd, CLONE_NEWUSER | CLONE_NEWNS);
     if (result == -1) {
       spdlog::error("setns() failed: {}", strerror(errno));
       fail();
-      return -1;
+      return 1;
+    }
+  } else {
+    try {
+      // remap uid
+      writeToFile("/proc/self/uid_map", format("0 {} 1\n", state->uid));
+      // deny setgroups (see user_namespaces(7))
+      writeToFile("/proc/self/setgroups", "deny\n");
+      // remap gid
+      writeToFile("/proc/self/gid_map", format("0 {} 1\n", state->gid));
+    } catch (const exception& e) {
+      spdlog::error("failed to set up namespace, {}", e.what());
+      fail();
+      return 1;
     }
   }
 
@@ -125,29 +125,29 @@ int childFunc(void* arg) noexcept
 
   fuse_operations ops = createOperations();
 
-  state->fusePtr = fuse_new(&args, &ops, sizeof(fuse_operations), state);
+  *state->fusePtr = fuse_new(&args, &ops, sizeof(fuse_operations), state);
   fuse_opt_free_args(&args);
-  if (state->fusePtr == nullptr) {
+  if (*state->fusePtr == nullptr) {
     // Couldn't create FUSE handle; drop the mount
     spdlog::error("fuse_new() failed");
     fail();
-    return -1;
+    return 2;
   }
-  if (fuse_mount(state->fusePtr, state->mountpoint.c_str()) == -1) {
-    fuse_destroy(state->fusePtr);
-    state->fusePtr = nullptr;
+  if (fuse_mount(*state->fusePtr, state->mountpoint.c_str()) == -1) {
+    fuse_destroy(*state->fusePtr);
+    *state->fusePtr = nullptr;
     spdlog::error("fuse_mount() failed for mountpoint {}: {}", state->mountpoint,
                   strerror(errno));
     fail();
-    return -1;
+    return 3;
   }
 
   // set signal handlers
-  fuse_session* session = fuse_get_session(state->fusePtr);
+  fuse_session* session = fuse_get_session(*state->fusePtr);
   if (fuse_set_signal_handlers(session) == -1) {
     spdlog::error("fuse_set_signal_handlers() failed: {}", strerror(errno));
     fail();
-    return -1;
+    return 4;
   }
 
   spdlog::trace("mount success, notifying parent");
@@ -158,11 +158,11 @@ int childFunc(void* arg) noexcept
   state->statusData->cv.notify_all();
 
   // enter loop; this blocks until unmounted or interrupted by the signal handler
-  fuse_loop(state->fusePtr);
+  fuse_loop(*state->fusePtr);
 
-  fuse_unmount(state->fusePtr);
-  fuse_destroy(state->fusePtr);
-  state->fusePtr = nullptr;
+  fuse_unmount(*state->fusePtr);
+  fuse_destroy(*state->fusePtr);
+  *state->fusePtr = nullptr;
 
   return 0;
 }
@@ -868,15 +868,15 @@ void UsvfsManager::run_fuse(std::unique_ptr<MountState> state) noexcept
     raw->statusData->cv.notify_all();
   };
 
-  raw->fusePtr = fuse_new(&args, &ops, sizeof(fuse_operations), raw);
+  *raw->fusePtr = fuse_new(&args, &ops, sizeof(fuse_operations), raw);
   fuse_opt_free_args(&args);
   if (!raw->fusePtr) {
     spdlog::error("fuse_new() failed for mountpoint {}", raw->mountpoint);
     fail();
     return;
   }
-  if (fuse_mount(raw->fusePtr, raw->mountpoint.c_str()) == -1) {
-    fuse_destroy(raw->fusePtr);
+  if (fuse_mount(*raw->fusePtr, raw->mountpoint.c_str()) == -1) {
+    fuse_destroy(*raw->fusePtr);
     raw->fusePtr = nullptr;
     spdlog::error("fuse_mount() failed for mountpoint {}", raw->mountpoint);
     fail();
@@ -892,7 +892,7 @@ void UsvfsManager::run_fuse(std::unique_ptr<MountState> state) noexcept
   raw->statusData->cv.notify_all();
 
   // Enter loop; this blocks until unmounted
-  fuse_loop(raw->fusePtr);
+  fuse_loop(*raw->fusePtr);
 }
 
 bool UsvfsManager::fileNameInSkipSuffixes(
@@ -1011,6 +1011,15 @@ bool UsvfsManager::mountInternal() noexcept
                               strerror(errno));
         }
 
+        // create shared memory for fuse ptr.
+        raw->fusePtr =
+            static_cast<fuse**>(mmap(nullptr, sizeof(fuse*), PROT_READ | PROT_WRITE,
+                                     MAP_SHARED | MAP_ANONYMOUS, -1, 0));
+        if (raw->fusePtr == MAP_FAILED) {
+          throw runtime_error("error creating shared memory for mount state: "s +
+                              strerror(errno));
+        }
+
         size_t stackSize;
         rlimit limit;
         if (getrlimit(RLIMIT_STACK, &limit) == 0) {
@@ -1071,6 +1080,7 @@ bool UsvfsManager::mountInternal() noexcept
       } else {
         try {
           raw->statusData = new MountState::StatusData();
+          raw->fusePtr    = new fuse*;
         } catch (const bad_alloc& ex) {
           throw runtime_error("error allocating memory for mount state: "s + ex.what());
         }
@@ -1130,20 +1140,43 @@ bool UsvfsManager::unmountInternal() noexcept
         return false;
       }
 
-      siginfo_t info;
+      pid_t pid = pidfd_getpid(mount->pidFd);
+      spdlog::trace("sending SIGINT to pid {}", pid);
       if (pidfd_send_signal(mount->pidFd, SIGINT, nullptr, 0) == -1) {
         spdlog::error("pidfd_send_signal() failed: {}", strerror(errno));
         return false;
       }
+
+      fuse_exit(*mount->fusePtr);
+
       // wait for the child to exit
-      if (waitid(P_PIDFD, mount->pidFd, &info, WEXITED) == -1) {
+      spdlog::trace("waiting for pid {} to exit", pid);
+      siginfo_t info{};
+      if (waitid(P_PIDFD, mount->pidFd, &info, WEXITED | WSTOPPED) == -1) {
         spdlog::error("waitid() failed: {}", strerror(errno));
         return false;
       }
-      spdlog::debug("usvfs exited with code {}", info.si_status);
+
+      string action;
+      switch (info.si_code) {
+      case CLD_EXITED:
+        action = "has exited";
+        break;
+      case CLD_STOPPED:
+        action = "has stopped";
+        break;
+      case CLD_KILLED:
+        action = "was killed";
+        break;
+      default:
+        action = "exited with code " + to_string(info.si_code) + " and";
+      }
+
+      spdlog::info("usvfs {} with status {}", action, info.si_status);
     } else {
-      fuse_unmount(mount->fusePtr);
-      fuse_destroy(mount->fusePtr);
+      // fuse_exit(*mount->fusePtr);
+      fuse_unmount(*mount->fusePtr);
+      fuse_destroy(*mount->fusePtr);
     }
   }
   m_mounts.clear();
