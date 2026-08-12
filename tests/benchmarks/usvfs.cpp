@@ -297,7 +297,7 @@ static void usvfsVirtualLinkDirectoryStatic(benchmark::State& state)
     END();
     usvfs->usvfsClearVirtualMappings();
   }
-  fs::remove_all(mnt);
+  fs::remove_all(base);
 }
 
 BENCHMARK(Stat)->Name("usvfs/stat")->Setup(DoSetup)->Teardown(DoTeardown);
