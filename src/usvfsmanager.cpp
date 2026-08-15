@@ -1019,9 +1019,11 @@ bool UsvfsManager::mountInternal() noexcept
         throw runtime_error("error in mount process");
       }
 
-      // store pid fd to access namespace
-      if (m_nsPidFd == -1) {
-        m_nsPidFd = state->pidFd;
+      if (state->useMountNamespace) {
+        // store pid fd to access namespace
+        if (m_nsPidFd == -1) {
+          m_nsPidFd = state->pidFd;
+        }
       }
 
       spdlog::info("usvfs mounted in pid {}, mountpoint: '{}'",
