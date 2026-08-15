@@ -274,8 +274,6 @@ bool createFile(const string& path, const string& content,
   }
 }
 
-}  // namespace
-
 class UsvfsTest : public testing::Test
 {
 protected:
@@ -309,6 +307,8 @@ protected:
     ASSERT_TRUE(cleanup());
   }
 };
+
+}  // namespace
 
 TEST_F(UsvfsTest, CanMount)
 {
