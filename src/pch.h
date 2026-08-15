@@ -22,6 +22,7 @@
 #include <shared_mutex>
 #include <string>
 #include <string_view>
+#include <sys/eventfd.h>
 #include <sys/mman.h>
 #include <sys/resource.h>
 #include <sys/stat.h>

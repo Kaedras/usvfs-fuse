@@ -127,29 +127,21 @@ int childFunc(void* arg) noexcept
 
   fuse_operations ops = createOperations();
 
-  *state->fusePtr = fuse_new(&args, &ops, sizeof(fuse_operations), state);
+  state->fusePtr = fuse_new(&args, &ops, sizeof(fuse_operations), state);
   fuse_opt_free_args(&args);
-  if (*state->fusePtr == nullptr) {
+  if (state->fusePtr == nullptr) {
     // Couldn't create FUSE handle; drop the mount
     spdlog::error("fuse_new() failed");
     fail();
     return 2;
   }
-  if (fuse_mount(*state->fusePtr, state->mountpoint.c_str()) == -1) {
-    fuse_destroy(*state->fusePtr);
-    *state->fusePtr = nullptr;
+  if (fuse_mount(state->fusePtr, state->mountpoint.c_str()) == -1) {
+    fuse_destroy(state->fusePtr);
+    state->fusePtr = nullptr;
     spdlog::error("fuse_mount() failed for mountpoint {}: {}", state->mountpoint,
                   strerror(errno));
     fail();
     return 3;
-  }
-
-  // set signal handlers
-  fuse_session* session = fuse_get_session(*state->fusePtr);
-  if (fuse_set_signal_handlers(session) == -1) {
-    spdlog::error("fuse_set_signal_handlers() failed: {}", strerror(errno));
-    fail();
-    return 4;
   }
 
   spdlog::trace("mount success, notifying parent");
@@ -159,12 +151,21 @@ int childFunc(void* arg) noexcept
   }
   state->statusData->cv.notify_all();
 
-  // enter loop; this blocks until unmounted or interrupted by the signal handler
-  fuse_loop(*state->fusePtr);
+  jthread shutdownThread([state]() {
+    eventfd_t value;
+    if (eventfd_read(state->eventFd, &value) == 0) {
+      if (state->fusePtr != nullptr) {
+        fuse_exit(state->fusePtr);
+        fuse_unmount(state->fusePtr);
+      }
+    }
+  });
 
-  fuse_unmount(*state->fusePtr);
-  fuse_destroy(*state->fusePtr);
-  *state->fusePtr = nullptr;
+  // enter loop; this blocks until unmounted
+  fuse_loop(state->fusePtr);
+
+  fuse_destroy(state->fusePtr);
+  state->fusePtr = nullptr;
 
   return 0;
 }
@@ -963,15 +964,6 @@ bool UsvfsManager::mountInternal() noexcept
                             strerror(errno));
       }
 
-      // create shared memory for fuse ptr.
-      raw->fusePtr =
-          static_cast<fuse**>(mmap(nullptr, sizeof(fuse*), PROT_READ | PROT_WRITE,
-                                   MAP_SHARED | MAP_ANONYMOUS, -1, 0));
-      if (raw->fusePtr == MAP_FAILED) {
-        throw runtime_error("error creating shared memory for mount state: "s +
-                            strerror(errno));
-      }
-
       size_t stackSize;
       rlimit limit;
       if (getrlimit(RLIMIT_STACK, &limit) == 0) {
@@ -1004,6 +996,11 @@ bool UsvfsManager::mountInternal() noexcept
         } else {
           state->nsFd = m_nsPidFd;
         }
+      }
+
+      state->eventFd = eventfd(0, 0);
+      if (state->eventFd == -1) {
+        throw runtime_error("eventfd() failed: "s + strerror(errno));
       }
 
       int result = clone(childFunc, state->stackTop,
@@ -1069,16 +1066,15 @@ bool UsvfsManager::unmountInternal() noexcept
       return false;
     }
 
-    pid_t pid = pidfd_getpid(mount->pidFd);
-    spdlog::trace("sending SIGINT to pid {}", pid);
-    if (pidfd_send_signal(mount->pidFd, SIGINT, nullptr, 0) == -1) {
-      spdlog::error("pidfd_send_signal() failed: {}", strerror(errno));
+    // send shutdown event
+    spdlog::trace("writing to event fd");
+    if (eventfd_write(mount->eventFd, 1) == -1) {
+      spdlog::error("eventfd_write failed: {}", strerror(errno));
       return false;
     }
 
-    fuse_exit(*mount->fusePtr);
-
     // wait for the child to exit
+    pid_t pid = pidfd_getpid(mount->pidFd);
     spdlog::trace("waiting for pid {} to exit", pid);
     siginfo_t info{};
     if (waitid(P_PIDFD, mount->pidFd, &info, WEXITED | WSTOPPED) == -1) {

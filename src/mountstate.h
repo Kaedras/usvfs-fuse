@@ -26,7 +26,7 @@ struct MountState
   std::string mountpoint;
   std::shared_ptr<VirtualFileTreeItem> fileTree;
   FdMap fdMap;
-  fuse** fusePtr         = nullptr;
+  fuse* fusePtr          = nullptr;
   StatusData* statusData = nullptr;
   bool debugMode         = false;
   bool useMountNamespace = false;
@@ -34,6 +34,7 @@ struct MountState
   char* stack    = nullptr;  // Start of stack buffer
   char* stackTop = nullptr;  // End of stack buffer
   int pidFd      = -1;
+  int eventFd    = -1;
   int nsFd       = -1;
   uid_t uid      = -1;
   uid_t gid      = -1;
