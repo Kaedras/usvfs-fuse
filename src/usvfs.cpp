@@ -10,7 +10,7 @@ namespace fs = std::filesystem;
 #define GET_STATE()                                                                    \
   auto* state = getState();                                                            \
   if (state == nullptr) {                                                              \
-    spdlog::error("error getting state");                                              \
+    spdlog::error("{}: error getting state", __FUNCTION__);                            \
     return -EIO;                                                                       \
   }
 
