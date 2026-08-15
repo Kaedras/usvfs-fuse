@@ -408,9 +408,9 @@ TEST_F(UsvfsTest, write)
   memset(buffer, 'A', 256);
   for (const auto& filePath : filesToCheck | views::keys) {
     int fd = open(filePath.c_str(), O_WRONLY | O_TRUNC);
-    ASSERT_NE(fd, -1);
+    ASSERT_NE(fd, -1) << "error opening " << filePath << ": " << strerror(errno);
     ssize_t size = write(fd, buffer, 256);
-    EXPECT_EQ(size, 256);
+    EXPECT_EQ(size, 256) << "error writing to " << filePath << ": " << strerror(errno);
     close(fd);
   }
 }
@@ -421,9 +421,9 @@ TEST_F(UsvfsTest, writeCaseInsensitive)
   memset(buffer, 'A', 256);
   for (const auto& filePath : filesToCheckCaseInsensitive | views::keys) {
     int fd = open(filePath.c_str(), O_WRONLY | O_TRUNC);
-    ASSERT_NE(fd, -1);
+    ASSERT_NE(fd, -1) << "error opening " << filePath << ": " << strerror(errno);
     ssize_t size = write(fd, buffer, 256);
-    EXPECT_EQ(size, 256);
+    EXPECT_EQ(size, 256) << "error writing to " << filePath << ": " << strerror(errno);
     close(fd);
   }
 }
