@@ -15,6 +15,8 @@ target_sources(usvfs-fuse
             fdmap.h
             loghelpers.cpp
             loghelpers.h
+            mountdata.cpp
+            mountdata.h
             mountstate.cpp
             mountstate.h
             usvfs.cpp

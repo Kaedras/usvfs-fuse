@@ -4,6 +4,7 @@
 
 #include "fdmap.h"
 #include "loghelpers.h"
+#include "mountdata.h"
 #include "mountstate.h"
 #include "usvfs-fuse/usvfs_version.h"
 #include "usvfs.h"
@@ -19,6 +20,17 @@ namespace
 constexpr size_t defaultStackSize  = 1024 * 1024 * 8;  // stack size for cloned child.
 constexpr auto defaultMountOptions = "default_permissions,auto_unmount";
 const string logPattern            = "%H:%M:%S.%e [%L] %v";
+
+// mount status codes
+constexpr int MOUNT_SUCCESS = 1;
+constexpr int MOUNT_ERROR   = 2;
+
+// child exit codes
+constexpr int NAMESPACE_SETUP_FAILED = 1;
+constexpr int SET_NS_FAILED          = 2;
+constexpr int FUSE_NEW_FAILED        = 3;
+constexpr int FUSE_MOUNT_FAILED      = 4;
+constexpr int EVENTFD_WRITE_FAILED   = 5;
 
 fuse_operations createOperations() noexcept
 {
@@ -69,6 +81,37 @@ fuse_operations createOperations() noexcept
   return ops;
 }
 
+void readFromPipe(int fd, void* data, size_t size)
+{
+  while (size > 0) {
+    ssize_t readBytes = read(fd, data, size);
+    if (readBytes == -1) {
+      throw runtime_error("read error: "s + strerror(errno));
+    }
+    if (readBytes == 0) {
+      throw runtime_error("read() returned 0");
+    }
+
+    data += readBytes;
+    size -= readBytes;
+  }
+}
+
+void writeToPipe(int fd, void* data, size_t size)
+{
+  while (size > 0) {
+    ssize_t writtenBytes = write(fd, data, size);
+    if (writtenBytes == -1) {
+      throw runtime_error("write error: "s + strerror(errno));
+    }
+    if (writtenBytes == 0) {
+      throw runtime_error("write() returned 0");
+    }
+    data += writtenBytes;
+    size -= writtenBytes;
+  }
+}
+
 void writeToFile(const string& filename, string_view content) noexcept(false)
 {
   ofstream ofs(filename);
@@ -84,11 +127,10 @@ int childFunc(void* arg) noexcept
   auto* state = static_cast<MountState*>(arg);
 
   auto fail = [&]() {
-    {
-      scoped_lock lock(state->statusData->mtx);
-      state->statusData->status = MountState::failure;
+    if (eventfd_write(state->closeEventFd, MOUNT_ERROR) == -1) {
+      spdlog::error("eventfd_write failed when notifying about mount error: {}",
+                    strerror(errno));
     }
-    state->statusData->cv.notify_all();
   };
 
   if (state->useMountNamespace) {
@@ -99,7 +141,7 @@ int childFunc(void* arg) noexcept
       if (result == -1) {
         spdlog::error("setns() failed: {}", strerror(errno));
         fail();
-        return 1;
+        return SET_NS_FAILED;
       }
     } else {
       try {
@@ -112,7 +154,7 @@ int childFunc(void* arg) noexcept
       } catch (const exception& e) {
         spdlog::error("failed to set up namespace, {}", e.what());
         fail();
-        return 1;
+        return NAMESPACE_SETUP_FAILED;
       }
     }
   }
@@ -133,7 +175,7 @@ int childFunc(void* arg) noexcept
     // Couldn't create FUSE handle; drop the mount
     spdlog::error("fuse_new() failed");
     fail();
-    return 2;
+    return FUSE_NEW_FAILED;
   }
   if (fuse_mount(state->fusePtr, state->mountpoint.c_str()) == -1) {
     fuse_destroy(state->fusePtr);
@@ -141,23 +183,51 @@ int childFunc(void* arg) noexcept
     spdlog::error("fuse_mount() failed for mountpoint {}: {}", state->mountpoint,
                   strerror(errno));
     fail();
-    return 3;
+    return FUSE_MOUNT_FAILED;
   }
 
-  spdlog::trace("mount success, notifying parent");
-  {
-    scoped_lock lock(state->statusData->mtx);
-    state->statusData->status = MountState::success;
+  spdlog::trace("mount success, notifying parent in fd {}", state->closeEventFd);
+  if (eventfd_write(state->statusEventFd, MOUNT_SUCCESS) == -1) {
+    spdlog::error("eventfd_write failed: {}", strerror(errno));
+    fuse_destroy(state->fusePtr);
+    state->fusePtr = nullptr;
+    return EVENTFD_WRITE_FAILED;
   }
-  state->statusData->cv.notify_all();
 
   jthread shutdownThread([state]() {
     eventfd_t value;
-    if (eventfd_read(state->eventFd, &value) == 0) {
+    if (eventfd_read(state->closeEventFd, &value) == 0) {
       if (state->fusePtr != nullptr) {
         fuse_exit(state->fusePtr);
         fuse_unmount(state->fusePtr);
       }
+    }
+  });
+
+  jthread dumpThread([state](const std::stop_token& stoken) {
+    try {
+      pollfd pfd{state->dumpEventFd, POLLIN, 0};
+
+      while (!stoken.stop_requested()) {
+        int result = poll(&pfd, 1, 10);
+        if (result > 0) {
+          eventfd_t value;
+          if (eventfd_read(state->dumpEventFd, &value) == 0) {
+            ostringstream oss;
+            state->fileTree->dumpTree(oss);
+            const auto data = oss.str();
+
+            size_t size = data.size();
+            writeToPipe(state->dumpPipeFd, &size, sizeof(size_t));
+            writeToPipe(state->dumpPipeFd, (void*)data.data(), data.size());
+          }
+        } else if (result == -1) {
+          spdlog::error("poll error in dump thread: {}", strerror(errno));
+          return;
+        }
+      }
+    } catch (const runtime_error& ex) {
+      spdlog::error("error in dump thread: {}", ex.what());
     }
   });
 
@@ -660,18 +730,34 @@ std::string UsvfsManager::usvfsCreateVFSDump() const noexcept
 {
   shared_lock lock(m_mtx);
   ostringstream oss;
-  string result;
   spdlog::debug("dumping {} pending and {} active mounts", m_pendingMounts.size(),
                 m_mounts.size());
   for (const auto& state : m_pendingMounts) {
     state->fileTree->dumpTree(oss);
   }
+  string result = oss.str();
 
   for (const auto& state : m_mounts) {
-    state->fileTree->dumpTree(oss);
+    if (eventfd_write(state.dumpEventFd, 1) == -1) {
+      spdlog::error("usvfsCreateVFSDump: eventfd_write failed on fd {}: {}",
+                    state.dumpEventFd, strerror(errno));
+      return {};
+    }
+
+    try {
+      size_t size;
+      readFromPipe(state.dumpPipeFd, &size, sizeof(size_t));
+      string data;
+      data.resize(size);
+      readFromPipe(state.dumpPipeFd, data.data(), size);
+      result.append(data);
+    } catch (const runtime_error& ex) {
+      spdlog::error("error reading from pipe: {}", ex.what());
+      return {};
+    }
   }
 
-  return oss.str();
+  return result;
 }
 
 void UsvfsManager::usvfsBlacklistExecutable(const std::string& executableName) noexcept
@@ -950,19 +1036,8 @@ bool UsvfsManager::mountInternal() noexcept
 
     // start a thread or process for each pending mount
     for (auto& state : toMount) {
-      MountState* raw = state.get();
-
-      raw->useMountNamespace = m_useMountNamespace;
-      raw->debugMode         = m_debugMode;
-
-      // create shared memory for status data.
-      raw->statusData = static_cast<MountState::StatusData*>(
-          mmap(nullptr, sizeof(MountState::StatusData), PROT_READ | PROT_WRITE,
-               MAP_SHARED | MAP_ANONYMOUS, -1, 0));
-      if (raw->statusData == MAP_FAILED) {
-        throw runtime_error("error creating shared memory for mount state: "s +
-                            strerror(errno));
-      }
+      state->useMountNamespace = m_useMountNamespace;
+      state->debugMode         = m_debugMode;
 
       size_t stackSize;
       rlimit limit;
@@ -976,14 +1051,14 @@ bool UsvfsManager::mountInternal() noexcept
       }
 
       // allocate memory to be used for the stack of the child.
-      state->stack =
+      char* stack =
           static_cast<char*>(mmap(nullptr, stackSize, PROT_READ | PROT_WRITE,
                                   MAP_PRIVATE | MAP_ANONYMOUS | MAP_STACK, -1, 0));
-      if (state->stack == MAP_FAILED) {
+      if (stack == MAP_FAILED) {
         throw runtime_error("mmap() failed: "s + strerror(errno));
       }
 
-      state->stackTop = state->stack + stackSize;  // assume stack grows downward
+      char* stackTop = stack + stackSize;  // assume stack grows downward
 
       state->uid = getuid();
       state->gid = getgid();
@@ -998,25 +1073,44 @@ bool UsvfsManager::mountInternal() noexcept
         }
       }
 
-      state->eventFd = eventfd(0, 0);
-      if (state->eventFd == -1) {
-        throw runtime_error("eventfd() failed: "s + strerror(errno));
+      // create event fds
+      state->statusEventFd = eventfd(0, 0);
+      if (state->statusEventFd == -1) {
+        throw runtime_error("error creating status event fd: "s + strerror(errno));
       }
 
-      int result = clone(childFunc, state->stackTop,
-                         flags | SIGCHLD | CLONE_PIDFD | CLONE_FILES | CLONE_VM,
+      state->closeEventFd = eventfd(0, 0);
+      if (state->closeEventFd == -1) {
+        throw runtime_error("error creating close event fd: "s + strerror(errno));
+      }
+
+      state->dumpEventFd = eventfd(0, EFD_NONBLOCK);
+      if (state->dumpEventFd == -1) {
+        throw runtime_error("error creating dump event fd: "s + strerror(errno));
+      }
+
+      // create dump pipe
+      int pipeFd[2];
+      if (pipe(pipeFd) == -1) {
+        throw runtime_error("error creating dump pipe: "s + strerror(errno));
+      }
+      state->dumpPipeFd = pipeFd[1];
+
+      // create child process
+      int result = clone(childFunc, stackTop, flags | SIGCHLD | CLONE_PIDFD,
                          state.get(), &state->pidFd);
       if (state->pidFd == -1 || result == -1) {
         throw runtime_error("clone() failed: "s + strerror(errno));
       }
 
       // check for error in child
-      unique_lock lock(raw->statusData->mtx);
-      raw->statusData->cv.wait(lock, [&] {
-        return raw->statusData->status != MountState::unknown;
-      });
-      if (raw->statusData->status == MountState::failure) {
-        throw runtime_error("error in mount process");
+      eventfd_t value;
+      if (eventfd_read(state->statusEventFd, &value) != 0) {
+        throw runtime_error("eventfd_read() failed: "s + strerror(errno));
+      }
+
+      if (value != MOUNT_SUCCESS) {
+        throw runtime_error("error in mount process, status: " + to_string(value));
       }
 
       if (state->useMountNamespace) {
@@ -1028,7 +1122,8 @@ bool UsvfsManager::mountInternal() noexcept
 
       spdlog::info("usvfs mounted in pid {}, mountpoint: '{}'",
                    pidfd_getpid(state->pidFd), state->mountpoint);
-      m_mounts.emplace_back(std::move(state));
+      m_mounts.emplace_back(state->pidFd, state->closeEventFd, state->dumpEventFd,
+                            pipeFd[0], stack, state->mountpoint);
     }
     return true;
   } catch (const runtime_error& e) {
@@ -1059,27 +1154,27 @@ bool UsvfsManager::unmountInternal() noexcept
     return false;
   }
 
-  for (std::unique_ptr<MountState>& mount : m_mounts) {
-    spdlog::debug("unmounting {}", mount->mountpoint);
+  for (auto& mount : m_mounts) {
+    spdlog::debug("unmounting {}", mount.mountpoint);
 
     // unmount fuse
-    if (mount->pidFd == -1) {
+    if (mount.pidFd == -1) {
       spdlog::warn("mount pidFd is -1");
       return false;
     }
 
     // send shutdown event
     spdlog::trace("writing to event fd");
-    if (eventfd_write(mount->eventFd, 1) == -1) {
-      spdlog::error("eventfd_write failed: {}", strerror(errno));
+    if (eventfd_write(mount.closeEventFd, 1) == -1) {
+      spdlog::error("unmount: eventfd_write failed: {}", strerror(errno));
       return false;
     }
 
     // wait for the child to exit
-    pid_t pid = pidfd_getpid(mount->pidFd);
+    pid_t pid = pidfd_getpid(mount.pidFd);
     spdlog::trace("waiting for pid {} to exit", pid);
     siginfo_t info{};
-    if (waitid(P_PIDFD, mount->pidFd, &info, WEXITED | WSTOPPED) == -1) {
+    if (waitid(P_PIDFD, mount.pidFd, &info, WEXITED | WSTOPPED) == -1) {
       spdlog::error("waitid() failed: {}", strerror(errno));
       return false;
     }
