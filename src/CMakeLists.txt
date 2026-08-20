@@ -37,7 +37,7 @@ target_sources(usvfs-fuse
 
 if(ENABLE_ASAN)
     target_link_libraries(usvfs-fuse PUBLIC asan)
-    target_compile_options(usvfs-fuse PRIVATE -fno-omit-frame-pointer -fsanitize=address)
+    target_compile_options(usvfs-fuse PRIVATE -fno-omit-frame-pointer -fsanitize=address -fsanitize-recover=address)
 endif()
 
 target_compile_options(usvfs-fuse PRIVATE -Wall -Wextra -Wpedantic)

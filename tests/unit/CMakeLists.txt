@@ -12,7 +12,7 @@ set_target_properties(usvfs-tests PROPERTIES CXX_STANDARD 23)
 
 if(ENABLE_ASAN)
     target_link_libraries(usvfs-tests PUBLIC asan)
-    target_compile_options(usvfs-tests PRIVATE -fno-omit-frame-pointer -fsanitize=address)
+    target_compile_options(usvfs-tests PRIVATE -fno-omit-frame-pointer -fsanitize=address -fsanitize-recover=address)
 endif()
 
 target_link_libraries(
