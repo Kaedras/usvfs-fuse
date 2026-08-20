@@ -29,7 +29,8 @@
         "VCPKG_MANIFEST_FEATURES": {
           "type": "STRING",
           "value": "testing"
-        }
+        },
+        "ENABLE_ASAN": true
       },
       "inherits": "linux",
       "name": "linux-testing"
