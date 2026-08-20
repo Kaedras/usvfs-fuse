@@ -83,8 +83,10 @@ fuse_operations createOperations() noexcept
 
 void readFromPipe(int fd, void* data, size_t size)
 {
+  char* ptr = static_cast<char*>(data);
+
   while (size > 0) {
-    ssize_t readBytes = read(fd, data, size);
+    ssize_t readBytes = read(fd, ptr, size);
     if (readBytes == -1) {
       throw runtime_error("read error: "s + strerror(errno));
     }
@@ -92,22 +94,24 @@ void readFromPipe(int fd, void* data, size_t size)
       throw runtime_error("read() returned 0");
     }
 
-    data += readBytes;
+    ptr += readBytes;
     size -= readBytes;
   }
 }
 
 void writeToPipe(int fd, void* data, size_t size)
 {
+  char* ptr = static_cast<char*>(data);
+
   while (size > 0) {
-    ssize_t writtenBytes = write(fd, data, size);
+    ssize_t writtenBytes = write(fd, ptr, size);
     if (writtenBytes == -1) {
       throw runtime_error("write error: "s + strerror(errno));
     }
     if (writtenBytes == 0) {
       throw runtime_error("write() returned 0");
     }
-    data += writtenBytes;
+    ptr += writtenBytes;
     size -= writtenBytes;
   }
 }
