@@ -38,10 +38,10 @@ fuse_operations createOperations() noexcept
   ops.getattr         = usvfs_getattr;
   ops.readlink        = usvfs_readlink;
   // ops.mknod
-  ops.mkdir    = usvfs_mkdir;
-  ops.unlink   = usvfs_unlink;
-  ops.rmdir    = usvfs_rmdir;
-  ops.symlink  = usvfs_symlink;
+  ops.mkdir  = usvfs_mkdir;
+  ops.unlink = usvfs_unlink;
+  ops.rmdir  = usvfs_rmdir;
+  // ops.symlink  = usvfs_symlink;
   ops.rename   = usvfs_rename;
   ops.link     = usvfs_link;
   ops.chmod    = usvfs_chmod;

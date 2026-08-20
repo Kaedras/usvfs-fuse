@@ -278,12 +278,6 @@ int usvfs_rmdir(const char* path) noexcept
   return 0;
 }
 
-int usvfs_symlink(const char* target, const char* linkpath) noexcept
-{
-  spdlog::warn("usvfs_symlink(target='{}', linkpath='{}') - STUB!", target, linkpath);
-  return -ENOSYS;
-}
-
 int usvfs_rename(const char* from, const char* to, const unsigned int flags) noexcept
 {
   spdlog::trace("usvfs_rename(from='{}', to='{}', flags={})", from, to, flags);
