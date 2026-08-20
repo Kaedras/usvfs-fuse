@@ -42,7 +42,7 @@ public:
   /**
    * @brief remove all virtual mappings
    */
-  void usvfsClearVirtualMappings() noexcept;
+  void clearVirtualMappings() noexcept;
 
   /**
    * @brief link a file virtually
@@ -50,74 +50,73 @@ public:
    * @note: the directory the destination file resides in has to exist - at least
    * virtually.
    */
-  void usvfsVirtualLinkFile(const std::string& source,
-                            const std::string& destination) noexcept(false);
+  void virtualLinkFile(const std::string& source,
+                       const std::string& destination) noexcept(false);
 
   /**
    * @brief link a directory virtually
    * @throw std::runtime_error
    */
-  void usvfsVirtualLinkDirectoryStatic(const std::string& source,
-                                       const std::string& destination,
-                                       unsigned int flags = 0) noexcept(false);
+  void virtualLinkDirectoryStatic(const std::string& source,
+                                  const std::string& destination,
+                                  unsigned int flags = 0) noexcept(false);
 
   /**
    * @brief retrieve a list of all processes connected to the vfs
    */
-  const std::vector<pid_t>& usvfsGetVFSProcessList() const noexcept;
+  const std::vector<pid_t>& getVFSProcessList() const noexcept;
 
   /**
    * @brief spawn a new process that can see the virtual file system.
    */
-  pid_t usvfsCreateProcessHooked(const std::string& file,
-                                 const std::string& arg) noexcept;
+  pid_t createProcessHooked(const std::string& file, const std::string& arg) noexcept;
 
   /**
    * @brief spawn a new process that can see the virtual file system.
    * @param env Environment variables to add to the process. Strings should be formatted
    * as `KEY=VALUE`.
    */
-  pid_t usvfsCreateProcessHooked(const std::string& file, const std::string& arg,
-                                 const std::string& workDir,
-                                 const std::vector<std::string>& env = {}) noexcept;
+  pid_t createProcessHooked(const std::string& file, const std::string& arg,
+                            const std::string& workDir,
+                            const std::vector<std::string>& env = {}) noexcept;
 
   /**
    * @brief spawn a new process that can see the virtual file system.
    */
-  pid_t usvfsCreateProcessHooked(const QString& file, const QString& arg) noexcept;
+  pid_t createProcessHooked(const QString& file, const QString& arg) noexcept;
 
   /**
    * @brief spawn a new process that can see the virtual file system.
    * @param env Environment variables to add to the process
    */
-  pid_t usvfsCreateProcessHooked(const QString& file, const QString& arg,
-                                 const QString& workDir,
-                                 const QStringList& env = {}) noexcept;
+  pid_t createProcessHooked(const QString& file, const QString& arg,
+                            const QString& workDir,
+                            const QStringList& env = {}) noexcept;
 
   /**
    * retrieve a single log message.
    * FIXME There is currently no way to unblock from the caller side
    * FIXME retrieves log messages from all instances, the logging queue is not separated
    */
-  // bool usvfsGetLogMessages(const char* buffer, size_t size,
+  // bool getLogMessages(const char* buffer, size_t size,
   //                                           bool blocking = false);
 
   /**
    * @brief retrieve a readable representation of the vfs tree
    */
-  [[nodiscard]] std::string usvfsCreateVFSDump() const noexcept;
+  [[nodiscard]] std::string createVFSDump() const noexcept;
 
   /**
    * @brief adds an executable to the blacklist, so it doesn't get exposed to the
    * virtual file system
    * @param executableName  name of the executable
    */
-  void usvfsBlacklistExecutable(const std::string& executableName) noexcept;
+  void blacklistExecutable(const std::string& executableName) noexcept;
 
   /**
    * @brief clear the executable blacklist
    */
-  void usvfsClearExecutableBlacklist() noexcept;
+  void clearExecutableBlacklist() noexcept;
 
   /**
    * @brief add a file suffix to a list to skip during file linking
@@ -125,12 +124,12 @@ public:
    * not to be confused with file extensions
    * @param fileSuffix  a valid file suffix
    */
-  void usvfsAddSkipFileSuffix(const std::string& fileSuffix) noexcept;
+  void addSkipFileSuffix(const std::string& fileSuffix) noexcept;
 
   /**
    * @brief clear the file suffix skip-list
    */
-  void usvfsClearSkipFileSuffixes() noexcept;
+  void clearSkipFileSuffixes() noexcept;
 
   /**
    * add a directory name that will be skipped during directory linking.
@@ -140,30 +139,30 @@ public:
    * will have the .git directory skipped during directory linking
    * @param directory  name of the directory
    */
-  void usvfsAddSkipDirectory(const std::string& directory) noexcept;
+  void addSkipDirectory(const std::string& directory) noexcept;
 
   /**
    * @brief clear the directory skip-list
    */
-  void usvfsClearSkipDirectories() noexcept;
+  void clearSkipDirectories() noexcept;
 
   /**
    * @brief add a library to be force loaded when the given process is injected
    * @param
    */
-  void usvfsForceLoadLibrary(const std::string& processName,
-                             const std::string& libraryPath) noexcept;
+  void forceLoadLibrary(const std::string& processName,
+                        const std::string& libraryPath) noexcept;
 
   /**
    * @brief clear all previous calls to ForceLoadLibrary
    */
-  void usvfsClearLibraryForceLoads() noexcept;
+  void clearLibraryForceLoads() noexcept;
 
   /**
    * @brief print debugging info about the vfs. The format is currently not fixed and
    * may change between usvfs versions
    */
-  void usvfsPrintDebugInfo() noexcept;
+  void printDebugInfo() noexcept;
 
   void setDebugMode(bool value) noexcept;
 
@@ -173,11 +172,11 @@ public:
 
   void setLogFile(const std::string& logFile) noexcept;
 
-  // DLLEXPORT int usvfsCreateMiniDump(PEXCEPTION_POINTERS exceptionPtrs,
+  // DLLEXPORT int createMiniDump(PEXCEPTION_POINTERS exceptionPtrs,
   // CrashDumpsType type,
   // const wchar_t* dumpPath);
 
-  static const char* usvfsVersionString() noexcept;
+  static const char* versionString() noexcept;
 
   bool mount() noexcept;
   bool unmount() noexcept;

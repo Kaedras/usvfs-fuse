@@ -329,14 +329,14 @@ UsvfsManager::~UsvfsManager() noexcept
   }
 }
 
-void UsvfsManager::usvfsClearVirtualMappings() noexcept
+void UsvfsManager::clearVirtualMappings() noexcept
 {
   scoped_lock lock(m_mtx);
   m_pendingMounts.clear();
 }
 
-void UsvfsManager::usvfsVirtualLinkFile(const std::string& source,
-                                        const std::string& destination) noexcept(false)
+void UsvfsManager::virtualLinkFile(const std::string& source,
+                                   const std::string& destination) noexcept(false)
 {
   scoped_lock lock(m_mtx);
 
@@ -435,9 +435,9 @@ void UsvfsManager::usvfsVirtualLinkFile(const std::string& source,
   }
 }
 
-void UsvfsManager::usvfsVirtualLinkDirectoryStatic(const std::string& source,
-                                                   const std::string& destination,
-                                                   unsigned int flags) noexcept(false)
+void UsvfsManager::virtualLinkDirectoryStatic(const std::string& source,
+                                              const std::string& destination,
+                                              unsigned int flags) noexcept(false)
 {
   scoped_lock lock(m_mtx);
 
@@ -574,15 +574,15 @@ void UsvfsManager::usvfsVirtualLinkDirectoryStatic(const std::string& source,
   m_pendingMounts.emplace_back(std::move(state));
 }
 
-const std::vector<pid_t>& UsvfsManager::usvfsGetVFSProcessList() const noexcept
+const std::vector<pid_t>& UsvfsManager::getVFSProcessList() const noexcept
 {
   shared_lock lock(m_mtx);
   return m_spawnedProcesses;
 }
 
-pid_t UsvfsManager::usvfsCreateProcessHooked(
-    const std::string& file, const std::string& arg, const std::string& workDir,
-    const std::vector<std::string>& env) noexcept
+pid_t UsvfsManager::createProcessHooked(const std::string& file, const std::string& arg,
+                                        const std::string& workDir,
+                                        const std::vector<std::string>& env) noexcept
 {
   scoped_lock lock(m_mtx);
 
@@ -701,15 +701,15 @@ pid_t UsvfsManager::usvfsCreateProcessHooked(
   return -1;
 }
 
-pid_t UsvfsManager::usvfsCreateProcessHooked(const QString& file,
-                                             const QString& arg) noexcept
+pid_t UsvfsManager::createProcessHooked(const QString& file,
+                                        const QString& arg) noexcept
 {
-  return usvfsCreateProcessHooked(file, arg, QDir::currentPath());
+  return createProcessHooked(file, arg, QDir::currentPath());
 }
 
-pid_t UsvfsManager::usvfsCreateProcessHooked(const QString& file, const QString& arg,
-                                             const QString& workDir,
-                                             const QStringList& env) noexcept
+pid_t UsvfsManager::createProcessHooked(const QString& file, const QString& arg,
+                                        const QString& workDir,
+                                        const QStringList& env) noexcept
 {
   vector<string> env_;
   env_.reserve(env.size());
@@ -717,20 +717,20 @@ pid_t UsvfsManager::usvfsCreateProcessHooked(const QString& file, const QString&
     env_.emplace_back(value.toStdString());
   }
 
-  return usvfsCreateProcessHooked(file.toStdString(), arg.toStdString(),
-                                  workDir.toStdString(), env_);
+  return createProcessHooked(file.toStdString(), arg.toStdString(),
+                             workDir.toStdString(), env_);
 }
 
-pid_t UsvfsManager::usvfsCreateProcessHooked(const std::string& file,
-                                             const std::string& arg) noexcept
+pid_t UsvfsManager::createProcessHooked(const std::string& file,
+                                        const std::string& arg) noexcept
 {
   char* cwd            = get_current_dir_name();
   const string workDir = cwd;
   free(cwd);
-  return usvfsCreateProcessHooked(file, arg, workDir);
+  return createProcessHooked(file, arg, workDir);
 }
 
-std::string UsvfsManager::usvfsCreateVFSDump() const noexcept
+std::string UsvfsManager::createVFSDump() const noexcept
 {
   shared_lock lock(m_mtx);
   ostringstream oss;
@@ -764,21 +764,21 @@ std::string UsvfsManager::usvfsCreateVFSDump() const noexcept
   return result;
 }
 
-void UsvfsManager::usvfsBlacklistExecutable(const std::string& executableName) noexcept
+void UsvfsManager::blacklistExecutable(const std::string& executableName) noexcept
 {
   scoped_lock lock(m_mtx);
   spdlog::debug("blacklisting '{}'", executableName);
   m_executableBlacklist.emplace(executableName);
 }
 
-void UsvfsManager::usvfsClearExecutableBlacklist() noexcept
+void UsvfsManager::clearExecutableBlacklist() noexcept
 {
   scoped_lock lock(m_mtx);
   spdlog::debug("clearing blacklist");
   m_executableBlacklist.clear();
 }
 
-void UsvfsManager::usvfsAddSkipFileSuffix(const std::string& fileSuffix) noexcept
+void UsvfsManager::addSkipFileSuffix(const std::string& fileSuffix) noexcept
 {
   if (fileSuffix.empty()) {
     return;
@@ -789,14 +789,14 @@ void UsvfsManager::usvfsAddSkipFileSuffix(const std::string& fileSuffix) noexcep
   m_skipFileSuffixes.emplace(fileSuffix);
 }
 
-void UsvfsManager::usvfsClearSkipFileSuffixes() noexcept
+void UsvfsManager::clearSkipFileSuffixes() noexcept
 {
   scoped_lock lock(m_mtx);
   spdlog::debug("clearing skip file suffixes");
   m_skipFileSuffixes.clear();
 }
 
-void UsvfsManager::usvfsAddSkipDirectory(const std::string& directory) noexcept
+void UsvfsManager::addSkipDirectory(const std::string& directory) noexcept
 {
   if (directory.empty()) {
     return;
@@ -807,15 +807,15 @@ void UsvfsManager::usvfsAddSkipDirectory(const std::string& directory) noexcept
   m_skipDirectories.emplace(directory);
 }
 
-void UsvfsManager::usvfsClearSkipDirectories() noexcept
+void UsvfsManager::clearSkipDirectories() noexcept
 {
   scoped_lock lock(m_mtx);
   spdlog::debug("clearing skip directories");
   m_skipDirectories.clear();
 }
 
-void UsvfsManager::usvfsForceLoadLibrary(const std::string& processName,
-                                         const std::string& libraryPath) noexcept
+void UsvfsManager::forceLoadLibrary(const std::string& processName,
+                                    const std::string& libraryPath) noexcept
 {
   scoped_lock lock(m_mtx);
   spdlog::debug("adding forced library '{}' for process '{}'", libraryPath,
@@ -823,14 +823,14 @@ void UsvfsManager::usvfsForceLoadLibrary(const std::string& processName,
   m_forceLoadLibraries.push_back({processName, libraryPath});
 }
 
-void UsvfsManager::usvfsClearLibraryForceLoads() noexcept
+void UsvfsManager::clearLibraryForceLoads() noexcept
 {
   scoped_lock lock(m_mtx);
   spdlog::debug("clearing forced libraries");
   m_forceLoadLibraries.clear();
 }
 
-void UsvfsManager::usvfsPrintDebugInfo() noexcept
+void UsvfsManager::printDebugInfo() noexcept
 {
 #warning STUB
   // spdlog::get("usvfs")->warn("===== debug {} =====",
@@ -892,7 +892,7 @@ void UsvfsManager::setLogFile(const std::string& logFile) noexcept
   spdlog::set_default_logger(logger);
 }
 
-const char* UsvfsManager::usvfsVersionString() noexcept
+const char* UsvfsManager::versionString() noexcept
 {
   return USVFS_VERSION_STRING;
 }

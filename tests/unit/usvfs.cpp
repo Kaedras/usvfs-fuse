@@ -130,7 +130,7 @@ void initLogging()
 void dumpUsvfs()
 {
   const auto usvfs = UsvfsManager::instance();
-  const auto dump  = usvfs->usvfsCreateVFSDump();
+  const auto dump  = usvfs->createVFSDump();
   cout << "=============== usvfs dump ===============\n"
        << dump << "==========================================" << endl;
 }
@@ -287,13 +287,13 @@ protected:
     usvfs->setDebugMode(enableDebugMode);
 
     ASSERT_NO_THROW(
-        usvfs->usvfsVirtualLinkDirectoryStatic((src / "a").string(), mnt.string()));
+        usvfs->virtualLinkDirectoryStatic((src / "a").string(), mnt.string()));
     ASSERT_NO_THROW(
-        usvfs->usvfsVirtualLinkDirectoryStatic((src / "b").string(), mnt.string()));
-    ASSERT_NO_THROW(usvfs->usvfsVirtualLinkDirectoryStatic(upper, mnt.string(),
-                                                           linkFlag::CREATE_TARGET));
+        usvfs->virtualLinkDirectoryStatic((src / "b").string(), mnt.string()));
+    ASSERT_NO_THROW(usvfs->virtualLinkDirectoryStatic(upper, mnt.string(),
+                                                      linkFlag::CREATE_TARGET));
 
-    ASSERT_NO_THROW(usvfs->usvfsVirtualLinkFile(src / "c/c.txt", mnt2 / "c.txt"));
+    ASSERT_NO_THROW(usvfs->virtualLinkFile(src / "c/c.txt", mnt2 / "c.txt"));
 
     ASSERT_NO_THROW(usvfs->mount());
     dumpUsvfs();
@@ -627,24 +627,24 @@ TEST(Usvfs, MergeModDirectories)
   auto usvfs = UsvfsManager::instance();
   usvfs->setProcessDelay(10ms);
   ASSERT_NO_THROW(
-      usvfs->usvfsVirtualLinkDirectoryStatic((src / "mod0").string(), mnt.string()));
+      usvfs->virtualLinkDirectoryStatic((src / "mod0").string(), mnt.string()));
   ASSERT_NO_THROW(
-      usvfs->usvfsVirtualLinkDirectoryStatic((src / "mod1").string(), mnt.string()));
+      usvfs->virtualLinkDirectoryStatic((src / "mod1").string(), mnt.string()));
   ASSERT_NO_THROW(
-      usvfs->usvfsVirtualLinkDirectoryStatic((src / "mod2").string(), mnt.string()));
+      usvfs->virtualLinkDirectoryStatic((src / "mod2").string(), mnt.string()));
   ASSERT_NO_THROW(
-      usvfs->usvfsVirtualLinkDirectoryStatic((src / "mod3").string(), mnt.string()));
+      usvfs->virtualLinkDirectoryStatic((src / "mod3").string(), mnt.string()));
   ASSERT_NO_THROW(
-      usvfs->usvfsVirtualLinkDirectoryStatic((src / "mod4").string(), mnt.string()));
-  ASSERT_NO_THROW(usvfs->usvfsVirtualLinkDirectoryStatic(
+      usvfs->virtualLinkDirectoryStatic((src / "mod4").string(), mnt.string()));
+  ASSERT_NO_THROW(usvfs->virtualLinkDirectoryStatic(
       (src / "overwrite").string(), mnt.string(), linkFlag::CREATE_TARGET));
 
-  ASSERT_NO_THROW(usvfs->usvfsVirtualLinkFile((src / "profile/Plugins.txt").string(),
-                                              (mnt2 / "plugins.txt").string()));
+  ASSERT_NO_THROW(usvfs->virtualLinkFile((src / "profile/Plugins.txt").string(),
+                                         (mnt2 / "plugins.txt").string()));
 
   ASSERT_TRUE(usvfs->mount());
 
-  cout << usvfs->usvfsCreateVFSDump();
+  cout << usvfs->createVFSDump();
 
   checkFileContent(mnt / "a.txt", "mod1 a");
   checkFileContent(mnt / "A.txt", "mod1 a");
@@ -669,12 +669,12 @@ TEST(Usvfs, CreateProcessHooked)
   usvfs->setProcessDelay(10ms);
 
   ASSERT_NO_THROW(
-      usvfs->usvfsVirtualLinkDirectoryStatic((src / "a").string(), mnt.string()));
+      usvfs->virtualLinkDirectoryStatic((src / "a").string(), mnt.string()));
   ASSERT_NO_THROW(
-      usvfs->usvfsVirtualLinkDirectoryStatic((src / "b").string(), mnt.string()));
-  ASSERT_NO_THROW(usvfs->usvfsVirtualLinkFile(src / "c/c.txt", mnt / "c.txt"));
+      usvfs->virtualLinkDirectoryStatic((src / "b").string(), mnt.string()));
+  ASSERT_NO_THROW(usvfs->virtualLinkFile(src / "c/c.txt", mnt / "c.txt"));
 
-  pid_t pid = usvfs->usvfsCreateProcessHooked("tree", ".", mnt.string());
+  pid_t pid = usvfs->createProcessHooked("tree", ".", mnt.string());
   ASSERT_GE(pid, 0);
 
   int status;
@@ -697,12 +697,12 @@ TEST(Usvfs, CreateProcessHooked_WithMountNamespace)
   usvfs->setUseMountNamespace(true);
 
   ASSERT_NO_THROW(
-      usvfs->usvfsVirtualLinkDirectoryStatic((src / "a").string(), mnt.string(), 0));
+      usvfs->virtualLinkDirectoryStatic((src / "a").string(), mnt.string(), 0));
   ASSERT_NO_THROW(
-      usvfs->usvfsVirtualLinkDirectoryStatic((src / "b").string(), mnt.string(), 0));
-  ASSERT_NO_THROW(usvfs->usvfsVirtualLinkFile(src / "c/c.txt", mnt / "c.txt"));
+      usvfs->virtualLinkDirectoryStatic((src / "b").string(), mnt.string(), 0));
+  ASSERT_NO_THROW(usvfs->virtualLinkFile(src / "c/c.txt", mnt / "c.txt"));
 
-  pid_t pid = usvfs->usvfsCreateProcessHooked("tree", ".", mnt.string());
+  pid_t pid = usvfs->createProcessHooked("tree", ".", mnt.string());
   ASSERT_GE(pid, 0);
 
   int status;
@@ -720,7 +720,7 @@ TEST(Usvfs, linkDirectoryMountpointCaseInsensitivity)
 
   auto usvfs = UsvfsManager::instance();
 
-  ASSERT_NO_THROW(usvfs->usvfsVirtualLinkDirectoryStatic(
+  ASSERT_NO_THROW(usvfs->virtualLinkDirectoryStatic(
       (src / "a").string(), mnt.parent_path() / toUpper(mnt.filename().string()), 0));
   ASSERT_TRUE(usvfs->mount());
   ASSERT_TRUE(usvfs->unmount());
@@ -735,7 +735,7 @@ TEST(Usvfs, linkFileMountpointCaseInsensitivity)
 
   auto usvfs = UsvfsManager::instance();
 
-  ASSERT_NO_THROW(usvfs->usvfsVirtualLinkFile(
+  ASSERT_NO_THROW(usvfs->virtualLinkFile(
       (src / "a/a.txt").string(),
       mnt.parent_path() / toUpper(mnt.filename().string()) / "a.txt"));
   ASSERT_TRUE(usvfs->mount());
@@ -751,9 +751,9 @@ TEST(Usvfs, LinkDirectoryIntoNestedVirtualDirectory_SourceParentLinkedFirst)
 
   auto usvfs = UsvfsManager::instance();
 
-  ASSERT_NO_THROW(usvfs->usvfsVirtualLinkDirectoryStatic((src / "a").string(), mnt, 0));
-  ASSERT_NO_THROW(usvfs->usvfsVirtualLinkDirectoryStatic((src / "b").string(),
-                                                         mnt / "empty_dir", 0));
+  ASSERT_NO_THROW(usvfs->virtualLinkDirectoryStatic((src / "a").string(), mnt, 0));
+  ASSERT_NO_THROW(
+      usvfs->virtualLinkDirectoryStatic((src / "b").string(), mnt / "empty_dir", 0));
   ASSERT_TRUE(usvfs->mount());
   ASSERT_TRUE(usvfs->unmount());
 
@@ -767,9 +767,9 @@ TEST(Usvfs, LinkDirectoryIntoNestedVirtualDirectory_NestedLinkRegisteredFirst)
 
   auto usvfs = UsvfsManager::instance();
 
-  ASSERT_NO_THROW(usvfs->usvfsVirtualLinkDirectoryStatic((src / "b").string(),
-                                                         mnt / "empty_dir", 0));
-  ASSERT_NO_THROW(usvfs->usvfsVirtualLinkDirectoryStatic((src / "a").string(), mnt, 0));
+  ASSERT_NO_THROW(
+      usvfs->virtualLinkDirectoryStatic((src / "b").string(), mnt / "empty_dir", 0));
+  ASSERT_NO_THROW(usvfs->virtualLinkDirectoryStatic((src / "a").string(), mnt, 0));
   ASSERT_TRUE(usvfs->mount());
   ASSERT_TRUE(usvfs->unmount());
 
@@ -783,9 +783,8 @@ TEST(Usvfs, LinkFileIntoNestedVirtualDirectory_SourceParentLinkedFirst)
 
   auto usvfs = UsvfsManager::instance();
 
-  ASSERT_NO_THROW(usvfs->usvfsVirtualLinkDirectoryStatic((src / "a").string(), mnt, 0));
-  ASSERT_NO_THROW(
-      usvfs->usvfsVirtualLinkFile((src / "b/b.txt").string(), mnt / "b.txt"));
+  ASSERT_NO_THROW(usvfs->virtualLinkDirectoryStatic((src / "a").string(), mnt, 0));
+  ASSERT_NO_THROW(usvfs->virtualLinkFile((src / "b/b.txt").string(), mnt / "b.txt"));
   ASSERT_TRUE(usvfs->mount());
 
   checkFileContent(mnt / "a.txt", "test a");
@@ -811,9 +810,8 @@ TEST(Usvfs, LinkFileIntoNestedVirtualDirectory_NestedLinkRegisteredFirst)
 
   auto usvfs = UsvfsManager::instance();
 
-  ASSERT_NO_THROW(
-      usvfs->usvfsVirtualLinkFile((src / "b/b.txt").string(), mnt / "b.txt"));
-  ASSERT_NO_THROW(usvfs->usvfsVirtualLinkDirectoryStatic((src / "a").string(), mnt, 0));
+  ASSERT_NO_THROW(usvfs->virtualLinkFile((src / "b/b.txt").string(), mnt / "b.txt"));
+  ASSERT_NO_THROW(usvfs->virtualLinkDirectoryStatic((src / "a").string(), mnt, 0));
   ASSERT_TRUE(usvfs->mount());
 
   checkFileContent(mnt / "a.txt", "test a");

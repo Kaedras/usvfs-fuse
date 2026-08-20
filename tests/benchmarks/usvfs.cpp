@@ -42,7 +42,7 @@ static void DoSetup_usvfs(const benchmark::State&)
   const auto usvfs = UsvfsManager::instance();
   usvfs->setLogFile("/tmp/usvfs.log");
   usvfs->setLogLevel(LogLevel::Warning);
-  usvfs->usvfsVirtualLinkDirectoryStatic((src / "0").string(), mnt.string(), 0);
+  usvfs->virtualLinkDirectoryStatic((src / "0").string(), mnt.string(), 0);
   usvfs->mount();
   this_thread::sleep_for(10ms);
 }
@@ -292,10 +292,10 @@ static void usvfsVirtualLinkDirectoryStatic(benchmark::State& state)
   for (auto _ : state) {
     START();
     for (int i = 0; i < count; ++i) {
-      usvfs->usvfsVirtualLinkDirectoryStatic(src / to_string(i), mnt);
+      usvfs->virtualLinkDirectoryStatic(src / to_string(i), mnt);
     }
     END();
-    usvfs->usvfsClearVirtualMappings();
+    usvfs->clearVirtualMappings();
   }
   fs::remove_all(base);
 }
