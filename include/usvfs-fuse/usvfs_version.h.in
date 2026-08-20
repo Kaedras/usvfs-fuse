@@ -7,4 +7,4 @@
 
 #define USVFS_BUILD_STRING ""
 
-#define USVFS_VERSION_STRING "@usvfs-fuse_VERSION@"
+#define USVFS_VERSION_STRING "@usvfs-fuse_VERSION@" USVFS_BUILD_STRING
