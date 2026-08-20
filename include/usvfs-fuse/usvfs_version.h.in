@@ -6,7 +6,5 @@
 #define USVFS_VERSION_REVISION 0
 
 #define USVFS_BUILD_STRING ""
-#define USVFS_BUILD_WSTRING L""
 
 #define USVFS_VERSION_STRING "@usvfs-fuse_VERSION@"
-#define USVFS_VERSION_WSTRING L"@usvfs-fuse_VERSION@"
