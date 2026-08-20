@@ -43,8 +43,8 @@ fuse_operations createOperations() noexcept
   ops.unlink = usvfs_unlink;
   ops.rmdir  = usvfs_rmdir;
   // ops.symlink  = usvfs_symlink;
-  ops.rename   = usvfs_rename;
-  ops.link     = usvfs_link;
+  ops.rename = usvfs_rename;
+  // ops.link     = usvfs_link;
   ops.chmod    = usvfs_chmod;
   ops.chown    = usvfs_chown;
   ops.truncate = usvfs_truncate;

@@ -347,13 +347,6 @@ int usvfs_rename(const char* from, const char* to, const unsigned int flags) noe
   return 0;
 }
 
-int usvfs_link(const char* from, const char* to) noexcept
-{
-#warning STUB
-  spdlog::warn("usvfs_link(from='{}', to='{}') - STUB!", from, to);
-  return -ENOSYS;
-}
-
 int usvfs_chmod(const char* path, mode_t mode, fuse_file_info* fi) noexcept
 {
   spdlog::trace("usvfs_chmod(path='{}', mode=0{:o})", path, mode);
