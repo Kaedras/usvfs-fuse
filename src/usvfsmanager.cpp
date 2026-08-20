@@ -31,6 +31,7 @@ constexpr int SET_NS_FAILED          = 2;
 constexpr int FUSE_NEW_FAILED        = 3;
 constexpr int FUSE_MOUNT_FAILED      = 4;
 constexpr int EVENTFD_WRITE_FAILED   = 5;
+constexpr int EVENTFD_FAILED         = 6;
 
 fuse_operations createOperations() noexcept
 {
@@ -131,7 +132,7 @@ int childFunc(void* arg) noexcept
   auto* state = static_cast<MountState*>(arg);
 
   auto fail = [&]() {
-    if (eventfd_write(state->closeEventFd, MOUNT_ERROR) == -1) {
+    if (eventfd_write(state->shutdownEventFd, MOUNT_ERROR) == -1) {
       spdlog::error("eventfd_write failed when notifying about mount error: {}",
                     strerror(errno));
     }
@@ -173,14 +174,16 @@ int childFunc(void* arg) noexcept
 
   fuse_operations ops = createOperations();
 
+  // create the fuse filesystem
   state->fusePtr = fuse_new(&args, &ops, sizeof(fuse_operations), state);
   fuse_opt_free_args(&args);
   if (state->fusePtr == nullptr) {
-    // Couldn't create FUSE handle; drop the mount
     spdlog::error("fuse_new() failed");
     fail();
     return FUSE_NEW_FAILED;
   }
+
+  // mount the fuse filesystem
   if (fuse_mount(state->fusePtr, state->mountpoint.c_str()) == -1) {
     fuse_destroy(state->fusePtr);
     state->fusePtr = nullptr;
@@ -190,7 +193,8 @@ int childFunc(void* arg) noexcept
     return FUSE_MOUNT_FAILED;
   }
 
-  spdlog::trace("mount success, notifying parent in fd {}", state->closeEventFd);
+  // notify parent
+  spdlog::trace("mount success, notifying parent in fd {}", state->shutdownEventFd);
   if (eventfd_write(state->statusEventFd, MOUNT_SUCCESS) == -1) {
     spdlog::error("eventfd_write failed: {}", strerror(errno));
     fuse_destroy(state->fusePtr);
@@ -198,28 +202,89 @@ int childFunc(void* arg) noexcept
     return EVENTFD_WRITE_FAILED;
   }
 
-  jthread shutdownThread([state]() {
-    eventfd_t value;
-    if (eventfd_read(state->closeEventFd, &value) == 0) {
-      if (state->fusePtr != nullptr) {
-        fuse_exit(state->fusePtr);
-        fuse_unmount(state->fusePtr);
+  // event fd to stop the worker threads
+  const int stopEventFd = eventfd(0, EFD_NONBLOCK);
+  if (stopEventFd == -1) {
+    spdlog::error("eventfd() failed for stop event fd: {}", strerror(errno));
+    return EVENTFD_FAILED;
+  }
+
+  // worker threads for unmounting and dumping the file tree
+  // polling both a "do work" and "shutdown" event fd prevents several issues:
+  // - poll() with timeout which slows down execution
+  // - blocking indefinitely
+  //
+  // there is `fuse_set_signal_handlers()` to exit on HUP, TERM, and INT, but it does
+  // not work reliably when using clone()
+
+  jthread shutdownThread([state, stopEventFd](const stop_token& stoken) {
+    stop_callback stopCallback(stoken, [stopEventFd]() {
+      // write to stopEventFd to stop dumpThread
+      eventfd_write(stopEventFd, 1);
+    });
+
+    pollfd fds[] = {
+        {.fd = state->shutdownEventFd, .events = POLLIN, .revents = 0},
+        {.fd = stopEventFd, .events = POLLIN, .revents = 0},
+    };
+
+    while (!stoken.stop_requested()) {
+      const int result = poll(fds, size(fds), -1);
+      if (result == -1) {
+        if (errno == EINTR) {
+          continue;
+        }
+
+        spdlog::error("poll error in shutdown thread: {}", strerror(errno));
+        return;
+      }
+
+      if (fds[1].revents & POLLIN) {
+        return;
+      }
+
+      if (fds[0].revents & POLLIN) {
+        eventfd_t value;
+        if (eventfd_read(state->shutdownEventFd, &value) == 0) {
+          if (state->fusePtr != nullptr) {
+            fuse_exit(state->fusePtr);
+            fuse_unmount(state->fusePtr);
+          }
+          return;
+        }
       }
     }
   });
 
-  jthread dumpThread([state](const std::stop_token& stoken) {
+  jthread dumpThread([state, stopEventFd](const stop_token& stoken) {
     try {
-      pollfd pfd{state->dumpEventFd, POLLIN, 0};
+      pollfd fds[] = {
+          {.fd = state->dumpEventFd, .events = POLLIN, .revents = 0},
+          {.fd = stopEventFd, .events = POLLIN, .revents = 0},
+      };
 
       while (!stoken.stop_requested()) {
-        int result = poll(&pfd, 1, 10);
-        if (result > 0) {
+        const int result = poll(fds, size(fds), -1);
+
+        if (result == -1) {
+          if (errno == EINTR) {
+            continue;
+          }
+
+          spdlog::error("poll error in dump thread: {}", strerror(errno));
+          return;
+        }
+
+        if (fds[1].revents & POLLIN) {
+          return;
+        }
+
+        if (fds[0].revents & POLLIN) {
           eventfd_t value;
           if (eventfd_read(state->dumpEventFd, &value) == 0) {
             ostringstream oss;
             state->fileTree->dumpTree(oss);
-            const auto data = oss.str();
+            const string data = oss.str();
 
             size_t size = data.size();
             writeToPipe(state->dumpPipeFd, &size, sizeof(size_t));
@@ -237,6 +302,12 @@ int childFunc(void* arg) noexcept
 
   // enter loop; this blocks until unmounted
   fuse_loop(state->fusePtr);
+
+  // make sure the shutdown thread has finished before calling `fuse_destroy`
+  shutdownThread.request_stop();
+  shutdownThread.join();
+
+  close(stopEventFd);
 
   fuse_destroy(state->fusePtr);
   state->fusePtr = nullptr;
@@ -1083,8 +1154,8 @@ bool UsvfsManager::mountInternal() noexcept
         throw runtime_error("error creating status event fd: "s + strerror(errno));
       }
 
-      state->closeEventFd = eventfd(0, 0);
-      if (state->closeEventFd == -1) {
+      state->shutdownEventFd = eventfd(0, 0);
+      if (state->shutdownEventFd == -1) {
         throw runtime_error("error creating close event fd: "s + strerror(errno));
       }
 
@@ -1126,7 +1197,7 @@ bool UsvfsManager::mountInternal() noexcept
 
       spdlog::info("usvfs mounted in pid {}, mountpoint: '{}'",
                    pidfd_getpid(state->pidFd), state->mountpoint);
-      m_mounts.emplace_back(state->pidFd, state->closeEventFd, state->dumpEventFd,
+      m_mounts.emplace_back(state->pidFd, state->shutdownEventFd, state->dumpEventFd,
                             pipeFd[0], stack, state->mountpoint);
     }
     return true;
