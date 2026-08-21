@@ -86,4 +86,4 @@ jobs:
           sudo sysctl --system
 
       - name: Test usvfs-fuse
-        run: ctest --test-dir build -C RelWithDebInfo --output-on-failure
+        run: ctest --test-dir build -C RelWithDebInfo --output-on-failure --repeat until-fail:10 --timeout 5
