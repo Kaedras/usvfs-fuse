@@ -218,11 +218,6 @@ int childFunc(void* arg) noexcept
   // not work reliably when using clone()
 
   jthread shutdownThread([state, stopEventFd](const stop_token& stoken) {
-    stop_callback stopCallback(stoken, [stopEventFd]() {
-      // write to stopEventFd to stop dumpThread
-      eventfd_write(stopEventFd, 1);
-    });
-
     pollfd fds[] = {
         {.fd = state->shutdownEventFd, .events = POLLIN, .revents = 0},
         {.fd = stopEventFd, .events = POLLIN, .revents = 0},
@@ -254,6 +249,11 @@ int childFunc(void* arg) noexcept
         }
       }
     }
+  });
+
+  // write to stopEventFd when shutdown thread exits to stop dumpThread
+  stop_callback stopCallback(shutdownThread.get_stop_token(), [stopEventFd]() {
+    eventfd_write(stopEventFd, 1);
   });
 
   jthread dumpThread([state, stopEventFd](const stop_token& stoken) {
