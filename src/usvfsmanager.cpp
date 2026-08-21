@@ -1156,7 +1156,7 @@ bool UsvfsManager::mountInternal() noexcept
 
       state->shutdownEventFd = eventfd(0, 0);
       if (state->shutdownEventFd == -1) {
-        throw runtime_error("error creating close event fd: "s + strerror(errno));
+        throw runtime_error("error creating shutdown event fd: "s + strerror(errno));
       }
 
       state->dumpEventFd = eventfd(0, EFD_NONBLOCK);
@@ -1240,7 +1240,7 @@ bool UsvfsManager::unmountInternal() noexcept
 
     // send shutdown event
     spdlog::trace("writing to event fd");
-    if (eventfd_write(mount.closeEventFd, 1) == -1) {
+    if (eventfd_write(mount.shutdownEventFd, 1) == -1) {
       spdlog::error("unmount: eventfd_write failed: {}", strerror(errno));
       return false;
     }

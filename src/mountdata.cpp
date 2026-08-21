@@ -1,47 +1,47 @@
 #include "mountdata.h"
 
-MountData::MountData(int pidFd, int closeEventFd, int dumpEventFd, int dumpPipeFd,
+MountData::MountData(int pidFd, int shutdownEventFd, int dumpEventFd, int dumpPipeFd,
                      char* stack, std::string mountpoint) noexcept
-    : pidFd(pidFd), closeEventFd(closeEventFd), dumpEventFd(dumpEventFd),
+    : pidFd(pidFd), shutdownEventFd(shutdownEventFd), dumpEventFd(dumpEventFd),
       dumpPipeFd(dumpPipeFd), stack(stack), mountpoint(std::move(mountpoint))
 {}
 
 MountData::MountData(MountData&& other) noexcept
 {
-  pidFd        = other.pidFd;
-  closeEventFd = other.closeEventFd;
-  dumpEventFd  = other.dumpEventFd;
-  dumpPipeFd   = other.dumpPipeFd;
-  stack        = other.stack;
-  mountpoint   = other.mountpoint;
+  pidFd           = other.pidFd;
+  shutdownEventFd = other.shutdownEventFd;
+  dumpEventFd     = other.dumpEventFd;
+  dumpPipeFd      = other.dumpPipeFd;
+  stack           = other.stack;
+  mountpoint      = other.mountpoint;
 
   // invalidate other fd to prevent closing it in dtor
-  other.closeEventFd = -1;
-  other.dumpEventFd  = -1;
-  other.dumpPipeFd   = -1;
+  other.shutdownEventFd = -1;
+  other.dumpEventFd     = -1;
+  other.dumpPipeFd      = -1;
 }
 
 MountData& MountData::operator=(MountData&& other) noexcept
 {
-  pidFd        = other.pidFd;
-  closeEventFd = other.closeEventFd;
-  dumpEventFd  = other.dumpEventFd;
-  dumpPipeFd   = other.dumpPipeFd;
-  stack        = other.stack;
-  mountpoint   = other.mountpoint;
+  pidFd           = other.pidFd;
+  shutdownEventFd = other.shutdownEventFd;
+  dumpEventFd     = other.dumpEventFd;
+  dumpPipeFd      = other.dumpPipeFd;
+  stack           = other.stack;
+  mountpoint      = other.mountpoint;
 
   // invalidate other fd to prevent closing it in dtor
-  other.closeEventFd = -1;
-  other.dumpEventFd  = -1;
-  other.dumpPipeFd   = -1;
+  other.shutdownEventFd = -1;
+  other.dumpEventFd     = -1;
+  other.dumpPipeFd      = -1;
 
   return *this;
 }
 
 MountData::~MountData()
 {
-  if (closeEventFd != -1) {
-    close(closeEventFd);
+  if (shutdownEventFd != -1) {
+    close(shutdownEventFd);
   }
   if (dumpEventFd != -1) {
     close(dumpEventFd);

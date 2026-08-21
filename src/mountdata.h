@@ -2,9 +2,9 @@
 
 struct MountData
 {
-  // dtor closes closeEventFd, so we have to implement moving and disallow copying
-  MountData(int pidFd, int closeEventFd, int dumpEventFd, int dumpPipeFd, char* stack,
-            std::string mountpoint) noexcept;
+  // dtor closes shutdownEventFd, so we have to implement moving and disallow copying
+  MountData(int pidFd, int shutdownEventFd, int dumpEventFd, int dumpPipeFd,
+            char* stack, std::string mountpoint) noexcept;
 
   MountData(MountData&) = delete;
   MountData(MountData&&) noexcept;
@@ -13,10 +13,10 @@ struct MountData
 
   ~MountData();
 
-  int pidFd        = -1;
-  int closeEventFd = -1;
-  int dumpEventFd  = -1;
-  int dumpPipeFd   = -1;
-  char* stack      = nullptr;
+  int pidFd           = -1;
+  int shutdownEventFd = -1;
+  int dumpEventFd     = -1;
+  int dumpPipeFd      = -1;
+  char* stack         = nullptr;
   std::string mountpoint;
 };
