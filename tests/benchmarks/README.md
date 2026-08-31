@@ -17,6 +17,9 @@ echo 0 | sudo tee /sys/devices/system/cpu/cpufreq/boost
 taskset -c 0 ./usvfs-benchmarks --benchmark_repetitions=20 --benchmark_min_warmup_time=2 --benchmark_report_aggregates_only=true
 ```
 
+There is a `run-benchmarks.sh` script inside this directory that can be used instead of running `usvfs-benchmarks`
+directly
+
 ## Output
 
 ```
