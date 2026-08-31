@@ -9,6 +9,8 @@ add_executable(
         filetree.cpp
         benchmark_utils.h
         benchmark_utils.cpp
+        usvfsmanager.cpp
+        constants.h
 )
 set_target_properties(usvfs-benchmarks PROPERTIES CXX_STANDARD 23)
 target_link_libraries(
