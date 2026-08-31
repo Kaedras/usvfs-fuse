@@ -1,6 +1,7 @@
 {
   "name": "usvfs-fuse",
-  "version-string": "0.10",
+  "version-semver": "0.11.0",
+  "supports": "linux",
   "dependencies": [
     "spdlog"
   ],
