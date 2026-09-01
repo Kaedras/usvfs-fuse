@@ -5,8 +5,8 @@ using [libfuse](https://github.com/libfuse/libfuse) for use on Linux.
 
 ## Requirements
 
-- CMake >=3.31
-- GCC >=14.2
+- CMake >=3.28
+- GCC >=16.2, or clang >=22
 - libfuse >=3.14
 - Qt6 core
 - spdlog
@@ -20,10 +20,11 @@ cmake -B build # optionally add e.g. -DBUILD_TESTING=ON
 cmake --build build -j$(nproc)
 ```
 
-optional build options:
+### Build options:
 
-- BUILD_TESTING=ON/OFF: build unit tests
-- BUILD_BENCHMARKS=ON/OFF: build benchmarks
+- BUILD_TESTING: build unit tests
+- BUILD_BENCHMARKS: build benchmarks
+- ENABLE_ASAN: enable address sanitizer
 
 ## Known issues/limitations
 
@@ -32,3 +33,8 @@ optional build options:
 - Unit tests need to be expanded
 - Mounting in a separate user namespace by calling `UsvfsManager::setUseMountNamespace(true)` may require an AppArmor
   rule
+
+## Note on unit tests
+
+Unit tests should be run with additional arguments like `--repeat until-fail:20 --timeout 5` as there have been test
+failures that only showed up sporadically (1 out of over 10 runs) and/or caused the test not to exit.
