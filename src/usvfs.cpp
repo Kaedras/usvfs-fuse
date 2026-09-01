@@ -622,6 +622,13 @@ int usvfs_fsyncdir(const char* path, int datasync, fuse_file_info*) noexcept
   return 0;
 }
 
+void* usvfs_init([[maybe_unused]] fuse_conn_info* conn,
+                 [[maybe_unused]] fuse_config* cfg) noexcept
+{
+  const fuse_context* context = fuse_get_context();
+  return context->private_data;
+}
+
 int usvfs_create(const char* path, mode_t mode, fuse_file_info* fi) noexcept
 {
   spdlog::trace("usvfs_create(path='{}', mode=0{:o}, flags='{}')", path, mode,

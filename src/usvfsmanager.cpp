@@ -64,7 +64,7 @@ fuse_operations createOperations() noexcept
   ops.readdir = usvfs_readdir;
   // ops.releasedir = usvfs_releasedir;
   ops.fsyncdir = usvfs_fsyncdir;
-  // init
+  ops.init     = usvfs_init;
   // destroy
   // access
   ops.create = usvfs_create;
