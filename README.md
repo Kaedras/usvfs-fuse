@@ -7,11 +7,13 @@ using [libfuse](https://github.com/libfuse/libfuse) for use on Linux.
 
 1. [Requirements](#requirements)
 2. [Building](#building)
-    - [Normal build](#normal-build)
-      - [Build options](#build-options)
-      - [Testing](#testing)
-    - [Using cmake workflows](#using-cmake-workflows)
-      - [Testing](#testing-1)
+    1. [Normal build](#normal-build)
+        1. [Building](#build)
+        2. [Build options](#build-options)
+        3. [Testing](#testing)
+    2. [Using cmake workflows](#using-cmake-workflows)
+        1. [Building](#build-1)
+        2. [Testing](#testing-1)
 3. [Note on unit tests](#note-on-unit-tests)
 4. [Benchmarking](#benchmarking)
 
@@ -29,45 +31,47 @@ using [libfuse](https://github.com/libfuse/libfuse) for use on Linux.
 
 ### Normal build
 
-```shell
-cmake -B build # optionally add e.g. -DBUILD_TESTING=ON
-cmake --build build -j$(nproc)
-```
+1. #### Build
+    ```shell
+    cmake -B build # optionally add e.g. -DBUILD_TESTING=ON
+    cmake --build build -j$(nproc)
+    ```
 
-#### Build options:
+2. #### Build options
+    - BUILD_TESTING: build unit tests
+    - BUILD_BENCHMARKS: build benchmarks
+    - ENABLE_ASAN: enable address sanitizer
+    - ENABLE_UBSAN: enable undefined behavior sanitizer
 
-- BUILD_TESTING: build unit tests
-- BUILD_BENCHMARKS: build benchmarks
-- ENABLE_ASAN: enable address sanitizer
-- ENABLE_UBSAN: enable undefined behavior sanitizer
+3. #### Testing
 
-#### Testing
+   Build with `-DBUILD_TESTING=ON`.
 
-Build with either `-DBUILD_TESTING=ON` or the `linux-testing` preset
-
-```shell
-ctest --test-dir build --output-on-failure --repeat until-fail:20 --timeout 5
-```
+      ```shell
+      ctest --test-dir build --output-on-failure --repeat until-fail:20 --timeout 5
+      ```
 
 ### Using cmake workflows
 
-`CMakePresets.json` contains multiple workflow presets. Run `cmake --workflow --list-presets` to list them. Presets
-without the `-no-vcpkg` suffix use vcpkg and require `$VCPKG_ROOT` to be set.
+1. #### Build
 
-```shell
-cmake --workflow --preset build-no-vcpkg
-```
+   `CMakePresets.json` contains multiple workflow presets. Run `cmake --workflow --list-presets` to list them. Presets
+   without the `-no-vcpkg` suffix use vcpkg and require `$VCPKG_ROOT` to be set.
 
-```shell
-export VCPKG_ROOT=/path/to/vcpkg
-cmake --workflow --preset build
-```
+    ```shell
+    cmake --workflow --preset build-no-vcpkg
+    ```
 
-#### Testing
+    ```shell
+    export VCPKG_ROOT=/path/to/vcpkg
+    cmake --workflow --preset build
+    ```
 
-```shell
-cmake --workflow --preset build-and-test-no-vcpkg
-```
+2. #### Testing
+
+    ```shell
+    cmake --workflow --preset build-and-test-no-vcpkg
+    ```
 
 ## Note on unit tests
 
