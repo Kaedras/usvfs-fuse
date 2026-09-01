@@ -1,6 +1,7 @@
 #pragma once
 
 #include "fdmap.h"
+#include <memory>
 #include <string>
 
 struct fuse;

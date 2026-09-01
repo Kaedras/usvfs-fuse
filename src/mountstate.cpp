@@ -1,5 +1,8 @@
 #include "mountstate.h"
 
+#include <spdlog/spdlog.h>
+#include <unistd.h>
+
 MountState::~MountState()
 {
   spdlog::trace("cleaning up mount state");

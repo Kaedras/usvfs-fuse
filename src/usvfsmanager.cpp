@@ -1,6 +1,21 @@
 #include "usvfs-fuse/usvfsmanager.h"
 
 #include <QDir>
+#include <fstream>
+#include <poll.h>
+#include <spdlog/sinks/basic_file_sink.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
+#include <spdlog/spdlog.h>
+#include <sys/eventfd.h>
+#include <sys/mman.h>
+#include <sys/resource.h>
+#include <sys/wait.h>
+#include <unistd.h>
+
+extern "C"
+{
+#include <sys/pidfd.h>
+}
 
 #include "fdmap.h"
 #include "loghelpers.h"

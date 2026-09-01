@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+
 struct MountData
 {
   // dtor closes shutdownEventFd, so we have to implement moving and disallow copying

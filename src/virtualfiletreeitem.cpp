@@ -1,5 +1,11 @@
 #include "virtualfiletreeitem.h"
 
+#include <algorithm>
+#include <cstring>
+#include <filesystem>
+#include <ranges>
+#include <spdlog/spdlog.h>
+
 #include "fdmap.h"
 #include "usvfs.h"
 #include "utils.h"

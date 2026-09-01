@@ -1,5 +1,9 @@
 #include "usvfs.h"
 
+#include <cstring>
+#include <spdlog/spdlog.h>
+#include <unistd.h>
+
 #include "mountstate.h"
 #include "utils.h"
 #include "virtualfiletreeitem.h"

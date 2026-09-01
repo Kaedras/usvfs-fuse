@@ -1,5 +1,10 @@
 #include "mountdata.h"
 
+#include <cstring>
+#include <spdlog/spdlog.h>
+#include <sys/mman.h>
+#include <unistd.h>
+
 MountData::MountData(int pidFd, int shutdownEventFd, int dumpEventFd, int dumpPipeFd,
                      char* stack, std::string mountpoint) noexcept
     : pidFd(pidFd), shutdownEventFd(shutdownEventFd), dumpEventFd(dumpEventFd),
