@@ -24,7 +24,7 @@ constexpr mode_t mode          = 0755;
 LogLevel logLevel              = LogLevel::Trace;
 constexpr bool enableDebugMode = true;
 
-const fs::path base  = fs::temp_directory_path() / "usvfs";
+const fs::path base  = fs::temp_directory_path() / "usvfs_tests";
 const fs::path src   = base / "src";
 const fs::path mnt   = base / "mnt";
 const fs::path mnt2  = base / "mnt2";
