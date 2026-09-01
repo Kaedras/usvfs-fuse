@@ -13,7 +13,7 @@ echo passive | sudo tee /sys/devices/system/cpu/amd_pstate/status
 sudo cpupower frequency-set -g performance
 # disable cpu boosting
 echo 0 | sudo tee /sys/devices/system/cpu/cpufreq/boost
-# run benchmark on cpu 0
+# run benchmark on cpu 0. on heterogeneous CPUs it's important to always use the same kind of core
 taskset -c 0 ./usvfs-benchmarks --benchmark_repetitions=20 --benchmark_min_warmup_time=2 --benchmark_report_aggregates_only=true
 ```
 
