@@ -25,6 +25,7 @@ cmake --build build -j$(nproc)
 - BUILD_TESTING: build unit tests
 - BUILD_BENCHMARKS: build benchmarks
 - ENABLE_ASAN: enable address sanitizer
+- ENABLE_UBSAN: enable undefined behavior sanitizer
 
 ## Known issues/limitations
 

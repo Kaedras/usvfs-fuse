@@ -10,6 +10,7 @@ set(CMAKE_CXX_STANDARD 23)
 add_subdirectory(src)
 
 option(ENABLE_ASAN "Enable address sanitizer" OFF)
+option(ENABLE_UBSAN "Enable undefined behavior sanitizer" OFF)
 
 set(BUILD_TESTING ${BUILD_TESTING} CACHE BOOL "build unit tests for usvfs-fuse")
 set(BUILD_BENCHMARKS ${BUILD_BENCHMARKS} CACHE BOOL "build benchmarks for usvfs-fuse")

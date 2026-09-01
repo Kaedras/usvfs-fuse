@@ -40,5 +40,10 @@ if(ENABLE_ASAN)
     target_compile_options(usvfs-fuse PRIVATE -fno-omit-frame-pointer -fsanitize=address -fsanitize-recover=address)
 endif()
 
-target_compile_options(usvfs-fuse PRIVATE -Wall -Wextra -Wpedantic)
+if(ENABLE_UBSAN)
+    target_compile_options(usvfs-fuse PRIVATE -fsanitize=undefined)
+    target_link_options(usvfs-fuse PRIVATE -fsanitize=undefined)
+endif()
+
+target_compile_options(usvfs-fuse PRIVATE -Wall -Wextra -Wpedantic -O2)
 target_link_libraries(usvfs-fuse PRIVATE PkgConfig::FUSE3 spdlog::spdlog PUBLIC Qt::Core)
