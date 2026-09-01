@@ -1,4 +1,9 @@
 {
+  "version": 8,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 28
+  },
   "configurePresets": [
     {
       "cacheVariables": {
@@ -14,14 +19,39 @@
     {
       "binaryDir": "${sourceDir}/build",
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS": "-Wall -Wextra -Wpedantic",
+        "CMAKE_CXX_FLAGS": "-Wall -Wextra -Wpedantic"
+      },
+      "generator": "Ninja Multi-Config",
+      "hidden": true,
+      "name": "common"
+    },
+    {
+      "cacheVariables": {
+        "BUILD_TESTING": true,
+        "ENABLE_ASAN": true,
+        "ENABLE_UBSAN": true
+      },
+      "hidden": true,
+      "name": "testing"
+    },
+    {
+      "cacheVariables": {
+        "BUILD_BENCHMARKS": true
+      },
+      "hidden": true,
+      "name": "benchmarking"
+    },
+    {
+      "cacheVariables": {
         "VCPKG_TARGET_TRIPLET": {
           "type": "STRING",
           "value": "x64-linux"
         }
       },
-      "generator": "Ninja Multi-Config",
-      "inherits": ["vcpkg"],
+      "inherits": [
+        "common",
+        "vcpkg"
+      ],
       "name": "linux"
     },
     {
@@ -29,18 +59,261 @@
         "VCPKG_MANIFEST_FEATURES": {
           "type": "STRING",
           "value": "testing"
-        },
-        "ENABLE_ASAN": true
+        }
       },
-      "inherits": "linux",
+      "inherits": [
+        "linux",
+        "testing"
+      ],
       "name": "linux-testing"
+    },
+    {
+      "cacheVariables": {
+        "VCPKG_MANIFEST_FEATURES": {
+          "type": "STRING",
+          "value": "benchmarking"
+        }
+      },
+      "inherits": [
+        "linux",
+        "benchmarking"
+      ],
+      "name": "linux-benchmarking"
+    },
+    {
+      "inherits": [
+        "common"
+      ],
+      "name": "linux-no-vcpkg"
+    },
+    {
+      "inherits": [
+        "linux-no-vcpkg",
+        "testing"
+      ],
+      "name": "linux-testing-no-vcpkg"
+    },
+    {
+      "inherits": [
+        "linux-no-vcpkg",
+        "benchmarking"
+      ],
+      "name": "linux-benchmarking-no-vcpkg"
     }
   ],
   "buildPresets": [
     {
       "name": "linux",
-      "configurePreset": "linux"
+      "configurePreset": "linux",
+      "description": "Build with vcpkg"
+    },
+    {
+      "name": "linux-testing",
+      "configurePreset": "linux-testing",
+      "configuration": "Debug",
+      "description": "Build for testing with Debug configuration. This also enables ASAN and UBSAN."
+    },
+    {
+      "name": "linux-benchmarking",
+      "configurePreset": "linux-benchmarking",
+      "configuration": "Release",
+      "description": "Build for benchmarking with Release configuration."
+    },
+    {
+      "name": "linux-no-vcpkg",
+      "configurePreset": "linux-no-vcpkg",
+      "description": "Build without vcpkg"
+    },
+    {
+      "name": "linux-testing-no-vcpkg",
+      "configurePreset": "linux-testing-no-vcpkg",
+      "configuration": "Debug",
+      "description": "Build without vcpkg for testing with Debug configuration. This also enables ASAN and UBSAN."
+    },
+    {
+      "name": "linux-benchmarking-no-vcpkg",
+      "configurePreset": "linux-benchmarking-no-vcpkg",
+      "configuration": "Release",
+      "description": "Build without vcpkg for benchmarking with Release configuration."
     }
   ],
-  "version": 4
+  "testPresets": [
+    {
+      "name": "common",
+      "execution": {
+        "repeat": {
+          "mode": "until-fail",
+          "count": 20
+        },
+        "timeout": 5
+      },
+      "hidden": true
+    },
+    {
+      "name": "linux-testing",
+      "configurePreset": "linux-testing",
+      "inherits": [
+        "common"
+      ]
+    },
+    {
+      "name": "linux-testing-no-vcpkg",
+      "configurePreset": "linux-testing-no-vcpkg",
+      "inherits": [
+        "common"
+      ]
+    }
+  ],
+  "workflowPresets": [
+    {
+      "name": "build",
+      "displayName": "Build (vcpkg)",
+      "steps": [
+        {
+          "name": "linux",
+          "type": "configure"
+        },
+        {
+          "name": "linux",
+          "type": "build"
+        }
+      ]
+    },
+    {
+      "name": "build-testing",
+      "displayName": "Build for testing (vcpkg)",
+      "steps": [
+        {
+          "name": "linux-testing",
+          "type": "configure"
+        },
+        {
+          "name": "linux-testing",
+          "type": "build"
+        }
+      ]
+    },
+    {
+      "name": "build-and-test",
+      "displayName": "Build and test (vcpkg)",
+      "steps": [
+        {
+          "name": "linux-testing",
+          "type": "configure"
+        },
+        {
+          "name": "linux-testing",
+          "type": "build"
+        },
+        {
+          "name": "linux-testing",
+          "type": "test"
+        }
+      ]
+    },
+    {
+      "name": "test",
+      "displayName": "Run unit tests (vcpkg)",
+      "description": "Only run unit tests without building. Useful if changes have been made and rebuilding is unwanted. Requires that the `build-testing` workflow has been run previously.",
+      "steps": [
+        {
+          "name": "linux-testing",
+          "type": "configure"
+        },
+        {
+          "name": "linux-testing",
+          "type": "test"
+        }
+      ]
+    },
+    {
+      "name": "build-benchmarking",
+      "displayName": "Build for benchmarking (vcpkg)",
+      "steps": [
+        {
+          "name": "linux-benchmarking",
+          "type": "configure"
+        },
+        {
+          "name": "linux-benchmarking",
+          "type": "build"
+        }
+      ]
+    },
+    {
+      "name": "build-no-vcpkg",
+      "displayName": "Build (no vcpkg)",
+      "steps": [
+        {
+          "name": "linux-no-vcpkg",
+          "type": "configure"
+        },
+        {
+          "name": "linux-no-vcpkg",
+          "type": "build"
+        }
+      ]
+    },
+    {
+      "name": "build-testing-no-vcpkg",
+      "displayName": "Build for testing (no vcpkg)",
+      "steps": [
+        {
+          "name": "linux-testing-no-vcpkg",
+          "type": "configure"
+        },
+        {
+          "name": "linux-testing-no-vcpkg",
+          "type": "build"
+        }
+      ]
+    },
+    {
+      "name": "build-and-test-no-vcpkg",
+      "displayName": "Build and test (no vcpkg)",
+      "steps": [
+        {
+          "name": "linux-testing-no-vcpkg",
+          "type": "configure"
+        },
+        {
+          "name": "linux-testing-no-vcpkg",
+          "type": "build"
+        },
+        {
+          "name": "linux-testing-no-vcpkg",
+          "type": "test"
+        }
+      ]
+    },
+    {
+      "name": "test-no-vcpkg",
+      "displayName": "Run unit tests (no vcpkg)",
+      "description": "Only run unit tests without building. Useful if changes have been made and rebuilding is unwanted. Requires that the `build-testing-no-vcpkg` workflow has been run previously.",
+      "steps": [
+        {
+          "name": "linux-testing-no-vcpkg",
+          "type": "configure"
+        },
+        {
+          "name": "linux-testing-no-vcpkg",
+          "type": "test"
+        }
+      ]
+    },
+    {
+      "name": "build-benchmarking-no-vcpkg",
+      "displayName": "Build for benchmarking (no vcpkg).",
+      "steps": [
+        {
+          "name": "linux-benchmarking-no-vcpkg",
+          "type": "configure"
+        },
+        {
+          "name": "linux-benchmarking-no-vcpkg",
+          "type": "build"
+        }
+      ]
+    }
+  ]
 }

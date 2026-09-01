@@ -9,7 +9,12 @@
     "testing": {
       "description": "Build USVFS tests.",
       "dependencies": [
-        "gtest",
+        "gtest"
+      ]
+    },
+    "benchmarking": {
+      "description": "Build USVFS benchmarks.",
+      "dependencies": [
         "benchmark"
       ]
     }
