@@ -20,12 +20,12 @@ jobs:
           echo "VCPKG_ROOT=$VCPKG_INSTALLATION_ROOT" >> $GITHUB_ENV
 
       - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install libfuse3-dev gcc-14 -y
+        run: sudo apt-get update && sudo apt-get install libfuse3-dev gcc-16 -y
 
-      - name: Set default gcc version to 14
+      - name: Set default gcc version to 16
         run: |
-          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 10
-          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-14 10
+          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-16 10
+          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-16 10
 
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
