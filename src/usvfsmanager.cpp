@@ -67,9 +67,9 @@ fuse_operations createOperations() noexcept
   ops.read     = usvfs_read;
   ops.write    = usvfs_write;
   ops.statfs   = usvfs_statfs;
-  ops.flush    = usvfs_flush;
-  ops.release  = usvfs_release;
-  ops.fsync    = usvfs_fsync;
+  // ops.flush    = usvfs_flush;
+  ops.release = usvfs_release;
+  ops.fsync   = usvfs_fsync;
   // setxattr
   // getxattr
   // listxattr
@@ -78,8 +78,8 @@ fuse_operations createOperations() noexcept
   // ops.opendir = usvfs_opendir;
   ops.readdir = usvfs_readdir;
   // ops.releasedir = usvfs_releasedir;
-  ops.fsyncdir = usvfs_fsyncdir;
-  ops.init     = usvfs_init;
+  // ops.fsyncdir = usvfs_fsyncdir;
+  ops.init = usvfs_init;
   // destroy
   // access
   ops.create = usvfs_create;

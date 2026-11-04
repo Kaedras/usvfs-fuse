@@ -524,21 +524,6 @@ int usvfs_statfs(const char* path, struct statvfs* stbuf) noexcept
   return 0;
 }
 
-int usvfs_flush([[maybe_unused]] const char* path, fuse_file_info* fi) noexcept
-{
-  SPDLOG_TRACE("usvfs_flush(path='{}')", path);
-  /* This is called from every close on an open file, so call the
-     close on the underlying filesystem.	But since flush may be
-     called multiple times for an open file, this must not really
-     close the file.  This is important if used on a network
-     filesystem like NFS which flush the data/metadata on close() */
-  if (close(dup(static_cast<int>(fi->fh))) == -1) {
-    return -errno;
-  }
-
-  return 0;
-}
-
 int usvfs_fsync([[maybe_unused]] const char* path, int isdatasync,
                 fuse_file_info* fi) noexcept
 {
@@ -600,27 +585,6 @@ int usvfs_readdir(const char* path, void* buf, const fuse_fill_dir_t filler,
       spdlog::error("usvfs_readdir(path='{}'): filler function returned error", path);
       break;
     }
-  }
-
-  return 0;
-}
-
-int usvfs_fsyncdir(const char* path, int datasync, fuse_file_info*) noexcept
-{
-  SPDLOG_TRACE("usvfs_fsyncdir(path='{}', datasync={})", path, datasync);
-  GET_STATE()
-  int fd = state->fdMap.at(path);
-  int res;
-  if (datasync) {
-    res = fdatasync(fd);
-  } else {
-    res = fsync(fd);
-  }
-  if (res == -1) {
-    const int e = errno;
-    spdlog::error("usvfs_fsyncdir(path='{}', datasync={}) error: {}", path, datasync,
-                  strerror(e));
-    return -e;
   }
 
   return 0;
