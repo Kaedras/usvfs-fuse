@@ -5,8 +5,9 @@ using [libfuse](https://github.com/libfuse/libfuse) for use on Linux.
 
 ## Table of Contents
 
-1. [Requirements](#requirements)
-2. [Building](#building)
+1. [Known Issues](#known-issues)
+2. [Requirements](#requirements)
+3. [Building](#building)
     1. [Normal build](#normal-build)
         1. [Building](#build)
         2. [Build options](#build-options)
@@ -14,8 +15,16 @@ using [libfuse](https://github.com/libfuse/libfuse) for use on Linux.
     2. [Using cmake workflows](#using-cmake-workflows)
         1. [Building](#build-1)
         2. [Testing](#testing-1)
-3. [Note on unit tests](#note-on-unit-tests)
-4. [Benchmarking](#benchmarking)
+4. [Note on unit tests](#note-on-unit-tests)
+5. [Benchmarking](#benchmarking)
+
+## Known issues
+
+- Some functions haven’t been implemented yet (they may not even be required)
+- There may be much room for performance optimization
+- Unit tests need to be expanded
+- Mounting in a separate user namespace by calling `UsvfsManager::setUseMountNamespace(true)` may require an AppArmor
+  rule
 
 ## Requirements
 
@@ -77,14 +86,6 @@ using [libfuse](https://github.com/libfuse/libfuse) for use on Linux.
 
 Unit tests should be run with additional arguments like `--repeat until-fail:20 --timeout 5` as there have been test
 failures that only showed up sporadically (1 out of over 10 runs) and/or caused the test not to exit.
-
-## Known issues/limitations
-
-- Some functions haven’t been implemented yet (they may not even be required)
-- There may be much room for performance optimization
-- Unit tests need to be expanded
-- Mounting in a separate user namespace by calling `UsvfsManager::setUseMountNamespace(true)` may require an AppArmor
-  rule
 
 ## Benchmarking
 
