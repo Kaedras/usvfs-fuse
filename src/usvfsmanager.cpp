@@ -84,8 +84,8 @@ fuse_operations createOperations() noexcept
   // access
   ops.create = usvfs_create;
   // lock
-  // utimens
-  ops.bmap = nullptr;
+  ops.utimens = usvfs_utimens;
+  ops.bmap    = nullptr;
   // ioctl
   // poll
   // write_buf

@@ -669,3 +669,32 @@ int usvfs_create(const char* path, mode_t mode, fuse_file_info* fi) noexcept
 
   return 0;
 }
+
+int usvfs_utimens(const char* path, const timespec tv[2], fuse_file_info* fi) noexcept
+{
+  SPDLOG_TRACE("usvfs_utimens(path='{}')", path);
+
+  GET_STATE()
+
+  if (fi && fi->fh) {
+    if (futimens(fi->fh, tv) == -1) {
+      const int e = errno;
+      spdlog::error("usvfs_utimens(path='{}'): futimens() failed: {}", path,
+                    strerror(e));
+      return -e;
+    }
+  } else {
+    FIND_ITEM()
+    GET_PATHS()
+
+    int result = utimensat(state->fdMap.at(parentPath), fileName.c_str(), tv, 0);
+    if (result == -1) {
+      const int e = errno;
+      spdlog::error("usvfs_utimens(path='{}'): utimensat() failed: {}", path,
+                    strerror(e));
+      return -e;
+    }
+  }
+
+  return 0;
+}
