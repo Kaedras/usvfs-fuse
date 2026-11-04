@@ -127,7 +127,7 @@ static void Lseek(benchmark::State& state)
 
 static void Lseek_USVFS(benchmark::State& state)
 {
-  const int fd = open(paths::file.c_str(), O_RDONLY);
+  const int fd = open(paths::fileUsvfs.c_str(), O_RDONLY);
   assert(fd != -1);
 
   for (auto _ : state) {
@@ -156,7 +156,7 @@ static void Sync(benchmark::State& state)
 
 static void Sync_USVFS(benchmark::State& state)
 {
-  const int fd = open(paths::file.c_str(), O_RDONLY);
+  const int fd = open(paths::fileUsvfs.c_str(), O_RDONLY);
   assert(fd != -1);
 
   for (auto _ : state) {
