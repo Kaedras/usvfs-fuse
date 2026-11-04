@@ -170,9 +170,9 @@ void checkFileContent(const fs::path& path, const string& expectedContent,
 
   array<char, 4096> buf{};
   const ssize_t readBytes = read(fd, buf.data(), buf.size());
-  int closeResult         = close(fd);
   EXPECT_NE(readBytes, -1) << "read error in file " << path << ": " << strerror(errno);
 
+  int closeResult = close(fd);
   EXPECT_EQ(closeResult, 0) << "error closing file " << path << ": " << strerror(errno);
 
   EXPECT_EQ(string(buf.data(), readBytes), expectedContent);
