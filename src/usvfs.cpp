@@ -594,6 +594,9 @@ void* usvfs_init([[maybe_unused]] fuse_conn_info* conn,
                  [[maybe_unused]] fuse_config* cfg) noexcept
 {
   const fuse_context* context = fuse_get_context();
+
+  fuse_set_feature_flag(conn, FUSE_CAP_WRITEBACK_CACHE);
+
   return context->private_data;
 }
 
