@@ -209,7 +209,7 @@ int childFunc(void* arg) noexcept
   }
 
   // notify parent
-  spdlog::trace("mount success, notifying parent in fd {}", state->shutdownEventFd);
+  SPDLOG_TRACE("mount success, notifying parent in fd {}", state->shutdownEventFd);
   if (eventfd_write(state->statusEventFd, MOUNT_SUCCESS) == -1) {
     spdlog::error("eventfd_write failed: {}", strerror(errno));
     fuse_destroy(state->fusePtr);
@@ -401,7 +401,7 @@ string_view getProcessName(string_view arg)
   }
 
   arg.remove_prefix(lastSlash + 1);
-  spdlog::trace("using process name {}", arg);
+  SPDLOG_TRACE("using process name {}", arg);
   return arg;
 }
 
@@ -426,8 +426,8 @@ void UsvfsManager::virtualLinkFile(const std::string& source,
 {
   scoped_lock lock(m_mtx);
 
-  spdlog::trace("usvfsVirtualLinkFile(source='{}', destination='{}')", source,
-                destination);
+  SPDLOG_TRACE("usvfsVirtualLinkFile(source='{}', destination='{}')", source,
+               destination);
 
   if (fileNameInSkipSuffixes(getFileNameFromPath(source))) {
     spdlog::debug("file '{}' should be skipped", source);
@@ -527,8 +527,8 @@ void UsvfsManager::virtualLinkDirectoryStatic(const std::string& source,
 {
   scoped_lock lock(m_mtx);
 
-  spdlog::trace("usvfsVirtualLinkDirectoryStatic(source='{}', destination='{}')",
-                source, destination);
+  SPDLOG_TRACE("usvfsVirtualLinkDirectoryStatic(source='{}', destination='{}')", source,
+               destination);
 
   const auto src = findCaseInsensitive(source);
   const auto dst = findCaseInsensitive(destination);
@@ -568,7 +568,7 @@ void UsvfsManager::virtualLinkDirectoryStatic(const std::string& source,
 
     string_view relative = relativePath(entryPath, src);
 
-    spdlog::trace("adding '{}' to file tree", relative);
+    SPDLOG_TRACE("adding '{}' to file tree", relative);
     auto newItem =
         sourceFileTree->add(relative, entry.path().string(), isDirectory ? dir : file);
     if (newItem == nullptr) {
@@ -589,8 +589,8 @@ void UsvfsManager::virtualLinkDirectoryStatic(const std::string& source,
     // check if dst is inside the mountpoint
     if (isParentPathOf(state->mountpoint, dst)) {
       // destination exists, merge file trees
-      spdlog::trace("merging destination '{}' into mountpoint '{}'", dst,
-                    state->mountpoint);
+      SPDLOG_TRACE("merging destination '{}' into mountpoint '{}'", dst,
+                   state->mountpoint);
       const string relative = dst.substr(state->mountpoint.length());
       auto existingItem     = state->fileTree->find(relative);
       if (existingItem == nullptr) {
@@ -609,7 +609,7 @@ void UsvfsManager::virtualLinkDirectoryStatic(const std::string& source,
     }
     // check if the mountpoint is inside dst
     if (isParentPathOf(dst, state->mountpoint)) {
-      spdlog::trace("mountpoint '{}' is inside dst '{}'", state->mountpoint, dst);
+      SPDLOG_TRACE("mountpoint '{}' is inside dst '{}'", state->mountpoint, dst);
 
       // create a new destination file tree
       shared_ptr<VirtualFileTreeItem> destinationFileTree =
@@ -678,8 +678,8 @@ pid_t UsvfsManager::createProcessHooked(const std::string& file, const std::stri
     return false;
   }
 
-  spdlog::trace("usvfsCreateProcessHooked(file='{}', arg='{}', workdir='{}')", file,
-                arg, workDir);
+  SPDLOG_TRACE("usvfsCreateProcessHooked(file='{}', arg='{}', workdir='{}')", file, arg,
+               workDir);
 
   if (!m_executableBlacklist.contains(file)) {
     if (!mountInternal()) {
@@ -1133,11 +1133,11 @@ bool UsvfsManager::mountInternal() noexcept
       rlimit limit;
       if (getrlimit(RLIMIT_STACK, &limit) == 0) {
         stackSize = min(limit.rlim_cur, defaultStackSize);
-        spdlog::trace("setting stack size to {}", stackSize);
+        SPDLOG_TRACE("setting stack size to {}", stackSize);
       } else {
         stackSize = defaultStackSize;
-        spdlog::trace("error getting stack size limit: {}\nusing 8 MiB",
-                      strerror(errno));
+        SPDLOG_TRACE("error getting stack size limit: {}\nusing 8 MiB",
+                     strerror(errno));
       }
 
       // allocate memory to be used for the stack of the child.
@@ -1254,15 +1254,14 @@ bool UsvfsManager::unmountInternal() noexcept
     }
 
     // send shutdown event
-    spdlog::trace("writing to event fd");
+    SPDLOG_TRACE("writing to event fd");
     if (eventfd_write(mount.shutdownEventFd, 1) == -1) {
       spdlog::error("unmount: eventfd_write failed: {}", strerror(errno));
       return false;
     }
 
     // wait for the child to exit
-    pid_t pid = pidfd_getpid(mount.pidFd);
-    spdlog::trace("waiting for pid {} to exit", pid);
+    SPDLOG_TRACE("waiting for pid {} to exit", pidfd_getpid(mount.pidFd));
     siginfo_t info{};
     if (waitid(P_PIDFD, mount.pidFd, &info, WEXITED | WSTOPPED) == -1) {
       spdlog::error("waitid() failed: {}", strerror(errno));

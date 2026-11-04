@@ -27,7 +27,7 @@ FdMap::~FdMap() noexcept
 {
   for (const auto& fd : m_map | std::views::values) {
     if (fd >= 0) {
-      spdlog::trace("closing fd {}", fd);
+      SPDLOG_TRACE("closing fd {}", fd);
       close(fd);
     }
   }
@@ -93,7 +93,7 @@ int FdMap::add(const std::string& path) noexcept
     return -1;
   }
 
-  spdlog::trace("added fd {} for '{}'", fd, path);
+  SPDLOG_TRACE("added fd {} for '{}'", fd, path);
   return fd;
 }
 

@@ -248,8 +248,8 @@ std::string findCaseInsensitive(const std::string& path) noexcept
       const auto entryFileName = entry.path().filename().string();
       if (iequals(entryFileName, fileName)) {
         if (entryFileName != fileName) {
-          spdlog::trace("case insensitive lookup for '{}' replaced '{}' with '{}'",
-                        path, fileName, entryFileName);
+          SPDLOG_TRACE("case insensitive lookup for '{}' replaced '{}' with '{}'", path,
+                       fileName, entryFileName);
         }
         return entry.path().string();
       }

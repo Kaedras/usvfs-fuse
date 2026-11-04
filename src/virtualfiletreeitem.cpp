@@ -52,7 +52,7 @@ std::shared_ptr<VirtualFileTreeItem> VirtualFileTreeItem::createFileTree(
       throw runtime_error(
           format("error opening directory {}: {}", path, strerror(errno)));
     }
-    spdlog::trace("adding fd {} for {}", fd, path);
+    SPDLOG_TRACE("adding fd {} for {}", fd, path);
     fdMap.value().get()[path] = fd;
   }
 
@@ -62,7 +62,7 @@ std::shared_ptr<VirtualFileTreeItem> VirtualFileTreeItem::createFileTree(
 
     string_view relative = relativePath(entryPath, path);
 
-    spdlog::trace("adding '{}' to file tree", relative);
+    SPDLOG_TRACE("adding '{}' to file tree", relative);
     auto newItem = fileTree->add(relative, entryPath, isDirectory ? dir : file);
     if (newItem == nullptr) {
       throw runtime_error(
@@ -75,7 +75,7 @@ std::shared_ptr<VirtualFileTreeItem> VirtualFileTreeItem::createFileTree(
         throw runtime_error(
             format("error opening directory {}: {}", path, strerror(errno)));
       }
-      spdlog::trace("adding fd {} for {}", fd, entryPath);
+      SPDLOG_TRACE("adding fd {} for {}", fd, entryPath);
       fdMap.value().get()[entryPath] = fd;
     }
   }
@@ -158,7 +158,7 @@ void VirtualFileTreeItem::merge(const std::shared_ptr<VirtualFileTreeItem>& othe
   shared_lock lock_other(other->m_mtx);
 
   if (replaceRoot) {
-    spdlog::trace(
+    SPDLOG_TRACE(
         "VirtualFileTreeItem::merge(): real path: '{}' -> '{}', filename: '{}' -> '{}'",
         m_realPath, other->m_realPath, m_fileName, other->m_fileName);
     m_realPath = other->m_realPath;
@@ -367,8 +367,7 @@ VirtualFileTreeItem::VirtualFileTreeItem(
     : m_fileName(std::move(path)), m_realPath(std::move(realPath)),
       m_parent(std::move(parent)), m_type(type), m_deleted(false)
 {
-  spdlog::trace("VirtualFileTreeItem(path='{}', realPath='{}')", m_fileName,
-                m_realPath);
+  SPDLOG_TRACE("VirtualFileTreeItem(path='{}', realPath='{}')", m_fileName, m_realPath);
   if (m_fileName.empty()) {
     errno = EINVAL;
     throw runtime_error("filename is empty");
@@ -412,7 +411,7 @@ VirtualFileTreeItem::findInternal(std::string_view path, bool includeDeleted) no
     const string_view subDirectory = path.substr(0, pos);
     const auto it                  = m_children.find(subDirectory);
     if (it == m_children.end()) {
-      spdlog::trace("could not find '{}'", path);
+      SPDLOG_TRACE("could not find '{}'", path);
       errno = ENOENT;
       return nullptr;
     }
@@ -423,7 +422,7 @@ VirtualFileTreeItem::findInternal(std::string_view path, bool includeDeleted) no
       if (!it->second->isDeleted() || includeDeleted) {
         return it->second;
       }
-      spdlog::trace("'{}' has been deleted, returning nullptr", path);
+      SPDLOG_TRACE("'{}' has been deleted, returning nullptr", path);
       errno = ENOENT;
       return nullptr;
     }
@@ -433,7 +432,7 @@ VirtualFileTreeItem::findInternal(std::string_view path, bool includeDeleted) no
   // path is not in a subdirectory
   const auto it = m_children.find(path);
   if (it == m_children.end()) {
-    spdlog::trace("could not find '{}'", path);
+    SPDLOG_TRACE("could not find '{}'", path);
     errno = ENOENT;
     return nullptr;
   }
@@ -441,7 +440,7 @@ VirtualFileTreeItem::findInternal(std::string_view path, bool includeDeleted) no
   if (!it->second->isDeleted() || includeDeleted) {
     return it->second;
   }
-  spdlog::trace("'{}' has been deleted, returning nullptr", path);
+  SPDLOG_TRACE("'{}' has been deleted, returning nullptr", path);
   errno = ENOENT;
   return nullptr;
 }

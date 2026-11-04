@@ -91,7 +91,7 @@ int createDirs(FdMap& fdMap, string_view path)
 
 int usvfs_getattr(const char* path, struct stat* stbuf, fuse_file_info* fi) noexcept
 {
-  spdlog::trace("usvfs_getattr(path='{}')", path);
+  SPDLOG_TRACE("usvfs_getattr(path='{}')", path);
 
   // try to use existing fd
   if (fi != nullptr && fi->fh > 0) {
@@ -147,8 +147,8 @@ int usvfs_getattr(const char* path, struct stat* stbuf, fuse_file_info* fi) noex
 
 int usvfs_readlink(const char* path, char* buf, size_t size) noexcept
 {
-  spdlog::trace("usvfs_readlink(path='{}', buf={}, size={})", path,
-                reinterpret_cast<long>(buf), size);
+  SPDLOG_TRACE("usvfs_readlink(path='{}', buf={}, size={})", path,
+               reinterpret_cast<long>(buf), size);
   GET_STATE()
   FIND_ITEM()
 
@@ -169,9 +169,9 @@ int usvfs_readlink(const char* path, char* buf, size_t size) noexcept
   return 0;
 }
 
-int usvfs_mkdir(const char* path, mode_t mode) noexcept
+int usvfs_mkdir(const char* path, [[maybe_unused]] mode_t mode) noexcept
 {
-  spdlog::trace("usvfs_mkdir(path='{}', mode=0{:o})", path, mode);
+  SPDLOG_TRACE("usvfs_mkdir(path='{}', mode=0{:o})", path, mode);
   GET_STATE()
 
   const string fileName = getFileNameFromPath(path);
@@ -201,7 +201,7 @@ int usvfs_mkdir(const char* path, mode_t mode) noexcept
 
   const string realPath = state->upperDir + path;
 
-  spdlog::trace("usvfs_mkdir: creating directory '{}'", path, realPath);
+  SPDLOG_TRACE("usvfs_mkdir: creating directory '{}'", path, realPath);
 
   // create the directory on disk
   int res = createDirs(state->fdMap, realPath);
@@ -223,12 +223,12 @@ int usvfs_mkdir(const char* path, mode_t mode) noexcept
 
 int usvfs_unlink(const char* path) noexcept
 {
-  spdlog::trace("usvfs_unlink(path='{}')", path);
+  SPDLOG_TRACE("usvfs_unlink(path='{}')", path);
   GET_STATE()
   FIND_ITEM()
   GET_PATHS()
 
-  spdlog::trace("unlinkat(fdPath='{}', path='{}')", parentPath, fileName);
+  SPDLOG_TRACE("unlinkat(fdPath='{}', path='{}')", parentPath, fileName);
 
   if (unlinkat(state->fdMap.at(parentPath), fileName.c_str(), 0) == -1) {
     const int e = errno;
@@ -248,7 +248,7 @@ int usvfs_unlink(const char* path) noexcept
 
 int usvfs_rmdir(const char* path) noexcept
 {
-  spdlog::trace("usvfs_rmdir(path='{}')", path);
+  SPDLOG_TRACE("usvfs_rmdir(path='{}')", path);
 
   GET_STATE()
   FIND_ITEM()
@@ -267,8 +267,8 @@ int usvfs_rmdir(const char* path) noexcept
 
   GET_PATHS()
 
-  spdlog::trace("unlinkat(fdPath='{}', path='{}', flag=AT_REMOVEDIR)", parentPath,
-                fileName);
+  SPDLOG_TRACE("unlinkat(fdPath='{}', path='{}', flag=AT_REMOVEDIR)", parentPath,
+               fileName);
   if (unlinkat(state->fdMap.at(parentPath), fileName.c_str(), AT_REMOVEDIR) == -1) {
     const int e = errno;
     spdlog::error("usvfs_rmdir(path='{}'): unlink failed for '{}': {}", path, realPath,
@@ -284,7 +284,7 @@ int usvfs_rmdir(const char* path) noexcept
 
 int usvfs_rename(const char* from, const char* to, const unsigned int flags) noexcept
 {
-  spdlog::trace("usvfs_rename(from='{}', to='{}', flags={})", from, to, flags);
+  SPDLOG_TRACE("usvfs_rename(from='{}', to='{}', flags={})", from, to, flags);
 
   GET_STATE()
 
@@ -353,7 +353,7 @@ int usvfs_rename(const char* from, const char* to, const unsigned int flags) noe
 
 int usvfs_chmod(const char* path, mode_t mode, fuse_file_info* fi) noexcept
 {
-  spdlog::trace("usvfs_chmod(path='{}', mode=0{:o})", path, mode);
+  SPDLOG_TRACE("usvfs_chmod(path='{}', mode=0{:o})", path, mode);
 
   if (fi != nullptr && fi->fh != 0) {
     if (fchmod(static_cast<int>(fi->fh), mode) != 0) {
@@ -368,8 +368,8 @@ int usvfs_chmod(const char* path, mode_t mode, fuse_file_info* fi) noexcept
   FIND_ITEM()
   GET_PATHS()
 
-  spdlog::trace("fchmodat(fdPath='{}', file='{}', mode=0{:o})", parentPath, fileName,
-                mode);
+  SPDLOG_TRACE("fchmodat(fdPath='{}', file='{}', mode=0{:o})", parentPath, fileName,
+               mode);
   if (fchmodat(state->fdMap.at(parentPath), fileName.c_str(), mode, 0) == -1) {
     const int e = errno;
     spdlog::error("usvfs_chmod(path='{}'): fchmodat failed: {}", path, strerror(e));
@@ -380,7 +380,7 @@ int usvfs_chmod(const char* path, mode_t mode, fuse_file_info* fi) noexcept
 
 int usvfs_chown(const char* path, uid_t uid, gid_t gid, fuse_file_info* fi) noexcept
 {
-  spdlog::trace("usvfs_chown(path='{}', uid={}, gid={})", path, uid, gid);
+  SPDLOG_TRACE("usvfs_chown(path='{}', uid={}, gid={})", path, uid, gid);
 
   // try to use existing fd
   if (fi != nullptr && fi->fh > 0) {
@@ -396,8 +396,8 @@ int usvfs_chown(const char* path, uid_t uid, gid_t gid, fuse_file_info* fi) noex
   FIND_ITEM()
   GET_PATHS()
 
-  spdlog::trace("fchmodat(fdPath='{}', file='{}', uid={}, gid={})", parentPath,
-                fileName, uid, gid);
+  SPDLOG_TRACE("fchmodat(fdPath='{}', file='{}', uid={}, gid={})", parentPath, fileName,
+               uid, gid);
   if (fchownat(state->fdMap.at(parentPath), fileName.c_str(), uid, gid, 0) == -1) {
     const int e = errno;
     spdlog::error("usvfs_chown(path='{}'): fchownat failed: {}", path, strerror(e));
@@ -408,7 +408,7 @@ int usvfs_chown(const char* path, uid_t uid, gid_t gid, fuse_file_info* fi) noex
 
 int usvfs_truncate(const char* path, off_t size, fuse_file_info* fi) noexcept
 {
-  spdlog::trace("usvfs_truncate(path='{}', size={})", path, size);
+  SPDLOG_TRACE("usvfs_truncate(path='{}', size={})", path, size);
 
   // try to use existing fd
   if (fi != nullptr && fi->fh > 0) {
@@ -444,14 +444,13 @@ int usvfs_truncate(const char* path, off_t size, fuse_file_info* fi) noexcept
 
 int usvfs_open(const char* path, fuse_file_info* fi) noexcept
 {
-  spdlog::trace("usvfs_open(path='{}', flags='{}')", path,
-                openFlagsToString(fi->flags));
+  SPDLOG_TRACE("usvfs_open(path='{}', flags='{}')", path, openFlagsToString(fi->flags));
   GET_STATE()
   FIND_ITEM()
   GET_PATHS()
 
-  spdlog::trace("openat(fdPath='{}', path='{}', flags='{}')", path, fileName,
-                openFlagsToString(fi->flags));
+  SPDLOG_TRACE("openat(fdPath='{}', path='{}', flags='{}')", path, fileName,
+               openFlagsToString(fi->flags));
   const int result = openat(state->fdMap.at(parentPath), fileName.c_str(), fi->flags);
   if (result == -1) {
     const int e = errno;
@@ -467,8 +466,8 @@ int usvfs_open(const char* path, fuse_file_info* fi) noexcept
 int usvfs_read(const char* path, char* buf, const size_t size, const off_t offset,
                fuse_file_info* fi) noexcept
 {
-  spdlog::trace("usvfs_read(path='{}', buf={}, size={}, offset={})", path,
-                reinterpret_cast<long>(buf), size, offset);
+  SPDLOG_TRACE("usvfs_read(path='{}', buf={}, size={}, offset={})", path,
+               reinterpret_cast<long>(buf), size, offset);
   const int fd      = static_cast<int>(fi->fh);
   const ssize_t res = pread(fd, buf, size, offset);
   if (res == -1) {
@@ -481,7 +480,7 @@ int usvfs_read(const char* path, char* buf, const size_t size, const off_t offse
 
 int usvfs_release(const char* path, fuse_file_info* fi) noexcept
 {
-  spdlog::trace("usvfs_release(path='{}')", path);
+  SPDLOG_TRACE("usvfs_release(path='{}')", path);
   if (fi && fi->fh != 0) {
     if (close(static_cast<int>(fi->fh)) == -1) {
       const int e = errno;
@@ -498,8 +497,8 @@ int usvfs_release(const char* path, fuse_file_info* fi) noexcept
 int usvfs_write(const char* path, const char* buf, const size_t size,
                 const off_t offset, fuse_file_info* fi) noexcept
 {
-  spdlog::trace("usvfs_write(path='{}', buf={}, size={}, offset={})", path,
-                reinterpret_cast<long>(buf), size, offset);
+  SPDLOG_TRACE("usvfs_write(path='{}', buf={}, size={}, offset={})", path,
+               reinterpret_cast<long>(buf), size, offset);
   const ssize_t result = pwrite(static_cast<int>(fi->fh), buf, size, offset);
   if (result == -1) {
     const int e = errno;
@@ -511,7 +510,7 @@ int usvfs_write(const char* path, const char* buf, const size_t size,
 
 int usvfs_statfs(const char* path, struct statvfs* stbuf) noexcept
 {
-  spdlog::trace("usvfs_statfs(path='{}')", path);
+  SPDLOG_TRACE("usvfs_statfs(path='{}')", path);
 
   GET_STATE()
   const int fd = state->fdMap.at(state->mountpoint);
@@ -525,9 +524,9 @@ int usvfs_statfs(const char* path, struct statvfs* stbuf) noexcept
   return 0;
 }
 
-int usvfs_flush(const char* path, fuse_file_info* fi) noexcept
+int usvfs_flush([[maybe_unused]] const char* path, fuse_file_info* fi) noexcept
 {
-  spdlog::trace("usvfs_flush(path='{}')", path);
+  SPDLOG_TRACE("usvfs_flush(path='{}')", path);
   /* This is called from every close on an open file, so call the
      close on the underlying filesystem.	But since flush may be
      called multiple times for an open file, this must not really
@@ -540,9 +539,10 @@ int usvfs_flush(const char* path, fuse_file_info* fi) noexcept
   return 0;
 }
 
-int usvfs_fsync(const char* path, int isdatasync, fuse_file_info* fi) noexcept
+int usvfs_fsync([[maybe_unused]] const char* path, int isdatasync,
+                fuse_file_info* fi) noexcept
 {
-  spdlog::trace("usvfs_fsync(path='{}')", path);
+  SPDLOG_TRACE("usvfs_fsync(path='{}')", path);
 
   int res;
   if (isdatasync) {
@@ -561,7 +561,7 @@ int usvfs_readdir(const char* path, void* buf, const fuse_fill_dir_t filler,
                   off_t /*offset*/, fuse_file_info* /*fi*/,
                   fuse_readdir_flags flags) noexcept
 {
-  spdlog::trace("usvfs_readdir(path='{}', flags='{}')", path, static_cast<int>(flags));
+  SPDLOG_TRACE("usvfs_readdir(path='{}', flags='{}')", path, static_cast<int>(flags));
 
   GET_STATE()
 
@@ -607,7 +607,7 @@ int usvfs_readdir(const char* path, void* buf, const fuse_fill_dir_t filler,
 
 int usvfs_fsyncdir(const char* path, int datasync, fuse_file_info*) noexcept
 {
-  spdlog::trace("usvfs_fsyncdir(path='{}', datasync={})", path, datasync);
+  SPDLOG_TRACE("usvfs_fsyncdir(path='{}', datasync={})", path, datasync);
   GET_STATE()
   int fd = state->fdMap.at(path);
   int res;
@@ -635,8 +635,8 @@ void* usvfs_init([[maybe_unused]] fuse_conn_info* conn,
 
 int usvfs_create(const char* path, mode_t mode, fuse_file_info* fi) noexcept
 {
-  spdlog::trace("usvfs_create(path='{}', mode=0{:o}, flags='{}')", path, mode,
-                openFlagsToString(fi->flags));
+  SPDLOG_TRACE("usvfs_create(path='{}', mode=0{:o}, flags='{}')", path, mode,
+               openFlagsToString(fi->flags));
   GET_STATE()
 
   string fileName;
@@ -675,8 +675,8 @@ int usvfs_create(const char* path, mode_t mode, fuse_file_info* fi) noexcept
     }
   }
 
-  spdlog::trace("openat(fdPath='{}', path='{}', flags='{}')", realParentPath, fileName,
-                openFlagsToString(fi->flags));
+  SPDLOG_TRACE("openat(fdPath='{}', path='{}', flags='{}')", realParentPath, fileName,
+               openFlagsToString(fi->flags));
   const int fd = openat(parentFd, fileName.c_str(), fi->flags, mode);
   if (fd < 0) {
     const int e = errno;
